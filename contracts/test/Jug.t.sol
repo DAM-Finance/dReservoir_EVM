@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.9;
 
-import "ds-test/test.sol";
+import "./ds-test/test.sol";
 
 import {Jug} from "../Jug.sol";
 import {Vat} from "../Vat.sol";

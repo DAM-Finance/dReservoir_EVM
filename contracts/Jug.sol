@@ -2,7 +2,7 @@
 
 /// Jug.sol -- Dai Lending Rate
 
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.9;
 
 interface VatLike {
     function ilks(bytes32) external returns (

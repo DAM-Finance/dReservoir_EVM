@@ -2,7 +2,7 @@
 
 /// Spotter.sol -- Spotter
 
-pragma solidity ^0.8.13;
+pragma solidity 0.8.9;
 
 interface VatLike {
     function file(bytes32, bytes32, uint) external;
