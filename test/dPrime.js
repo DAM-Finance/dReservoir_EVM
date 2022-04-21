@@ -17,7 +17,7 @@ describe("dPrime contract", function () {
     });
 
     describe("Deployment", function () {
-        it("Should set the right owner", async function () {
+        it("Should set deployer as ward", async function () {
             let chainId = await dPrime.deploymentChainId();
             console.log(chainId);
             expect(await dPrime.wards(owner.address)).to.equal(1);

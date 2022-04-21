@@ -1,21 +1,26 @@
-const { expect } = require("chai");
+const {expect} = require("chai");
 const {ethers} = require("hardhat");
 
 describe("Connections between contracts so far", function () {
 
-    let dPrimeFactory;
-    let dPrime;
-    let owner;
-    let addr1;
-    let addr2;
-    let addrs;
+    let owner, addr1, addr2, addrs;
+    let dPrimeFactory, dPrime;
+    let vatFactory, vat;
+    let tokenFactory, mockToken;
 
     beforeEach(async function () {
         [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
+
         dPrimeFactory = await ethers.getContractFactory("dPrime");
-
-
         dPrime = await dPrimeFactory.deploy();
+
+        vatFactory = await ethers.getContractFactory("Vat");
+        vat = await vatFactory.deploy();
+
+        tokenFactory = await ethers.getContractFactory("MockToken");
+        mockToken = await tokenFactory.deploy("TSTR");
+
+
     });
 
     describe("Deployment", function () {
