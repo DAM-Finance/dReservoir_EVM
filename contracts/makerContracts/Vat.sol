@@ -268,6 +268,7 @@ contract Vat {
     }
 
     // --- CDP Confiscation ---
+    //params: collateralType, vaultUser, gemReceiver, sinReceiver(always vow), collateralAmount, stablecoinAmount
     function grab(bytes32 i, address u, address v, address w, int256 dink, int256 dart) external auth {
         Urn storage urn = urns[i][u];
         Ilk storage ilk = ilks[i];
@@ -286,6 +287,7 @@ contract Vat {
     }
 
     // --- Settlement ---
+    //Only vow can successfully call heal
     function heal(uint256 rad) external {
         address u = msg.sender;
         sin[u] = sin[u] - rad;
