@@ -3,8 +3,8 @@
 pragma solidity ^0.8.9;
 
 import "./ds-test/test.sol";
-import {Vat} from '../Vat.sol';
-import {Pot} from '../Pot.sol';
+import {Vat} from '../makerContracts/Vat.sol';
+import {Pot} from '../makerContracts/Pot.sol';
 
 interface Hevm {
     function warp(uint256) external;

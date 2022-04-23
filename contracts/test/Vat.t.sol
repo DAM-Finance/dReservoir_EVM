@@ -4,10 +4,10 @@ pragma solidity 0.8.9;
 
 import "./ds-test/test.sol";
 
-import {Vat} from '../Vat.sol';
-import {Jug} from '../Jug.sol';
-import {GemJoin} from '../GemJoin.sol';
-import {dPrimeJoin} from '../dPrimeJoin.sol';
+import {Vat} from '../makerContracts/Vat.sol';
+import {Jug} from '../makerContracts/Jug.sol';
+import {GemJoin} from '../makerContracts/GemJoin.sol';
+import {DaiJoin} from '../makerContracts/DaiJoin.sol';
 
 import {MockToken} from './mock/Token.sol';
 
@@ -297,7 +297,7 @@ contract JoinTest is DSTest {
     TestVat   vat;
     MockToken gem;
     GemJoin   gemA;
-    dPrimeJoin   daiA;
+    DaiJoin   daiA;
     MockToken dai;
     address   me;
 
@@ -310,7 +310,7 @@ contract JoinTest is DSTest {
         vat.rely(address(gemA));
 
         dai  = new MockToken("Dai");
-        daiA = new dPrimeJoin(address(vat), address(dai));
+        daiA = new DaiJoin(address(vat), address(dai));
 
         me = address(this);
     }

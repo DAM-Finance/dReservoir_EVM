@@ -4,8 +4,8 @@ pragma solidity ^0.8.9;
 
 import "./ds-test/test.sol";
 
-import {Jug} from "../Jug.sol";
-import {Vat} from "../Vat.sol";
+import {Jug} from "../makerContracts/Jug.sol";
+import {Vat} from "../makerContracts/Vat.sol";
 
 
 interface Hevm {

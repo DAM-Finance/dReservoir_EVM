@@ -1,0 +1,105 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+/// CollateralJoin.sol -- Basic token adapter
+
+pragma solidity 0.8.9;
+
+interface CollateralLike {
+    function decimals() external view returns (uint256);
+    function transfer(address, uint256) external returns (bool);
+    function transferFrom(address, address, uint256) external returns (bool);
+}
+
+interface VatLike {
+    function modifyCollateral(bytes32, address, int256) external;
+}
+
+/*
+    Here we provide *adapters* to connect the Vat to arbitrary external
+    token implementations, creating a bounded context for the Vat. The
+    adapters here are provided as working examples:
+
+      - `CollateralJoin`: For well behaved ERC20 tokens, with simple transfer
+                   semantics.
+
+      - `ETHJoin`: For native Ether.
+
+      - `DaiJoin`: For connecting internal Dai balances to an external
+                   `DSToken` implementation.
+
+    In practice, adapter implementations will be varied and specific to
+    individual collateral types, accounting for different transfer
+    semantics and token standards.
+
+    Adapters need to implement two basic methods:
+
+      - `join`: enter collateral into the system
+      - `exit`: remove collateral from the system
+
+*/
+
+contract CollateralJoin {
+    // --- Data ---
+    mapping(address => uint256) public wards;
+
+    uint256 public live;  // Active Flag
+
+    VatLike public immutable vat;   // CDP Engine
+    bytes32 public immutable ilk;   // Collateral Type
+    CollateralLike public immutable collateral;
+    uint256 public immutable dec;
+
+    // --- Events ---
+    event Rely(address indexed usr);
+    event Deny(address indexed usr);
+    event Cage();
+    event Join(address indexed usr, uint256 wad);
+    event Exit(address indexed usr, uint256 wad);
+
+    modifier auth {
+        require(wards[msg.sender] == 1, "CollateralJoin/not-authorized");
+        _;
+    }
+
+    constructor(address vat_, bytes32 ilk_, address collateral_) {
+        wards[msg.sender] = 1;
+        live = 1;
+        vat = VatLike(vat_);
+        ilk = ilk_;
+        collateral = CollateralLike(collateral_);
+        dec = collateral.decimals();
+        emit Rely(msg.sender);
+    }
+
+    // --- Administration ---
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
+    }
+
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+        emit Deny(usr);
+    }
+
+    function cage() external auth {
+        live = 0;
+        emit Cage();
+    }
+
+    // --- User's functions ---
+    function join(address usr, uint256 wad) external {
+        require(live == 1, "CollateralJoin/not-live");
+        require(int256(wad) >= 0, "CollateralJoin/overflow");
+        vat.modifyCollateral(ilk, usr, int256(wad));
+        require(collateral.transferFrom(msg.sender, address(this), wad), "CollateralJoin/failed-transfer");
+        emit Join(usr, wad);
+    }
+
+    function exit(address usr, uint256 wad) external {
+        require(wad <= 2 ** 255, "CollateralJoin/overflow");
+        vat.modifyCollateral(ilk, msg.sender, - int256(wad));
+        require(collateral.transfer(usr, wad), "CollateralJoin/failed-transfer");
+        emit Exit(usr, wad);
+    }
+}

@@ -22,12 +22,12 @@ pragma solidity 0.8.9;
 
 import "./ds-test/test.sol";
 
-import "../dPrime.sol";
+import "../makerContracts/Dai.sol";
 
 contract TokenUser {
-    dPrime  token;
+    Dai  token;
 
-    constructor(dPrime token_) {
+    constructor(Dai token_) {
         token = token_;
     }
 
@@ -93,7 +93,7 @@ contract DaiTest is DSTest {
     uint constant initialBalanceThis = 1000;
     uint constant initialBalanceCal = 100;
 
-    dPrime token;
+    Dai token;
     Hevm hevm;
     address user1;
     address user2;
@@ -124,8 +124,8 @@ contract DaiTest is DSTest {
         self = address(this);
     }
 
-    function createToken() internal returns (dPrime) {
-        return new dPrime();
+    function createToken() internal returns (Dai) {
+        return new Dai();
     }
 
     function testSetupPrecondition() public {
