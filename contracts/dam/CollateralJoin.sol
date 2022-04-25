@@ -10,13 +10,13 @@ interface CollateralLike {
     function transferFrom(address, address, uint256) external returns (bool);
 }
 
-interface VatLike {
+interface LMCVLike {
     function modifyCollateral(bytes32, address, int256) external;
 }
 
 /*
-    Here we provide *adapters* to connect the Vat to arbitrary external
-    token implementations, creating a bounded context for the Vat. The
+    Here we provide *adapters* to connect the LMCV to arbitrary external
+    token implementations, creating a bounded context for the LMCV. The
     adapters here are provided as working examples:
 
       - `CollateralJoin`: For well behaved ERC20 tokens, with simple transfer
@@ -24,7 +24,7 @@ interface VatLike {
 
       - `ETHJoin`: For native Ether.
 
-      - `DaiJoin`: For connecting internal Dai balances to an external
+      - `dPrimeJoin`: For connecting internal Dai balances to an external
                    `DSToken` implementation.
 
     In practice, adapter implementations will be varied and specific to
@@ -44,7 +44,7 @@ contract CollateralJoin {
 
     uint256 public live;  // Active Flag
 
-    VatLike public immutable vat;   // CDP Engine
+    LMCVLike public immutable lmcv;   // CDP Engine
     bytes32 public immutable ilk;   // Collateral Type
     CollateralLike public immutable collateral;
     uint256 public immutable dec;
@@ -61,10 +61,10 @@ contract CollateralJoin {
         _;
     }
 
-    constructor(address vat_, bytes32 ilk_, address collateral_) {
+    constructor(address lmcv_, bytes32 ilk_, address collateral_) {
         wards[msg.sender] = 1;
         live = 1;
-        vat = VatLike(vat_);
+        lmcv = LMCVLike(lmcv_);
         ilk = ilk_;
         collateral = CollateralLike(collateral_);
         dec = collateral.decimals();
@@ -91,14 +91,14 @@ contract CollateralJoin {
     function join(address usr, uint256 wad) external {
         require(live == 1, "CollateralJoin/not-live");
         require(int256(wad) >= 0, "CollateralJoin/overflow");
-        vat.modifyCollateral(ilk, usr, int256(wad));
+        lmcv.modifyCollateral(ilk, usr, int256(wad));
         require(collateral.transferFrom(msg.sender, address(this), wad), "CollateralJoin/failed-transfer");
         emit Join(usr, wad);
     }
 
     function exit(address usr, uint256 wad) external {
         require(wad <= 2 ** 255, "CollateralJoin/overflow");
-        vat.modifyCollateral(ilk, msg.sender, - int256(wad));
+        lmcv.modifyCollateral(ilk, msg.sender, - int256(wad));
         require(collateral.transfer(usr, wad), "CollateralJoin/failed-transfer");
         emit Exit(usr, wad);
     }

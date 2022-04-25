@@ -174,6 +174,12 @@ contract Vat {
         gem[ilk][usr] = _add(gem[ilk][usr], wad);
         emit Slip(ilk, usr, wad);
     }
+    function move(address src, address dst, uint256 rad) external {
+        require(wish(src, msg.sender), "Vat/not-allowed");
+        dai[src] = dai[src] - rad;
+        dai[dst] = dai[dst] + rad;
+        emit Move(src, dst, rad);
+    }
 
     function flux(bytes32 ilk, address src, address dst, uint256 wad) external {
         require(wish(src, msg.sender), "Vat/not-allowed");
@@ -182,13 +188,7 @@ contract Vat {
         emit Flux(ilk, src, dst, wad);
     }
 
-    function move(address src, address dst, uint256 rad) external {
-        require(wish(src, msg.sender), "Vat/not-allowed");
-        dai[src] = dai[src] - rad;
-        dai[dst] = dai[dst] + rad;
-        emit Move(src, dst, rad);
-    }
-
+    
     function either(bool x, bool y) internal pure returns (bool z) {
         assembly{ z := or(x, y)}
     }

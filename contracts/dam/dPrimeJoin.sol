@@ -7,12 +7,12 @@ interface dPrimeLike {
     function mint(address,uint256) external;
 }
 
-interface VatLike {
-    function moveStable(address,address,uint256) external;
+interface LMCVLike {
+    function modifyDPrime(address,address,uint256) external;
 }
 
 contract dPrimeJoin {
-    VatLike public immutable vat;       // CDP Engine
+    LMCVLike public immutable lmcv;       // CDP Engine
     dPrimeLike public immutable dPrime;       // Stablecoin Token
     uint256 constant RAY = 10 ** 27;
 
@@ -20,20 +20,20 @@ contract dPrimeJoin {
     event Join(address indexed usr, uint256 wad);
     event Exit(address indexed usr, uint256 wad);
 
-    constructor(address vat_, address dPrime_) {
-        vat = VatLike(vat_);
+    constructor(address lmcv_, address dPrime_) {
+        lmcv = LMCVLike(lmcv_);
         dPrime = dPrimeLike(dPrime_);
     }
 
     // --- User's functions ---
     function join(address usr, uint256 wad) external {
-        vat.moveStable(address(this), usr, RAY * wad);
+        lmcv.modifyDPrime(address(this), usr, RAY * wad);
         dPrime.burn(msg.sender, wad);
         emit Join(usr, wad);
     }
 
     function exit(address usr, uint256 wad) external {
-        vat.moveStable(msg.sender, address(this), RAY * wad);
+        lmcv.modifyDPrime(msg.sender, address(this), RAY * wad);
         dPrime.mint(usr, wad);
         emit Exit(usr, wad);
     }
