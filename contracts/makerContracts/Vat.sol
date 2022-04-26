@@ -207,16 +207,16 @@ contract Vat {
         // ilk has been initialised
         require(ilk.rate != 0, "Vat/ilk-not-init");
 
-        urn.ink = _add(urn.ink, dink);
-        urn.art = _add(urn.art, dart);
-        ilk.Art = _add(ilk.Art, dart);
+        urn.ink = _add(urn.ink, dink); //collat
+        urn.art = _add(urn.art, dart); //dai
+        ilk.Art = _add(ilk.Art, dart); 
 
         int256 dtab = _int256(ilk.rate) * dart;
         uint256 tab = ilk.rate * urn.art;
         debt     = _add(debt, dtab);
 
         // either debt has decreased, or debt ceilings are not exceeded
-        require(either(dart <= 0, both(ilk.Art * ilk.rate <= ilk.line, debt <= Line)), "Vat/ceiling-exceeded");
+        require(either(dart <= 0, both(ilk.Art * ilk.rate <= ilk.line, debt <= Line)), "Vat/ceiling-exceeded"); //dP
         // urn is either less risky than before, or it is safe
         require(either(both(dart <= 0, dink >= 0), tab <= urn.ink * ilk.spot), "Vat/not-safe");
 
