@@ -44,10 +44,11 @@ contract LMCV {
     mapping (address => bool)       public userLock;
     //TODO: Appropriate getters and setters
     //Both partialLiqPerc & repaymentFeePerc need to be closely related to determine fee structure
-    uint256 public partialLiqMax;              // [ray] ie. 50% of maxDPrime value of account collateral
+    uint256 public partialLiqMax;               // [ray] ie. 50% of maxDPrime value of account collateral
     uint256 public protocolLiqFeeMult;          // [ray] 0.125 * dPrime paid in
     uint256 public liquidationMult;             // [ray] ie. user at 80% dPrime/collateral ratio -> liquidate
     uint256 public liquidiationFloor;           // [rad] user debt below certain amount, liquidate entire portfolio
+    uint256 public wholeCDPLiqMult;             // [ray] above this percentage, whole cdp can be liquidated
     // uint256 public maxAccountDebt;              // [rad] so that liquidations don't get too big
 
 
@@ -268,7 +269,10 @@ contract LMCV {
         if(_rmul(lockedDPrime[liquidated], partialLiqMax) < liquidiationFloor){
             percentAllowed = RAY; //100% of dPrime value from collateral
         }
-        if(lockedDPrime[liquidated] * 100 / totalValue > 82){
+
+        //Change these values 
+        uint256 insolvencyPercentage = lockedDPrime[liquidated] * RAY / totalValue; // [ray]
+        if(insolvencyPercentage > wholeCDPLiqMult){
             percentAllowed = RAY; //100% of dPrime value from collateral
         }
         if(percentage > percentAllowed){
@@ -283,7 +287,8 @@ contract LMCV {
         for(uint256 i = 0; i < lockedCollateralList[liquidated].length; i++){
             bytes32 collateral = lockedCollateralList[liquidated][i];
             uint256 lockedAmount = lockedCollateral[liquidated][collateral]; // [wad]
-            uint256 liquidationAmount =  _rmul(lockedAmount,(percentage + CollateralTypes[collateral].liqBonusMult)); // [wad]
+            uint256 liquidateableAmount = _rmul(lockedAmount, insolvencyPercentage); // wad,ray -> wad
+            uint256 liquidationAmount =  _rmul(liquidateableAmount,(percentage + CollateralTypes[collateral].liqBonusMult)); // wad,ray -> wad
 
             lockedAmount = lockedAmount - liquidationAmount;
             lockedCollateral[liquidated][collateral] = lockedAmount;
