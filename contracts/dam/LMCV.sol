@@ -9,19 +9,21 @@
 pragma solidity 0.8.9;
 
 contract LMCV {
-    mapping(address => uint256) public admin;
+    mapping (address => uint256) public admin;
 
-    mapping(address => mapping (address => uint256))    public proxyApprovals;
+    mapping (address => mapping (address => uint256))    public proxyApprovals;
 
     struct CollateralType {
         uint256 spotPrice;          // [ray]
         uint256 totalDebt;          // [wad]
-        uint256 debtCeiling;        // [rad]
-        uint256 debtFloor;          // [rad]
-        uint256 debtMult;           // [ray] - ie max 70% loaned out as dPrime
-        uint256 liquidationMult;    // [ray] - ie at 80% debt to collateral, liquidate
+        uint256 debtCeiling;        // [rad] - Protocol Level
+        uint256 debtFloor;          // [rad] - Account level
+        uint256 debtMult;           // [ray] - ie. max 70% loaned out as dPrime
+        uint256 liqBonusMult;       // [ray] - ie. 5% for bluechip, 15% for junk
     }
 
+    //TODO:acceptCollateral() 
+    bytes32[] public CollateralList;
     mapping (bytes32 => CollateralType)                 public CollateralTypes;
 
     //CDP
@@ -30,11 +32,23 @@ contract LMCV {
     mapping (address => uint256)                        public lockedDPrime;        // [rad]
     mapping (address => bytes32[])                      public lockedCollateralList;
 
-    
+    //TODO: Appropriate getters and setters
     uint256 public live;
-    uint256 public totalDebt;           // [rad]
+    uint256 public ProtocolDebt;           // [rad]
     uint256 public ProtocolDebtCeiling; // [rad]
     uint256 public mintFee;             // [ray]
+    address public feeTaker;
+
+    //Liquidation
+    mapping (address => uint256)    public liqDPrime; // [rad] dPrime useable in liquidations
+    mapping (address => bool)       public userLock;
+    //TODO: Appropriate getters and setters
+    //Both partialLiqPerc & repaymentFeePerc need to be closely related to determine fee structure
+    uint256 public partialLiqMax;              // [ray] ie. 50% of maxDPrime value of account collateral
+    uint256 public protocolLiqFeeMult;          // [ray] 0.125 * dPrime paid in
+    uint256 public liquidationMult;             // [ray] ie. user at 80% dPrime/collateral ratio -> liquidate
+    uint256 public liquidiationFloor;           // [rad] user debt below certain amount, liquidate entire portfolio
+    // uint256 public maxAccountDebt;              // [rad] so that liquidations don't get too big
 
 
     // --- Events ---
@@ -42,7 +56,9 @@ contract LMCV {
     event MoveCollateral(bytes32 indexed collat, address indexed src, address indexed dst, uint256 wad);
     event ModifyDPrime(address indexed src, address indexed dst, uint256 rad);
     event MovePortfolio(address indexed src, address indexed dst);
-    event Loan(uint256 indexed dPrimeChange, address indexed user); 
+    event Loan(uint256 indexed dPrimeChange, address indexed user);
+    event Liquidation(address indexed liquidated, address indexed liquidator, uint256 percentage);
+
 
 
     //Edit for types of auth 
@@ -147,9 +163,9 @@ contract LMCV {
     //eg: measure of whether a vault is safe or not is done based on
     //the vault as a whole being overcollateralized properly
     function loan(
-        bytes32[] memory collats, // [wad]
-        uint256[] memory collateralChange, //[wad]
-        uint256 dPrimeChange, // [wad]
+        bytes32[] memory collats,           // [wad]
+        uint256[] memory collateralChange,  // [wad]
+        uint256 dPrimeChange,               // [wad]
         address user
     ) external alive {
         require(collats.length == collateralChange.length, "LMCV/Need amount for each collateral");
@@ -185,13 +201,14 @@ contract LMCV {
         }
 
         //Calculate dPrime
-        uint256 maxDPrime; // [rad]
+        uint256 maxDPrime;      // [rad]
         bytes32[] storage lockedList = lockedCollateralList[user];
         for(uint256 i = 0; i < lockedList.length; i++){
             //Don't modify collateralType
             CollateralType storage collateralType = CollateralTypes[lockedList[i]];
 
-            if(lockedCollateral[user][lockedList[i]] != 0){
+            //TODO: Change to > debtFloor then unlock the collateral
+            if(lockedCollateral[user][lockedList[i]] > 0){
                 uint256 value = lockedCollateral[user][lockedList[i]] * collateralType.spotPrice; // wad*ray -> rad
                 maxDPrime = maxDPrime + _rmul(value, collateralType.debtMult); // rmul(rad, ray) -> rad
             }else{
@@ -199,25 +216,19 @@ contract LMCV {
             }
         }
 
-        uint256 feeDPrime = dPrimeChange + _rmul(dPrimeChange, mintFee); // [wad]
-        require((feeDPrime * RAY) < maxDPrime, "LMCV/Minting more dPrime than allowed");
+        require(dPrimeChange < maxDPrime, "LMCV/Minting more dPrime than allowed");
+        // require(dPrimeChange < maxAccountDebt, "LMCV/Higher than allowed debt");
 
-        totalDebt = totalDebt + maxDPrime;
-        require(totalDebt < ProtocolDebtCeiling, "LMCV/Cannot extend past protocol debt ceiling");
+        ProtocolDebt = ProtocolDebt + maxDPrime;
+        require(ProtocolDebt < ProtocolDebtCeiling, "LMCV/Cannot extend past protocol debt ceiling");
 
         //Last thing that happens is actual ability to mint dPrime
-        lockedDPrime[user] = lockedDPrime[user] + (feeDPrime * RAY);
+        lockedDPrime[user] = lockedDPrime[user] + dPrimeChange;
         emit Loan(lockedDPrime[user], user);
     }
 
-    //Coin prices increase and they want to take out more without changing collateral
-    //TODO: Split above function into two internal functions so this function
-    //can use the maxDPrime calc
-    function additionalLoan(address user, uint256 dPrimeChange) external {
-        require(approval(user, msg.sender), "LMCV/Owner must consent");
-
-    }
-
+    //Repay any percentage of the loan and unlock collateral
+    //Or repay none if overcollateralized properly
     function repay(
         bytes32[] memory collats, 
         address user,
@@ -227,21 +238,100 @@ contract LMCV {
 
     }
 
+    //Coin prices increase and they want to take out more without changing collateral
+    //Or coin prices decrease and they want to repay dPrime
+    //TODO: Refactor out loan maxDPrime calc to also be used in this function
+    function modifyLoan(address user, int256 dPrimeChange) external {
+        require(approval(user, msg.sender), "LMCV/Owner must consent");
+
+    }
+
     
 
     //Like grab
     //Will liquidate half of entire portfolio to regain healthy portfolio status
     //until the portfolio is too small to be split, in which case it liquidates
     //the entire portfolio - large accounts could liquidate many times
-    function liquidate() external auth {
+    function liquidate(
+        address liquidated, 
+        address liquidator, 
+        uint256 percentage // [ray]
+    ) external auth { 
+        uint256 totalValue = _getMaxDPrime(liquidated); // [rad]
+        require(!_isHealthy(liquidated, totalValue), "LMCV/Vault is healthy");
 
+        // uint256 liquidationRatio = totalValue * partialLiqPercentage / lockedDPrime[liquidated]; // [ray]
+        // if( > )
+
+        //Check if beneath debtFloor or debt/loan > 81%
+        uint256 percentAllowed = partialLiqMax;
+        if(_rmul(lockedDPrime[liquidated], partialLiqMax) < liquidiationFloor){
+            percentAllowed = RAY; //100% of dPrime value from collateral
+        }
+        if(lockedDPrime[liquidated] * 100 / totalValue > 82){
+            percentAllowed = RAY; //100% of dPrime value from collateral
+        }
+        if(percentage > percentAllowed){
+            percentage = percentAllowed;
+        }
+
+        uint256 repaymentValue = _rmul(lockedDPrime[liquidated], percentage); // [rad]
+        //take dPrime from liquidator
+        liqDPrime[liquidator] = liqDPrime[liquidator] - repaymentValue;
+
+        //Move collateral to liquidator's address
+        for(uint256 i = 0; i < lockedCollateralList[liquidated].length; i++){
+            bytes32 collateral = lockedCollateralList[liquidated][i];
+            uint256 lockedAmount = lockedCollateral[liquidated][collateral]; // [wad]
+            uint256 liquidationAmount =  _rmul(lockedAmount,(percentage + CollateralTypes[collateral].liqBonusMult)); // [wad]
+
+            lockedAmount = lockedAmount - liquidationAmount;
+            lockedCollateral[liquidated][collateral] = lockedAmount;
+            unlockedCollateral[liquidator][collateral] = unlockedCollateral[liquidator][collateral] + liquidationAmount;
+        }
+
+        //take fee
+        uint256 protocolLiqFee = _rmul(repaymentValue, protocolLiqFeeMult);
+        repaymentValue = repaymentValue - protocolLiqFee;
+        lockedDPrime[feeTaker] = lockedDPrime[feeTaker] + protocolLiqFee;
+
+        //remove debt from protocol
+        ProtocolDebt = ProtocolDebt - repaymentValue;
+
+        //repay liquidated's debt
+        lockedDPrime[liquidated] = lockedDPrime[liquidated] - repaymentValue;
+        emit Liquidation(liquidated, liquidator, percentage);
     }
 
-    
+    //Move these functions to liquidation contract
+    function isHealthy(address user) external view returns (bool health){
+        return _isHealthy(user, _getMaxDPrime(user));
+    }
 
+    function _isHealthy(address user, uint256 maxDPrime) internal view returns (bool health) { 
+        if(_rmul(maxDPrime, liquidationMult) > lockedDPrime[user]){
+            return true;
+        }
+        return false;
+    }
 
+    function getMaxDPrime(address user) external view returns (uint256 maxDPrime) { // [rad] 
+        return _getMaxDPrime(user);
+    }
 
+    function _getMaxDPrime(address user) internal view returns (uint256 maxDPrime) { // [rad]
+        bytes32[] storage lockedList = lockedCollateralList[user];
+        for(uint256 i = 0; i < lockedList.length; i++){
+            //Don't modify collateralType
+            CollateralType storage collateralType = CollateralTypes[lockedList[i]];
 
+            if(lockedCollateral[user][lockedList[i]] > collateralType.debtFloor){
+                uint256 value = lockedCollateral[user][lockedList[i]] * collateralType.spotPrice; // wad*ray -> rad
+                maxDPrime = maxDPrime + _rmul(value, collateralType.debtMult); // rmul(rad, ray) -> rad
+            }
+        }
+        return maxDPrime;
+    }
 
     function either(bool x, bool y) internal pure returns (bool z) {
         assembly{ z := or(x, y)}

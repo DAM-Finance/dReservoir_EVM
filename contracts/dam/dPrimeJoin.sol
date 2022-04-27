@@ -12,8 +12,8 @@ interface LMCVLike {
 }
 
 contract dPrimeJoin {
-    LMCVLike public immutable lmcv;       // CDP Engine
-    dPrimeLike public immutable dPrime;       // Stablecoin Token
+    LMCVLike public immutable lmcv;         // CDP Engine
+    dPrimeLike public immutable dPrime;     // Stablecoin Token
     uint256 constant RAY = 10 ** 27;
 
     // --- Events ---
@@ -34,7 +34,9 @@ contract dPrimeJoin {
 
     function exit(address usr, uint256 wad) external {
         lmcv.modifyDPrime(msg.sender, address(this), RAY * wad);
-        dPrime.mint(usr, wad);
+        //TODO:Impl fee
+        // dPrime.mint(feeUser, feePercentage);
+        dPrime.mint(usr, wad); //wad-fee
         emit Exit(usr, wad);
     }
 }
