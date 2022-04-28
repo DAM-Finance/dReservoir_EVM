@@ -34,7 +34,7 @@ contract LMCV {
 
     //TODO: Appropriate getters and setters
     uint256 public live;
-    uint256 public ProtocolDebt;           // [rad]
+    uint256 public ProtocolDebt;        // [rad]
     uint256 public ProtocolDebtCeiling; // [rad]
     uint256 public mintFee;             // [ray]
     address public feeTaker;
