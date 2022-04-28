@@ -187,12 +187,12 @@ contract LMCV {
             uint256 newUnlockedCollat = unlockedCollateral[user][collats[i]];
 
             //Change from unlocked collateral to locked collateral
-            newUnlockedCollat = newUnlockedCollat - collateralChange[i];
-            newLockedCollat = newLockedCollat + collateralChange[i];
+            newUnlockedCollat -= collateralChange[i];
+            newLockedCollat += collateralChange[i];
 
             require(newLockedCollat > collateralType.debtFloor, "LMCV/Collateral must be higher than dust level");
 
-            collateralType.totalDebt = collateralType.totalDebt + newLockedCollat;
+            collateralType.totalDebt += newLockedCollat;
             require(collateralType.debtCeiling > collateralType.totalDebt, "LMCV/Debt ceiling exceeded");
 
             //Set new collateral numbers
@@ -211,7 +211,7 @@ contract LMCV {
             //TODO: Change to > debtFloor then unlock the collateral
             if(lockedCollateral[user][lockedList[i]] > 0){
                 uint256 value = lockedCollateral[user][lockedList[i]] * collateralType.spotPrice; // wad*ray -> rad
-                maxDPrime = maxDPrime + _rmul(value, collateralType.debtMult); // rmul(rad, ray) -> rad
+                maxDPrime += _rmul(value, collateralType.debtMult); // rmul(rad, ray) -> rad
             }else{
                 deleteElement(lockedList, i);
             }
@@ -220,11 +220,11 @@ contract LMCV {
         require(dPrimeChange < maxDPrime, "LMCV/Minting more dPrime than allowed");
         // require(dPrimeChange < maxAccountDebt, "LMCV/Higher than allowed debt");
 
-        ProtocolDebt = ProtocolDebt + maxDPrime;
+        ProtocolDebt += maxDPrime;
         require(ProtocolDebt < ProtocolDebtCeiling, "LMCV/Cannot extend past protocol debt ceiling");
 
         //Last thing that happens is actual ability to mint dPrime
-        lockedDPrime[user] = lockedDPrime[user] + dPrimeChange;
+        lockedDPrime[user] += dPrimeChange;
         emit Loan(lockedDPrime[user], user);
     }
 
@@ -261,16 +261,11 @@ contract LMCV {
         uint256 totalValue = _getMaxDPrime(liquidated); // [rad]
         require(!_isHealthy(liquidated, totalValue), "LMCV/Vault is healthy");
 
-        // uint256 liquidationRatio = totalValue * partialLiqPercentage / lockedDPrime[liquidated]; // [ray]
-        // if( > )
-
         //Check if beneath debtFloor or debt/loan > 81%
         uint256 percentAllowed = partialLiqMax;
         if(_rmul(lockedDPrime[liquidated], partialLiqMax) < liquidiationFloor){
             percentAllowed = RAY; //100% of dPrime value from collateral
         }
-
-        //Change these values 
         uint256 insolvencyPercentage = lockedDPrime[liquidated] * RAY / totalValue; // [ray]
         if(insolvencyPercentage > wholeCDPLiqMult){
             percentAllowed = RAY; //100% of dPrime value from collateral
@@ -281,7 +276,7 @@ contract LMCV {
 
         uint256 repaymentValue = _rmul(lockedDPrime[liquidated], percentage); // [rad]
         //take dPrime from liquidator
-        liqDPrime[liquidator] = liqDPrime[liquidator] - repaymentValue;
+        liqDPrime[liquidator] -= repaymentValue;
 
         //Move collateral to liquidator's address
         for(uint256 i = 0; i < lockedCollateralList[liquidated].length; i++){
@@ -290,21 +285,21 @@ contract LMCV {
             uint256 liquidateableAmount = _rmul(lockedAmount, insolvencyPercentage); // wad,ray -> wad
             uint256 liquidationAmount =  _rmul(liquidateableAmount,(percentage + CollateralTypes[collateral].liqBonusMult)); // wad,ray -> wad
 
-            lockedAmount = lockedAmount - liquidationAmount;
+            lockedAmount -= liquidationAmount;
             lockedCollateral[liquidated][collateral] = lockedAmount;
-            unlockedCollateral[liquidator][collateral] = unlockedCollateral[liquidator][collateral] + liquidationAmount;
+            unlockedCollateral[liquidator][collateral] += liquidationAmount;
         }
 
         //take fee
         uint256 protocolLiqFee = _rmul(repaymentValue, protocolLiqFeeMult);
-        repaymentValue = repaymentValue - protocolLiqFee;
-        lockedDPrime[feeTaker] = lockedDPrime[feeTaker] + protocolLiqFee;
+        repaymentValue -= protocolLiqFee;
+        lockedDPrime[feeTaker] += protocolLiqFee;
 
         //remove debt from protocol
-        ProtocolDebt = ProtocolDebt - repaymentValue;
+        ProtocolDebt -= repaymentValue;
 
         //repay liquidated's debt
-        lockedDPrime[liquidated] = lockedDPrime[liquidated] - repaymentValue;
+        lockedDPrime[liquidated] -= repaymentValue;
         emit Liquidation(liquidated, liquidator, percentage);
     }
 
@@ -332,7 +327,7 @@ contract LMCV {
 
             if(lockedCollateral[user][lockedList[i]] > collateralType.debtFloor){
                 uint256 value = lockedCollateral[user][lockedList[i]] * collateralType.spotPrice; // wad*ray -> rad
-                maxDPrime = maxDPrime + _rmul(value, collateralType.debtMult); // rmul(rad, ray) -> rad
+                maxDPrime += _rmul(value, collateralType.debtMult); // rmul(rad, ray) -> rad
             }
         }
         return maxDPrime;
