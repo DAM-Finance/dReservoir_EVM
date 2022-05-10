@@ -5,6 +5,12 @@ function formatWad(wad){
     return ethers.utils.parseEther(wad);
 }
 
+function formatRay(ray){
+    let val = ethers.utils.parseEther(ray).mul("1000000000");
+    // console.log(val);
+    return val;
+}
+
 describe("Connections between contracts so far", function () {
 
     let owner, addr1, addr2, addrs;
@@ -25,7 +31,7 @@ describe("Connections between contracts so far", function () {
         lmcv = await LMCVFactory.deploy();
 
         dPrimeJoinFactory = await ethers.getContractFactory("dPrimeJoin");
-        dPrimeJoin = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address);
+        dPrimeJoin = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address, owner.address, formatRay("0.03"));
 
         tokenFactory = await ethers.getContractFactory("MockTokenTwo");
         mockToken = await tokenFactory.deploy("TSTR");

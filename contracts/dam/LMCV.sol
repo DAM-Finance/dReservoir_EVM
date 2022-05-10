@@ -20,8 +20,8 @@ contract LMCV {
     struct CollateralType {
         uint256 spotPrice;          // [ray] - ratio of dPrime per unit of collateral
         uint256 totalDebt;          // [wad]
-        uint256 debtCeiling;        // [rad] - Protocol Level
-        uint256 debtFloor;          // [rad] - Account level
+        uint256 debtCeiling;        // [wad] - Protocol Level
+        uint256 debtFloor;          // [wad] - Account level
         uint256 debtMult;           // [ray] - ie. max 70% loaned out as dPrime
         uint256 liqBonusMult;       // [ray] - ie. 5% for bluechip, 15% for junk
     }
@@ -62,6 +62,8 @@ contract LMCV {
     event MovePortfolio(address indexed src, address indexed dst);
     event Loan(uint256 indexed dPrimeChange, address indexed user);
     event Liquidation(address indexed liquidated, address indexed liquidator, uint256 percentage);
+    event SpotUpdate(bytes32 indexed collateral, uint256 spot);
+    event EditAcceptedCollateralType(bytes32 indexed collateralName, uint256 _debtCeiling, uint256 _debtFloor, uint256 _debtMult, uint256 _liqBonusMult);
 
 
 
@@ -138,19 +140,6 @@ contract LMCV {
         require(y == 0 || z / y == x);
         z = z / RAY;
     }
-
-    function acceptCollateral(
-        bytes32 name, 
-        address collateralContract, 
-        uint256 debtCeiling, 
-        uint256 debtFloor, 
-        uint256 debtMult, 
-        uint256 liqBonusMult,
-        uint256 spotPriceContract
-    ) external auth {
-
-    }
-
     
     // --- Fungibility ---
     //TODO: Test
@@ -188,6 +177,36 @@ contract LMCV {
     //     emit MovePortfolio(src, dst);
     // }
 
+    // --- Collateral Admin ---
+    function updateSpotPrice(bytes32 collateral, uint256 spot) external auth loanAlive {
+        CollateralTypes[collateral].spotPrice = spot;
+        emit SpotUpdate(collateral, spot);
+    }
+
+    function editCollateralList(bytes32 collateralName, bool accepted, uint256 position) external auth {
+        if(accepted){
+            CollateralList.push(collateralName);
+        }else{
+            deleteElement(CollateralList, position);
+        }
+    }
+
+    function editAcceptedCollateralType(
+        bytes32 collateralName,
+        uint256 _debtCeiling,       // [wad] - Protocol Level
+        uint256 _debtFloor,         // [wad] - Account level
+        uint256 _debtMult,          // [ray] - ie. max 70% loaned out as dPrime
+        uint256 _liqBonusMult       // [ray] - ie. 5% for bluechip, 15% for junk
+    ) external auth {
+        CollateralType memory collateralType = CollateralTypes[collateralName];
+        collateralType.debtCeiling = _debtCeiling;
+        collateralType.debtFloor = _debtFloor;
+        collateralType.debtMult = _debtMult;
+        collateralType.liqBonusMult = _liqBonusMult;
+
+        CollateralTypes[collateralName] = collateralType;
+        emit EditAcceptedCollateralType(collateralName, _debtCeiling, _debtFloor, _debtMult, _liqBonusMult);
+    }
 
     //All collaterals linked together to be more portfolio centric
     //eg: measure of whether a vault is safe or not is done based on
@@ -204,7 +223,7 @@ contract LMCV {
         //Locks up all collateral
         for(uint256 i = 0; i < collats.length; i++){
             CollateralType memory collateralType = CollateralTypes[collats[i]];
-            require(collateralType.debtCeiling > 0 && collateralType.debtMult != 0 && collateralType.spotPrice != 0, "LMCV/collateral type not initialized");
+            require(collateralType.debtCeiling > 0 && collateralType.debtMult != 0, "LMCV/collateral type not initialized");
 
             //if collateral is newly introduced to cdp
             //add it to the locked collateral list
@@ -360,10 +379,6 @@ contract LMCV {
             }
         }
         return maxDPrime;
-    }
-
-    function updateSpotPrice(bytes32 collateral) external auth {
-        
     }
 
     function either(bool x, bool y) internal pure returns (bool z) {

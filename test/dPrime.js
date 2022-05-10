@@ -20,7 +20,7 @@ describe("dPrime contract", function () {
     describe("Deployment", function () {
         it("Should set deployer as ward", async function () {
             let chainId = await dPrime.deploymentChainId();
-            console.log(chainId);
+            // console.log(chainId);
             expect(await dPrime.admins(owner.address)).to.equal(1);
         });
     });

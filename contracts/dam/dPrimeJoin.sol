@@ -15,14 +15,26 @@ contract dPrimeJoin {
     LMCVLike public immutable lmcv;         // CDP Engine
     dPrimeLike public immutable dPrime;     // Stablecoin Token
     uint256 constant RAY = 10 ** 27;
+    uint256 mintFee;                        // [ray]
+    address treasury;
 
     // --- Events ---
     event Join(address indexed usr, uint256 wad);
     event Exit(address indexed usr, uint256 wad);
 
-    constructor(address lmcv_, address dPrime_) {
-        lmcv = LMCVLike(lmcv_);
-        dPrime = dPrimeLike(dPrime_);
+    constructor(address _lmcv, address _dPrime, address _treasury, uint256 _mintFee) {
+        lmcv = LMCVLike(_lmcv);
+        dPrime = dPrimeLike(_dPrime);
+        mintFee = _mintFee;
+        treasury = _treasury;
+
+
+    }
+
+    function _rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        z = x * y;
+        require(y == 0 || z / y == x);
+        z = z / RAY;
     }
 
     // --- User's functions ---
@@ -33,10 +45,11 @@ contract dPrimeJoin {
     }
 
     function exit(address usr, uint256 wad) external {
+        uint256 fee = _rmul(wad, mintFee); // [wad]
+
         lmcv.modifyDPrime(msg.sender, address(this), RAY * wad);
-        //TODO:Impl fee
-        // dPrime.mint(feeUser, feePercentage);
-        dPrime.mint(usr, wad); //wad-fee
+        dPrime.mint(treasury, fee);
+        dPrime.mint(usr, wad-fee);
         emit Exit(usr, wad);
     }
 }
