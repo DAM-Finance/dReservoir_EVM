@@ -11,8 +11,9 @@ describe("dPrime contract", function () {
     let addrs;
 
     beforeEach(async function () {
-        dPrimeFactory = await ethers.getContractFactory("dPrime");
         [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
+
+        dPrimeFactory = await ethers.getContractFactory("dPrime");
         dPrime = await dPrimeFactory.deploy();
     });
 
@@ -20,7 +21,7 @@ describe("dPrime contract", function () {
         it("Should set deployer as ward", async function () {
             let chainId = await dPrime.deploymentChainId();
             console.log(chainId);
-            expect(await dPrime.wards(owner.address)).to.equal(1);
+            expect(await dPrime.admins(owner.address)).to.equal(1);
         });
     });
 });

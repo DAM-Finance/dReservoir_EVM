@@ -9,12 +9,16 @@
 pragma solidity 0.8.9;
 
 contract LMCV {
-    mapping (address => uint256) public admin;
+    mapping (address => uint256) public admins;
+
+    //TODO: In coordination with separate of admin powers
+    // mapping (bytes32 => address) public CollateralContractAdmins;
+    // mapping (bytes32 => address) public spotPriceContractAdmins;
 
     mapping (address => mapping (address => uint256))    public proxyApprovals;
 
     struct CollateralType {
-        uint256 spotPrice;          // [ray]
+        uint256 spotPrice;          // [ray] - ratio of dPrime per unit of collateral
         uint256 totalDebt;          // [wad]
         uint256 debtCeiling;        // [rad] - Protocol Level
         uint256 debtFloor;          // [rad] - Account level
@@ -33,7 +37,8 @@ contract LMCV {
     mapping (address => bytes32[])                      public lockedCollateralList;
 
     //TODO: Appropriate getters and setters
-    uint256 public live;
+    uint256 public loanLive;
+    uint256 public liqLive;
     uint256 public ProtocolDebt;        // [rad]
     uint256 public ProtocolDebtCeiling; // [rad]
     uint256 public mintFee;             // [ray]
@@ -43,13 +48,11 @@ contract LMCV {
     mapping (address => uint256)    public liqDPrime; // [rad] dPrime useable in liquidations
     mapping (address => bool)       public userLock;
     //TODO: Appropriate getters and setters
-    //Both partialLiqPerc & repaymentFeePerc need to be closely related to determine fee structure
     uint256 public partialLiqMax;               // [ray] ie. 50% of maxDPrime value of account collateral
     uint256 public protocolLiqFeeMult;          // [ray] 0.125 * dPrime paid in
     uint256 public liquidationMult;             // [ray] ie. user at 80% dPrime/collateral ratio -> liquidate
     uint256 public liquidiationFloor;           // [rad] user debt below certain amount, liquidate entire portfolio
     uint256 public wholeCDPLiqMult;             // [ray] above this percentage, whole cdp can be liquidated
-    // uint256 public maxAccountDebt;              // [rad] so that liquidations don't get too big
 
 
     // --- Events ---
@@ -65,22 +68,34 @@ contract LMCV {
     //Edit for types of auth 
     //- keep modules separate and only let their respective functions access them
     modifier auth() {
-        require(admin[msg.sender] == 1, "LMCV/Not Authorized");
+        require(admins[msg.sender] == 1, "LMCV/Not Authorized");
         _;
     }
 
-    modifier alive() {
-        require(live == 1, "LMCV/paused");
+    //// Future idea for collateral only having auth for itself
+    // modifier collatAuth(bytes32 collat, address collateralJoin) {
+    //     require(CollateralContracts[collat]  == collateralJoin, "Not collateral admin");
+    //     _;
+    // }
+
+    modifier loanAlive() {
+        require(loanLive == 1, "LMCV/Loan paused");
         _;
     }
 
-    function approval(address bit, address user) internal view returns (bool) {
-        return either(bit == user, proxyApprovals[bit][user] == 1);
+    modifier liqAlive() {
+        require(liqLive == 1, "LMCV/Liquidations paused");
+        _;
     }
 
     constructor() {
-        live = 1;
-        admin[msg.sender] = 1;
+        loanLive = 1;
+        liqLive = 1;
+        admins[msg.sender] = 1;
+    }
+
+    function administrate(address admin, uint256 authorization) external auth {
+        admins[admin] = authorization;
     }
 
     // --- Allowance ---
@@ -90,6 +105,10 @@ contract LMCV {
 
     function proxyDisapprove(address user) external {
         proxyApprovals[msg.sender][user] = 0;
+    }
+
+    function approval(address bit, address user) internal view returns (bool) {
+        return either(bit == user, proxyApprovals[bit][user] == 1);
     }
 
     // --- Math ---
@@ -110,16 +129,26 @@ contract LMCV {
         require(y >= 0 || z >= x);
     }
 
-
     // Can only be used sensibly with the following combination of units:
     // - `rmul(wad, ray) -> wad`
     // - `rmul(ray, ray) -> ray`
     // - `rmul(rad, ray) -> rad`
-
     function _rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         z = x * y;
         require(y == 0 || z / y == x);
         z = z / RAY;
+    }
+
+    function acceptCollateral(
+        bytes32 name, 
+        address collateralContract, 
+        uint256 debtCeiling, 
+        uint256 debtFloor, 
+        uint256 debtMult, 
+        uint256 liqBonusMult,
+        uint256 spotPriceContract
+    ) external auth {
+
     }
 
     
@@ -168,14 +197,14 @@ contract LMCV {
         uint256[] memory collateralChange,  // [wad]
         uint256 dPrimeChange,               // [wad]
         address user
-    ) external alive {
+    ) external loanAlive {
         require(collats.length == collateralChange.length, "LMCV/Need amount for each collateral");
         require(approval(user, msg.sender), "LMCV/Owner must consent");
 
         //Locks up all collateral
         for(uint256 i = 0; i < collats.length; i++){
             CollateralType memory collateralType = CollateralTypes[collats[i]];
-            require(collateralType.debtCeiling > 0 && collateralType.debtMult != 0, "LMCV/collateral type not initialized");
+            require(collateralType.debtCeiling > 0 && collateralType.debtMult != 0 && collateralType.spotPrice != 0, "LMCV/collateral type not initialized");
 
             //if collateral is newly introduced to cdp
             //add it to the locked collateral list
@@ -235,7 +264,7 @@ contract LMCV {
         address user,
         int256[] memory collateralChange, 
         int256 dPrimeChange
-    ) external alive {
+    ) external loanAlive {
 
     }
 
@@ -257,7 +286,7 @@ contract LMCV {
         address liquidated, 
         address liquidator, 
         uint256 percentage // [ray]
-    ) external auth { 
+    ) external liqAlive { 
         uint256 totalValue = _getMaxDPrime(liquidated); // [rad]
         require(!_isHealthy(liquidated, totalValue), "LMCV/Vault is healthy");
 
@@ -331,6 +360,10 @@ contract LMCV {
             }
         }
         return maxDPrime;
+    }
+
+    function updateSpotPrice(bytes32 collateral) external auth {
+        
     }
 
     function either(bool x, bool y) internal pure returns (bool z) {

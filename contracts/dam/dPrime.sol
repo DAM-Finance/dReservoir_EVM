@@ -5,7 +5,7 @@
 pragma solidity 0.8.9;
 
 contract dPrime {
-    mapping (address => uint256) public wards;
+    mapping (address => uint256) public admins;
 
     // --- ERC20 Data ---
     string  public constant name     = "dPrime";
@@ -30,12 +30,12 @@ contract dPrime {
     bytes32 public constant PERMIT_TYPEHASH = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     modifier auth {
-        require(wards[msg.sender] == 1, "dPrime/not-authorized");
+        require(admins[msg.sender] == 1, "dPrime/not-authorized");
         _;
     }
 
     constructor() {
-        wards[msg.sender] = 1;
+        admins[msg.sender] = 1;
         emit Rely(msg.sender);
 
         deploymentChainId = block.chainid;
@@ -60,12 +60,12 @@ contract dPrime {
 
     // --- Administration ---
     function rely(address usr) external auth {
-        wards[usr] = 1;
+        admins[usr] = 1;
         emit Rely(usr);
     }
 
     function deny(address usr) external auth {
-        wards[usr] = 0;
+        admins[usr] = 0;
         emit Deny(usr);
     }
 
@@ -156,7 +156,7 @@ contract dPrime {
         uint256 balance = balanceOf[from];
         require(balance >= value, "dPrime/insufficient-balance");
 
-        if (from != msg.sender && wards[msg.sender] != 1) {
+        if (from != msg.sender && admins[msg.sender] != 1) {
             uint256 allowed = allowance[from][msg.sender];
             if (allowed != type(uint256).max) {
                 require(allowed >= value, "dPrime/insufficient-allowance");

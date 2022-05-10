@@ -91,8 +91,8 @@ contract CollateralJoin {
     function join(address usr, uint256 wad) external {
         require(live == 1, "CollateralJoin/not-live");
         require(int256(wad) >= 0, "CollateralJoin/overflow");
-        lmcv.modifyCollateral(ilk, usr, int256(wad));
         require(collateral.transferFrom(msg.sender, address(this), wad), "CollateralJoin/failed-transfer");
+        lmcv.modifyCollateral(ilk, usr, int256(wad));
         emit Join(usr, wad);
     }
 
