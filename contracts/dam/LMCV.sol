@@ -8,6 +8,8 @@
 
 pragma solidity 0.8.9;
 
+import "hardhat/console.sol";
+
 contract LMCV {
     mapping (address => uint256) public admins;
 
@@ -46,7 +48,6 @@ contract LMCV {
 
     //Liquidation
     mapping (address => uint256)    public liqDPrime; // [rad] dPrime useable in liquidations
-    mapping (address => bool)       public userLock;
     //TODO: Appropriate getters and setters
     uint256 public partialLiqMax;               // [ray] ie. 50% of maxDPrime value of account collateral
     uint256 public protocolLiqFeeMult;          // [ray] 0.125 * dPrime paid in
@@ -60,7 +61,7 @@ contract LMCV {
     event MoveCollateral(bytes32 indexed collat, address indexed src, address indexed dst, uint256 wad);
     event ModifyDPrime(address indexed src, address indexed dst, uint256 rad);
     event MovePortfolio(address indexed src, address indexed dst);
-    event Loan(uint256 indexed dPrimeChange, address indexed user);
+    event Loan(uint256 indexed dPrimeChange, address indexed user, bytes32[] collats, uint256[] amounts);
     event Liquidation(address indexed liquidated, address indexed liquidator, uint256 percentage);
     event SpotUpdate(bytes32 indexed collateral, uint256 spot);
     event EditAcceptedCollateralType(bytes32 indexed collateralName, uint256 _debtCeiling, uint256 _debtFloor, uint256 _debtMult, uint256 _liqBonusMult);
@@ -140,6 +141,14 @@ contract LMCV {
         require(y == 0 || z / y == x);
         z = z / RAY;
     }
+
+    // --- Protocol Admin ---
+    //TODO: loanAlive,liqAlive,mintFee,feeTaker
+
+
+    function setProtocolDebtCeiling(uint256 rad) external auth {
+        ProtocolDebtCeiling = rad;
+    }
     
     // --- Fungibility ---
     //TODO: Test
@@ -178,6 +187,22 @@ contract LMCV {
     // }
 
     // --- Collateral Admin ---
+    function collatDebtCeiling(bytes32 collateral, uint256 wad) external auth {
+        CollateralTypes[collateral].debtCeiling = wad;
+    }
+
+    function collatDebtFloor(bytes32 collateral, uint256 wad) external auth {
+        CollateralTypes[collateral].debtFloor = wad;
+    }
+
+    function collatDebtMult(bytes32 collateral, uint256 ray) external auth {
+        CollateralTypes[collateral].debtMult = ray;
+    }
+
+    function collatLiqBonusMult(bytes32 collateral, uint256 ray) external auth {
+        CollateralTypes[collateral].liqBonusMult = ray;
+    }
+
     function updateSpotPrice(bytes32 collateral, uint256 spot) external auth loanAlive {
         CollateralTypes[collateral].spotPrice = spot;
         emit SpotUpdate(collateral, spot);
@@ -219,6 +244,7 @@ contract LMCV {
     ) external loanAlive {
         require(collats.length == collateralChange.length, "LMCV/Need amount for each collateral");
         require(approval(user, msg.sender), "LMCV/Owner must consent");
+        dPrimeChange = dPrimeChange * RAY;
 
         //Locks up all collateral
         for(uint256 i = 0; i < collats.length; i++){
@@ -240,8 +266,8 @@ contract LMCV {
 
             require(newLockedCollat > collateralType.debtFloor, "LMCV/Collateral must be higher than dust level");
 
-            collateralType.totalDebt += newLockedCollat;
-            require(collateralType.debtCeiling > collateralType.totalDebt, "LMCV/Debt ceiling exceeded");
+            collateralType.totalDebt += collateralChange[i];
+            require(collateralType.debtCeiling > collateralType.totalDebt, "LMCV/Collateral debt ceiling exceeded");
 
             //Set new collateral numbers
             CollateralTypes[collats[i]] = collateralType;
@@ -268,12 +294,12 @@ contract LMCV {
         require(dPrimeChange < maxDPrime, "LMCV/Minting more dPrime than allowed");
         // require(dPrimeChange < maxAccountDebt, "LMCV/Higher than allowed debt");
 
-        ProtocolDebt += maxDPrime;
+        ProtocolDebt += dPrimeChange;
         require(ProtocolDebt < ProtocolDebtCeiling, "LMCV/Cannot extend past protocol debt ceiling");
 
         //Last thing that happens is actual ability to mint dPrime
         lockedDPrime[user] += dPrimeChange;
-        emit Loan(lockedDPrime[user], user);
+        emit Loan(lockedDPrime[user], user, collats, collateralChange);
     }
 
     //Repay any percentage of the loan and unlock collateral
@@ -294,8 +320,6 @@ contract LMCV {
         require(approval(user, msg.sender), "LMCV/Owner must consent");
 
     }
-
-    
 
     //Like grab
     //Will liquidate half of entire portfolio to regain healthy portfolio status
@@ -339,6 +363,7 @@ contract LMCV {
         }
 
         //take fee
+        //TODO: Remove protocol fee when insolvency is high (governance var)
         uint256 protocolLiqFee = _rmul(repaymentValue, protocolLiqFeeMult);
         repaymentValue -= protocolLiqFee;
         lockedDPrime[feeTaker] += protocolLiqFee;
@@ -370,15 +395,23 @@ contract LMCV {
     function _getMaxDPrime(address user) internal view returns (uint256 maxDPrime) { // [rad]
         bytes32[] storage lockedList = lockedCollateralList[user];
         for(uint256 i = 0; i < lockedList.length; i++){
-            //Don't modify collateralType
             CollateralType storage collateralType = CollateralTypes[lockedList[i]];
-
             if(lockedCollateral[user][lockedList[i]] > collateralType.debtFloor){
                 uint256 value = lockedCollateral[user][lockedList[i]] * collateralType.spotPrice; // wad*ray -> rad
                 maxDPrime += _rmul(value, collateralType.debtMult); // rmul(rad, ray) -> rad
             }
         }
         return maxDPrime;
+    }
+
+    function getUnlockedCollateralValue(address user, bytes32[] memory collateralList) external view returns (uint256 unlockedValue) {
+        for(uint256 i = 0; i < collateralList.length; i++){
+            CollateralType storage collateralType = CollateralTypes[collateralList[i]];
+            if(unlockedCollateral[user][collateralList[i]] > collateralType.debtFloor){
+                unlockedValue += (unlockedCollateral[user][collateralList[i]] * collateralType.spotPrice); // wad*ray -> rad
+            }
+        }
+        return unlockedValue;
     }
 
     function either(bool x, bool y) internal pure returns (bool z) {
