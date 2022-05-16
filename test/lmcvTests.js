@@ -83,6 +83,8 @@ describe("Testing Setup for functions", function () {
         debtCeiling = "50000000000000000000000000000000000000000000000000";  // [rad] $50000
         await lmcv.setProtocolDebtCeiling(debtCeiling);
 
+        await lmcv.setLiquidationMult(fray(".60"));
+
         await setupUser(addr1, ["555", "666", "777"]);
     });
 
@@ -170,7 +172,11 @@ describe("Testing Setup for functions", function () {
             userLMCV = await lmcv.connect(addr1);
         });
 
-        //TODO: Breaks on unlockedCollateral < collateral add amount
+        it("Should break if collateral change > unlockedCollateral amount", async function () {
+            await expect(
+                userLMCV.loan(collateralBytesList, [fwad("600"), fwad("600"), fwad("600")], fwad("100"), addr1.address)
+            ).to.be.reverted;
+        });
 
         it("Should break if collateral list has different size than collateralChange size", async function () {
             await expect(
@@ -313,8 +319,74 @@ describe("Testing Setup for functions", function () {
             expect(await lmcv.ProtocolDebt()).to.equal("4475000000000000000000000000000000000000000000000");
         });
 
+        it("Should behave correctly when given no collateral and more dPrime taken out", async function () {
+            let userTwoLMCV = await lmcv.connect(addr2);
+            //Second loan with more dPrime
+            //Total value of collateral: $6610
+            //Total loanable amount: $3305
+            //Already loaned: $1475
+            await userTwoLMCV.loan(collateralBytesList, [fwad("0"), fwad("0"), fwad("0")], fwad("1000"), addr2.address);
+
+            expect(await userTwoLMCV.lockedCollateralList(addr2.address, 0)).to.equal(mockTokenBytes);
+            expect(await userTwoLMCV.lockedCollateralList(addr2.address, 1)).to.equal(mockToken2Bytes);
+            expect(await userTwoLMCV.lockedCollateralList(addr2.address, 2)).to.equal(mockToken3Bytes);
+            await expect(userTwoLMCV.lockedCollateralList(addr2.address, 4)).to.be.reverted;
+
+            expect(await userTwoLMCV.unlockedCollateral(addr2.address, mockTokenBytes)).to.equal(fwad("912"));
+            expect(await userTwoLMCV.unlockedCollateral(addr2.address, mockToken2Bytes)).to.equal(fwad("901"));
+            expect(await userTwoLMCV.unlockedCollateral(addr2.address, mockToken3Bytes)).to.equal(fwad("889"));
+            
+            expect(await userTwoLMCV.lockedCollateral(addr2.address, mockTokenBytes)).to.equal(fwad("88"));
+            expect(await userTwoLMCV.lockedCollateral(addr2.address, mockToken2Bytes)).to.equal(fwad("99"));
+            expect(await userTwoLMCV.lockedCollateral(addr2.address, mockToken3Bytes)).to.equal(fwad("111"));
+
+            expect(await userTwoLMCV.lockedDPrime(addr2.address)).to.equal("2475000000000000000000000000000000000000000000000");
+
+            let collateralType = await lmcv.CollateralTypes(mockTokenBytes);
+            expect(collateralType['totalDebt']).to.equal(fwad("238"));
+            let collateralType2 = await lmcv.CollateralTypes(mockToken2Bytes);
+            expect(collateralType2['totalDebt']).to.equal(fwad("299"));
+            let collateralType3 = await lmcv.CollateralTypes(mockToken3Bytes);
+            expect(collateralType3['totalDebt']).to.equal(fwad("411"));
+
+            expect(await lmcv.ProtocolDebt()).to.equal("5475000000000000000000000000000000000000000000000");
+        });
+
+        it("Should break when more collateral taken out than allowed from multiple transactions", async function () {
+            let userTwoLMCV = await lmcv.connect(addr2);
+            //Third loan with more dPrime
+            //Total value of collateral: $6610
+            //Total loanable amount: $3305
+            //Already taken out: $2475
+            await expect(userTwoLMCV.loan(collateralBytesList, [fwad("0"), fwad("0"), fwad("0")], fwad("1000"), addr2.address)).to.be.reverted;
+        });
+
+    });
+
+    describe("ModifyLoanedDPrime", function () {
+
+        // it("When dust level is set to be above loan amount, this leads to ", async function () {
+        //     let userTwoLMCV = await lmcv.connect(addr2);
+
+        //     await lmcv.collatDebtFloor(mockToken2Bytes, fwad("120"));
+        //     console.log(await lmcv.liquidationMult());
+        //     console.log(await lmcv.isHealthy(addr2.address));
+
+
+        //     //Third loan with more dPrime
+        //     //Total value of collateral: $6610
+        //     //Total loanable amount: $3305
+        //     //Already taken out: $2475
+        //     await expect(userTwoLMCV.loan(collateralBytesList, [fwad("0"), fwad("0"), fwad("0")], fwad("100"), addr2.address)).to.be.revertedWith("Something");
+        // });
 
 
     });
+
+    describe("Repay function testing", function () {
+
+    });
+
+    
 });
 
