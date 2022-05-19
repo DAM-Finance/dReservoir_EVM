@@ -35,7 +35,7 @@ contract LMCV {
     //CDP
     mapping (address => mapping (bytes32 => uint256))   public lockedCollateral;    // [wad]
     mapping (address => mapping (bytes32 => uint256))   public unlockedCollateral;  // [wad]
-    mapping (address => uint256)                        public lockedDPrime;        // [rad]
+    mapping (address => uint256)                        public withdrawableDPrime;        // [rad]
     mapping (address => bytes32[])                      public lockedCollateralList;
 
     //TODO: Appropriate getters and setters
@@ -65,7 +65,7 @@ contract LMCV {
     event Liquidation(address indexed liquidated, address indexed liquidator, uint256 percentage);
     event SpotUpdate(bytes32 indexed collateral, uint256 spot);
     event EditAcceptedCollateralType(bytes32 indexed collateralName, uint256 _debtCeiling, uint256 _debtFloor, uint256 _debtMult, uint256 _liqBonusMult);
-
+    event AddLoanedDPrime(address indexed user, uint256 rad);
 
 
     //Edit for types of auth 
@@ -234,8 +234,8 @@ contract LMCV {
     //TODO: Test
     function modifyDPrime(address src, address dst, uint256 rad) external {
         require(approval(src, msg.sender), "LMCV/not allowed");
-        lockedDPrime[src] = lockedDPrime[src] - rad;
-        lockedDPrime[dst] = lockedDPrime[dst] + rad;
+        withdrawableDPrime[src] = withdrawableDPrime[src] - rad;
+        withdrawableDPrime[dst] = withdrawableDPrime[dst] + rad;
         emit ModifyDPrime(src, dst, rad);
     }
 
@@ -307,14 +307,14 @@ contract LMCV {
             unlockedCollateral[user][collats[i]] = newUnlockedCollat;
         }
         
-        require(_getMaxDPrime(user) > (dPrimeChange + lockedDPrime[user]), "LMCV/Minting more dPrime than allowed");
+        require(_getMaxDPrime(user) > (dPrimeChange + withdrawableDPrime[user]), "LMCV/Minting more dPrime than allowed");
 
         ProtocolDebt += dPrimeChange;
         require(ProtocolDebt < ProtocolDebtCeiling, "LMCV/Cannot extend past protocol debt ceiling");
 
         //Last thing that happens is actual ability to mint dPrime
-        lockedDPrime[user] += dPrimeChange;
-        emit Loan(lockedDPrime[user], user, collats, collateralChange);
+        withdrawableDPrime[user] += dPrimeChange;
+        emit Loan(withdrawableDPrime[user], user, collats, collateralChange);
     }
 
     //Repay any percentage of the loan and unlock collateral
@@ -322,12 +322,19 @@ contract LMCV {
     function repay(
         bytes32[] memory collats, 
         address user,
-        int256[] memory collateralChange, 
-        int256 dPrimeChange
+        uint256[] memory collateralChange, 
+        uint256 dPrimeChange
     ) external loanAlive {
+        require(approval(user, msg.sender), "LMCV/Owner must consent");
+
+        bytes32[] memory lockedCollats = lockedCollateralList[user];
+        for(uint256 i = 0; i < lockedCollats[i].length; i++){
+
+        }
+
 
         //TODO: Add unlock to dust collaterals
-                // bytes32[] storage lockedList = lockedCollateralList[user];
+        // bytes32[] storage lockedList = lockedCollateralList[user];
         // for(uint256 i = 0; i < lockedList.length; i++){
         //     //Don't modify collateralType
         //     CollateralType storage collateralType = CollateralTypes[lockedList[i]];
@@ -348,13 +355,17 @@ contract LMCV {
 
     //Coin prices increase and they want to take out more without changing collateral
     //Or coin prices decrease and they want to repay dPrime
-    //TODO: Refactor out loan maxDPrime calc to also be used in this function
-    function modifyLoanedDPrime(address user, int256 dPrimeChange) external {
+    function addLoanedDPrime(address user, uint256 rad) external { // [rad]
         require(approval(user, msg.sender), "LMCV/Owner must consent");
+        require(_getMaxDPrime(user) > (withdrawableDPrime[user]+ rad), "LMCV/Minting more dPrime than allowed");
+        ProtocolDebt += rad;
+        require(ProtocolDebt < ProtocolDebtCeiling, "LMCV/Cannot extend past protocol debt ceiling");
 
+        //Last thing that happens is actual ability to mint dPrime
+        withdrawableDPrime[user] += rad;
+        emit AddLoanedDPrime(user, rad);
     }
 
-    //Like grab
     //Will liquidate half of entire portfolio to regain healthy portfolio status
     //until the portfolio is too small to be split, in which case it liquidates
     //the entire portfolio - large accounts could liquidate many times
@@ -368,10 +379,10 @@ contract LMCV {
 
         //Check if beneath debtFloor or debt/loan > 81%
         uint256 percentAllowed = partialLiqMax;
-        if(_rmul(lockedDPrime[liquidated], partialLiqMax) < liquidiationFloor){
+        if(_rmul(withdrawableDPrime[liquidated], partialLiqMax) < liquidiationFloor){
             percentAllowed = RAY; //100% of dPrime value from collateral
         }
-        uint256 insolvencyPercentage = lockedDPrime[liquidated] * RAY / totalValue; // [ray]
+        uint256 insolvencyPercentage = withdrawableDPrime[liquidated] * RAY / totalValue; // [ray]
         if(insolvencyPercentage > wholeCDPLiqMult){
             percentAllowed = RAY; //100% of dPrime value from collateral
         }
@@ -379,7 +390,7 @@ contract LMCV {
             percentage = percentAllowed;
         }
 
-        uint256 repaymentValue = _rmul(lockedDPrime[liquidated], percentage); // [rad]
+        uint256 repaymentValue = _rmul(withdrawableDPrime[liquidated], percentage); // [rad]
         //take dPrime from liquidator
         liqDPrime[liquidator] -= repaymentValue;
 
@@ -399,14 +410,18 @@ contract LMCV {
         //TODO: Remove protocol fee when insolvency is high (governance var)
         uint256 protocolLiqFee = _rmul(repaymentValue, protocolLiqFeeMult);
         repaymentValue -= protocolLiqFee;
-        lockedDPrime[feeTaker] += protocolLiqFee;
+        withdrawableDPrime[feeTaker] += protocolLiqFee;
 
         //remove debt from protocol
         ProtocolDebt -= repaymentValue;
 
         //repay liquidated's debt
-        lockedDPrime[liquidated] -= repaymentValue;
+        withdrawableDPrime[liquidated] -= repaymentValue;
         emit Liquidation(liquidated, liquidator, percentage);
+    }
+
+    function fork() external {
+        //TODO: Write fork function
     }
 
     //Move these functions to liquidation contract
@@ -415,10 +430,7 @@ contract LMCV {
     }
 
     function _isHealthy(address user, uint256 portfolioValue) internal view returns (bool health) { 
-        console.log("Portfolio Value %s", portfolioValue);
-        console.log("Amount*Liq: %s", _rmul(portfolioValue, liquidationMult));
-        console.log("LOCKED DPrime: %s", lockedDPrime[user]);
-        if(_rmul(portfolioValue, liquidationMult) > lockedDPrime[user]){
+        if(_rmul(portfolioValue, liquidationMult) > withdrawableDPrime[user]){
             return true;
         }
         return false;

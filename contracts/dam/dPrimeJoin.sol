@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.9;
 
+import "hardhat/console.sol";
+
 interface dPrimeLike {
     function burn(address,uint256) external;
     function mint(address,uint256) external;
@@ -31,7 +33,7 @@ contract dPrimeJoin {
 
     }
 
-    function _rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+    function _wmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         z = x * y;
         require(y == 0 || z / y == x);
         z = z / RAY;
@@ -45,7 +47,7 @@ contract dPrimeJoin {
     }
 
     function exit(address usr, uint256 wad) external {
-        uint256 fee = _rmul(wad, mintFee); // [wad]
+        uint256 fee = _wmul(wad, mintFee); // [wad]
 
         lmcv.modifyDPrime(msg.sender, address(this), RAY * wad);
         dPrime.mint(treasury, fee);
