@@ -62,6 +62,7 @@ contract LMCV {
     event ModifyDPrime(address indexed src, address indexed dst, uint256 rad);
     event MovePortfolio(address indexed src, address indexed dst);
     event Loan(uint256 indexed dPrimeChange, address indexed user, bytes32[] collats, uint256[] amounts);
+    event LoanRepayment(uint256 indexed dPrimeChange, address indexed user, bytes32[] collats, uint256[] amounts);
     event Liquidation(address indexed liquidated, address indexed liquidator, uint256 percentage);
     event SpotUpdate(bytes32 indexed collateral, uint256 spot);
     event EditAcceptedCollateralType(bytes32 indexed collateralName, uint256 _debtCeiling, uint256 _debtFloor, uint256 _debtMult, uint256 _liqBonusMult);
@@ -122,14 +123,6 @@ contract LMCV {
         }
         require(y >= 0 || z <= x);
         require(y <= 0 || z >= x);
-    }
-
-    function _sub(uint256 x, int256 y) internal pure returns (uint256 z) {
-        unchecked {
-            z = x - uint256(y);
-        }
-        require(y <= 0 || z <= x);
-        require(y >= 0 || z >= x);
     }
 
     // Can only be used sensibly with the following combination of units:
@@ -325,32 +318,48 @@ contract LMCV {
         uint256[] memory collateralChange, 
         uint256 dPrimeChange
     ) external loanAlive {
+        require(collats.length == collateralChange.length, "LMCV/Need amount for each collateral");
         require(approval(user, msg.sender), "LMCV/Owner must consent");
+        dPrimeChange = dPrimeChange * RAY;
 
-        bytes32[] memory lockedCollats = lockedCollateralList[user];
-        for(uint256 i = 0; i < lockedCollats[i].length; i++){
+        //Withdraw their dPrime first then unlock collateral
+        withdrawableDPrime[user] -= dPrimeChange;
+        ProtocolDebt -= dPrimeChange;
 
+        for(uint256 i = 0; i < collats.length; i++){
+            CollateralType storage collateralType = CollateralTypes[collats[i]];
+            console.log(collateralType.spotPrice);
+
+            uint256 newLockedCollat = lockedCollateral[user][collats[i]];
+            uint256 newUnlockedCollat = unlockedCollateral[user][collats[i]];
+
+            //Change from locked collateral to unlocked collateral
+            newUnlockedCollat += collateralChange[i];
+            newLockedCollat -= collateralChange[i];
+
+            //New locked collateral set then immediately check solvency
+            lockedCollateral[user][collats[i]] = newLockedCollat;
+            require(_getMaxDPrime(user) > withdrawableDPrime[user], "LMCV/More dPrime left than allowed");
+
+            //Give user their unlocked collateral
+            collateralType.totalDebt -= collateralChange[i];
+            unlockedCollateral[user][collats[i]] = newUnlockedCollat;
         }
 
+        //Remove dust from locked list
+        bytes32[] storage lockedCollats = lockedCollateralList[user];
+        for(uint256 i = 0; i < lockedCollats.length; i++){
+            CollateralType memory collateralType = CollateralTypes[collats[i]];
 
-        //TODO: Add unlock to dust collaterals
-        // bytes32[] storage lockedList = lockedCollateralList[user];
-        // for(uint256 i = 0; i < lockedList.length; i++){
-        //     //Don't modify collateralType
-        //     CollateralType storage collateralType = CollateralTypes[lockedList[i]];
+            if(lockedCollateral[user][lockedCollats[i]] < collateralType.debtFloor){
+                uint256 amount = lockedCollateral[user][collats[i]];
+                lockedCollateral[user][collats[i]] = 0;
+                unlockedCollateral[user][collats[i]] = amount;
+                deleteElement(lockedCollats, i);
+            }
+        }
 
-        //     //TODO: Test unlocked of debt floored collateral
-        //     if(lockedCollateral[user][lockedList[i]] > collateralType.debtFloor){
-        //         uint256 value = lockedCollateral[user][lockedList[i]] * collateralType.spotPrice; // wad*ray -> rad
-        //         maxDPrime += _rmul(value, collateralType.debtMult); // rmul(rad, ray) -> rad
-        //     }else{
-        //         uint256 unlockingCollateral = lockedCollateral[user][lockedList[i]];
-        //         lockedCollateral[user][lockedList[i]] = 0;
-        //         unlockedCollateral[user][lockedList[i]] = unlockingCollateral;
-        //         deleteElement(lockedList, i);
-        //     }
-        // }
-
+        emit LoanRepayment(withdrawableDPrime[user], user, collats, collateralChange);
     }
 
     //Coin prices increase and they want to take out more without changing collateral
@@ -375,7 +384,7 @@ contract LMCV {
         uint256 percentage // [ray]
     ) external liqAlive { 
         uint256 totalValue = _getMaxDPrime(liquidated); // [rad]
-        require(!_isHealthy(liquidated, totalValue), "LMCV/Vault is healthy");
+        require(!_isHealthy(liquidated), "LMCV/Vault is healthy");
 
         //Check if beneath debtFloor or debt/loan > 81%
         uint256 percentAllowed = partialLiqMax;
@@ -426,11 +435,11 @@ contract LMCV {
 
     //Move these functions to liquidation contract
     function isHealthy(address user) external view returns (bool health){
-        return _isHealthy(user, _getPortfolioValue(user));
+        return _isHealthy(user);
     }
 
-    function _isHealthy(address user, uint256 portfolioValue) internal view returns (bool health) { 
-        if(_rmul(portfolioValue, liquidationMult) > withdrawableDPrime[user]){
+    function _isHealthy(address user) internal view returns (bool health) { 
+        if(_rmul(_getPortfolioValue(user), liquidationMult) > withdrawableDPrime[user]){
             return true;
         }
         return false;
