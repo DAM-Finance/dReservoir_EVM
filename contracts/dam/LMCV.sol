@@ -314,9 +314,9 @@ contract LMCV {
     //Or repay none if overcollateralized properly
     function repay(
         bytes32[] memory collats, 
-        address user,
         uint256[] memory collateralChange, 
-        uint256 dPrimeChange
+        uint256 dPrimeChange,
+        address user
     ) external loanAlive {
         require(collats.length == collateralChange.length, "LMCV/Need amount for each collateral");
         require(approval(user, msg.sender), "LMCV/Owner must consent");
@@ -328,39 +328,56 @@ contract LMCV {
 
         for(uint256 i = 0; i < collats.length; i++){
             CollateralType storage collateralType = CollateralTypes[collats[i]];
-            console.log(collateralType.spotPrice);
 
             uint256 newLockedCollat = lockedCollateral[user][collats[i]];
             uint256 newUnlockedCollat = unlockedCollateral[user][collats[i]];
 
             //Change from locked collateral to unlocked collateral
-            newUnlockedCollat += collateralChange[i];
             newLockedCollat -= collateralChange[i];
+            newUnlockedCollat += collateralChange[i];
 
             //New locked collateral set then immediately check solvency
             lockedCollateral[user][collats[i]] = newLockedCollat;
-            require(_getMaxDPrime(user) > withdrawableDPrime[user], "LMCV/More dPrime left than allowed");
+            require(_getMaxDPrime(user) >= withdrawableDPrime[user], "LMCV/More dPrime left than allowed");
 
             //Give user their unlocked collateral
+
             collateralType.totalDebt -= collateralChange[i];
             unlockedCollateral[user][collats[i]] = newUnlockedCollat;
         }
 
         //Remove dust from locked list
         bytes32[] storage lockedCollats = lockedCollateralList[user];
-        for(uint256 i = 0; i < lockedCollats.length; i++){
-            CollateralType memory collateralType = CollateralTypes[collats[i]];
+        uint256 length = lockedCollats.length;
+        for(uint j = length; j > 0; j--){
+            uint256 iter = j-1;
+            CollateralType memory collateralType = CollateralTypes[lockedCollats[iter]];
 
-            if(lockedCollateral[user][lockedCollats[i]] < collateralType.debtFloor){
-                uint256 amount = lockedCollateral[user][collats[i]];
-                lockedCollateral[user][collats[i]] = 0;
-                unlockedCollateral[user][collats[i]] = amount;
-                deleteElement(lockedCollats, i);
+            // console.log("i: %s", j);
+            // console.log("Collat: %s", bytes32ToString(lockedCollats[iter]));
+
+            if(lockedCollateral[user][lockedCollats[iter]] < collateralType.debtFloor){
+                uint256 amount = lockedCollateral[user][lockedCollats[iter]];
+                lockedCollateral[user][lockedCollats[iter]] = 0;
+                unlockedCollateral[user][lockedCollats[iter]] += amount;
+                deleteElement(lockedCollats, iter);
             }
         }
-
+        
         emit LoanRepayment(withdrawableDPrime[user], user, collats, collateralChange);
     }
+
+    // function bytes32ToString(bytes32 _bytes32) public pure returns (string memory) {
+    //     uint8 i = 0;
+    //     while(i < 32 && _bytes32[i] != 0) {
+    //         i++;
+    //     }
+    //     bytes memory bytesArray = new bytes(i);
+    //     for (i = 0; i < 32 && _bytes32[i] != 0; i++) {
+    //         bytesArray[i] = _bytes32[i];
+    //     }
+    //     return string(bytesArray);
+    // }
 
     //Coin prices increase and they want to take out more without changing collateral
     //Or coin prices decrease and they want to repay dPrime

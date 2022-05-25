@@ -350,8 +350,91 @@ describe("Testing Setup for functions", function () {
     });
 
     describe("Repay function testing", function () {
+        it("Should succeed when given a collateral and an appropriate amount of dPrime back", async function () {
+            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("777"), addr1.address);
+            
+            //repay one collateral
+            await userLMCV.repay([mockTokenBytes], [fwad("50")], fwad("500"), addr1.address);
+
+            expect(await userLMCV.lockedCollateralList(addr1.address, 0)).to.equal(mockToken3Bytes);
+            expect(await userLMCV.lockedCollateralList(addr1.address, 1)).to.equal(mockToken2Bytes);
+            await expect(userLMCV.lockedCollateralList(addr1.address, 2)).to.be.reverted;
+
+            expect(await userLMCV.lockedCollateral(addr1.address, mockTokenBytes)).to.equal(0);
+            expect(await userLMCV.lockedCollateral(addr1.address, mockToken2Bytes)).to.equal(fwad("100"));
+            expect(await userLMCV.lockedCollateral(addr1.address, mockToken3Bytes)).to.equal(fwad("200"));
+
+            expect(await userLMCV.withdrawableDPrime(addr1.address)).to.equal(frad("277"));
+
+            expect(await userLMCV.unlockedCollateral(addr1.address, mockTokenBytes)).to.equal(fwad("555"));
+            expect(await userLMCV.unlockedCollateral(addr1.address, mockToken2Bytes)).to.equal(fwad("566"));
+            expect(await userLMCV.unlockedCollateral(addr1.address, mockToken3Bytes)).to.equal(fwad("577"));
+        });
+
+        it("Should succeed when given all collateral and all dPrime back", async function () {
+            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("777"), addr1.address);
+            
+            //repay full collateral amount
+            await userLMCV.repay(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("777"), addr1.address);
+
+            await expect(userLMCV.lockedCollateralList(addr1.address, 0)).to.be.reverted;
+
+            expect(await userLMCV.lockedCollateral(addr1.address, mockTokenBytes)).to.equal(0);
+            expect(await userLMCV.lockedCollateral(addr1.address, mockToken2Bytes)).to.equal(0);
+            expect(await userLMCV.lockedCollateral(addr1.address, mockToken3Bytes)).to.equal(0);
+
+            expect(await userLMCV.withdrawableDPrime(addr1.address)).to.equal(0);
+        });
+
+        it("Should succeed when given a collateral and an appropriate amount of dPrime back", async function () {
+            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("777"), addr1.address);
+            
+            //repay one collateral
+            await userLMCV.repay([mockTokenBytes, mockTokenBytes], [fwad("25"),fwad("25")], fwad("500"), addr1.address);
+
+            expect(await userLMCV.lockedCollateralList(addr1.address, 0)).to.equal(mockToken3Bytes);
+            expect(await userLMCV.lockedCollateralList(addr1.address, 1)).to.equal(mockToken2Bytes);
+            await expect(userLMCV.lockedCollateralList(addr1.address, 2)).to.be.reverted;
+
+            expect(await userLMCV.lockedCollateral(addr1.address, mockTokenBytes)).to.equal(0);
+            expect(await userLMCV.lockedCollateral(addr1.address, mockToken2Bytes)).to.equal(fwad("100"));
+            expect(await userLMCV.lockedCollateral(addr1.address, mockToken3Bytes)).to.equal(fwad("200"));
+
+            expect(await userLMCV.withdrawableDPrime(addr1.address)).to.equal(frad("277"));
+
+            expect(await userLMCV.unlockedCollateral(addr1.address, mockTokenBytes)).to.equal(fwad("555"));
+            expect(await userLMCV.unlockedCollateral(addr1.address, mockToken2Bytes)).to.equal(fwad("566"));
+            expect(await userLMCV.unlockedCollateral(addr1.address, mockToken3Bytes)).to.equal(fwad("577"));
+        });
         
 
+        it("Should fail when not repaying amount of dPrime needed to unlock collateral", async function () {
+            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("777"), addr1.address);
+            await expect(
+                userLMCV.repay(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("0"), addr1.address)
+            ).to.be.revertedWith("LMCV/More dPrime left than allowed");
+        });
+
+        it("Should fail when collateral list isnt' the same size as change list", async function () {
+            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("777"), addr1.address);
+            await expect(
+                userLMCV.repay(collateralBytesList, [fwad("50"), fwad("100")], fwad("0"), addr1.address)
+            ).to.be.revertedWith("LMCV/Need amount for each collateral");
+        });
+
+        it("Should fail when owner doesn't consent", async function () {
+            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("777"), addr1.address);
+            await expect(
+                userTwoLMCV.repay(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("0"), addr1.address)
+            ).to.be.revertedWith("LMCV/Owner must consent");
+        });
+
+        it("Should fail when collateral list isnt' the same size as change list", async function () {
+            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("777"), addr1.address);
+            await expect(
+                userLMCV.repay(collateralBytesList, [fwad("50"), fwad("100")], fwad("0"), addr1.address)
+            ).to.be.revertedWith("LMCV/Need amount for each collateral");
+        });
     });
 
     describe("isHealthy function testing", function () {
