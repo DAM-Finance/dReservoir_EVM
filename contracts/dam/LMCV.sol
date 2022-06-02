@@ -316,8 +316,8 @@ contract LMCV {
         dPrimeChange = dPrimeChange * RAY;
 
         //Withdraw their dPrime first then unlock collateral
-        // console.log("Withdrawn dPrime: %s", withdrawnDPrime[user]);
-        // console.log("New debtDPrime:   %s", (debtDPrime[user]-dPrimeChange));
+        console.log("Withdrawn dPrime: %s", withdrawnDPrime[user]);
+        console.log("New debtDPrime:   %s", (debtDPrime[user]-dPrimeChange));
         require(withdrawnDPrime[user] <= (debtDPrime[user]-dPrimeChange), "LMCV/Cannot have more withdrawn dPrime than debt");
         debtDPrime[user] -= dPrimeChange;
         ProtocolDebt -= dPrimeChange;
