@@ -2,7 +2,7 @@
 
 /// token.sol -- ERC20 implementation with minting and burning
 
-pragma solidity 0.8.9;
+pragma solidity ^0.8.9;
 
 contract MockToken {
     uint256                                           public  totalSupply;

@@ -2,7 +2,7 @@
 
 /// Pot.sol -- Dai Savings Rate
 
-pragma solidity 0.8.9;
+pragma solidity ^0.8.9;
 
 /*
    "Savings Dai" is obtained when Dai is deposited into

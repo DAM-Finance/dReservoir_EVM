@@ -2,7 +2,7 @@
 
 /// vat.sol -- Dai CDP database
 
-pragma solidity 0.8.9;
+pragma solidity ^0.8.9;
 
 contract Vat {
     // --- Data ---

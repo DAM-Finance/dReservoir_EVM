@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity 0.8.9;
+pragma solidity 0.8.14;
 
 import "hardhat/console.sol";
 
@@ -34,7 +34,7 @@ contract dPrimeJoin {
 
     }
 
-    function _wmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+    function _rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         z = x * y;
         require(y == 0 || z / y == x);
         z = z / RAY;
@@ -56,7 +56,7 @@ contract dPrimeJoin {
     }
 
     function exit(address usr, uint256 wad) external {
-        uint256 fee = _wmul(wad, mintFee); // [wad]
+        uint256 fee = _rmul(wad, mintFee); // [wad]
         lmcv.pullDPrime(msg.sender, wad * RAY);
         dPrime.mint(treasury, fee);
         dPrime.mint(usr, wad-fee);

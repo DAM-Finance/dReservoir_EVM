@@ -2,7 +2,7 @@
 
 /// dPrime.sol -- dPrime token
 
-pragma solidity 0.8.9;
+pragma solidity 0.8.14;
 
 contract dPrime {
     mapping (address => uint256) public admins;

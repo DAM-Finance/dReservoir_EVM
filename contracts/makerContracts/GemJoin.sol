@@ -2,7 +2,7 @@
 
 /// GemJoin.sol -- Basic token adapter
 
-pragma solidity 0.8.9;
+pragma solidity ^0.8.9;
 
 interface GemLike {
     function decimals() external view returns (uint256);

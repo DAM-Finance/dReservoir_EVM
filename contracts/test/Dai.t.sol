@@ -18,7 +18,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 //HEVM testing
-pragma solidity 0.8.9;
+pragma solidity ^0.8.9;
 
 import "./ds-test/test.sol";
 

@@ -6,7 +6,7 @@
 // - `ray`: fixed point decimal with 27 decimals (for precise quantites, e.g. ratios)
 // - `rad`: fixed point decimal with 45 decimals (result of integer multiplication with a `wad` and a `ray`)
 
-pragma solidity 0.8.9;
+pragma solidity 0.8.14;
 
 import "hardhat/console.sol";
 
@@ -53,22 +53,22 @@ contract LMCV {
     uint256 public partialLiqMax;               // [ray] ie. 50% of maxDPrime value of account collateral
     uint256 public protocolLiqFeeMult;          // [ray] 0.125 * dPrime paid in
     uint256 public liquidationMult;             // [ray] ie. user at 80% dPrime/collateral ratio -> liquidate
-    uint256 public liquidiationFloor;           // [rad] user debt below certain amount, liquidate entire portfolio
     uint256 public wholeCDPLiqMult;             // [ray] above this percentage, whole cdp can be liquidated
+    uint256 public liquidiationFloor;           // [rad] user debt below certain amount, liquidate entire portfolio
 
 
     // --- Events ---
-    event ModifyCollateral(bytes32 indexed collat, address indexed user, int256 wad);
+    event EditAcceptedCollateralType(bytes32 indexed collateralName, uint256 _debtCeiling, uint256 _debtFloor, uint256 _debtMult, uint256 _liqBonusMult);
+    event LoanRepayment(uint256 indexed dPrimeChange, address indexed user, bytes32[] collats, uint256[] amounts);
+    event Loan(uint256 indexed dPrimeChange, address indexed user, bytes32[] collats, uint256[] amounts);
     event MoveCollateral(bytes32 indexed collat, address indexed src, address indexed dst, uint256 wad);
+    event Liquidation(address indexed liquidated, address indexed liquidator, uint256 percentage);
+    event ModifyCollateral(bytes32 indexed collat, address indexed user, int256 wad);
+    event MovePortfolio(address indexed src, address indexed dst);
+    event SpotUpdate(bytes32 indexed collateral, uint256 spot);
+    event AddLoanedDPrime(address indexed user, uint256 rad);
     event PushDPrime(address indexed src, uint256 rad);
     event PullDPrime(address indexed src, uint256 rad);
-    event MovePortfolio(address indexed src, address indexed dst);
-    event Loan(uint256 indexed dPrimeChange, address indexed user, bytes32[] collats, uint256[] amounts);
-    event LoanRepayment(uint256 indexed dPrimeChange, address indexed user, bytes32[] collats, uint256[] amounts);
-    event Liquidation(address indexed liquidated, address indexed liquidator, uint256 percentage);
-    event SpotUpdate(bytes32 indexed collateral, uint256 spot);
-    event EditAcceptedCollateralType(bytes32 indexed collateralName, uint256 _debtCeiling, uint256 _debtFloor, uint256 _debtMult, uint256 _liqBonusMult);
-    event AddLoanedDPrime(address indexed user, uint256 rad);
 
 
     //Edit for types of auth 
@@ -131,16 +131,10 @@ contract LMCV {
     // - `rmul(wad, ray) -> wad`
     // - `rmul(ray, ray) -> ray`
     // - `rmul(rad, ray) -> rad`
-    function _wmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+    function _rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         z = x * y;
         require(y == 0 || z / y == x);
         z = z / RAY;
-    }
-
-    function _rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        x = x / RAY; //REQUIRES RAD
-        z = x * y;
-        require(y == 0 || z / y == x);
     }
 
     // --- Protocol Admin ---
@@ -293,7 +287,7 @@ contract LMCV {
             unlockedCollateral[user][collats[i]] = newUnlockedCollat;
         }
         
-        require(_getMaxDPrime(user) > (dPrimeChange + debtDPrime[user]), "LMCV/Minting more dPrime than allowed");
+        require(_getMaxDPrime(user) >= (dPrimeChange + debtDPrime[user]), "LMCV/Minting more dPrime than allowed");
 
         ProtocolDebt += dPrimeChange;
         require(ProtocolDebt < ProtocolDebtCeiling, "LMCV/Cannot extend past protocol debt ceiling");
@@ -389,13 +383,15 @@ contract LMCV {
 
         //Check if beneath debtFloor or debt/loan > 81%
         uint256 percentAllowed = partialLiqMax; // [ray]
-        uint256 insolvencyPercentage = debtDPrime[liquidated] * RAY / totalValue; // [ray]
+        uint256 valueRatio = debtDPrime[liquidated] * RAY / totalValue; // [ray]
 
-        // console.log("Insolvency percentage %s", insolvencyPercentage);
+        // console.log("Insolvency percentage %s", valueRatio);
         // console.log("Value x Partial %s", _rmul(debtDPrime[liquidated], partialLiqMax));
-        // console.log("Insolv > wholeCDP %s", insolvencyPercentage > wholeCDPLiqMult);
+        // console.log("Insolv > wholeCDP %s", valueRatio > wholeCDPLiqMult);
+        // console.log("First condition:  %s", _rmul(debtDPrime[liquidated], partialLiqMax) < liquidiationFloor );
+        // console.log("Second condition:  %s", valueRatio > wholeCDPLiqMult);
         if( _rmul(debtDPrime[liquidated], partialLiqMax) < liquidiationFloor 
-            || insolvencyPercentage > wholeCDPLiqMult
+            || valueRatio > wholeCDPLiqMult
         ){
             percentAllowed = RAY; //100% of dPrime value from collateral
         }
@@ -403,18 +399,27 @@ contract LMCV {
             percentage = percentAllowed;
         }
 
-        uint256 repaymentValue = _rmul(debtDPrime[liquidated], percentage); // [rad]
-        // console.log("Repayment val: %s", repaymentValue);
         //take dPrime from liquidator
+        uint256 repaymentValue = _rmul(debtDPrime[liquidated], percentage); // [rad]
+        console.log("Repayment val: %s", repaymentValue);
         liqDPrime[liquidator] -= repaymentValue;
 
-        //Move collateral to liquidator's address
+        // Move collateral to liquidator's address
         for(uint256 i = 0; i < lockedCollateralList[liquidated].length; i++){
             bytes32 collateral = lockedCollateralList[liquidated][i];
             uint256 lockedAmount = lockedCollateral[liquidated][collateral]; // [wad]
-            uint256 liquidateableAmount = _wmul(lockedAmount, insolvencyPercentage); // wad,ray -> wad
-            uint256 liquidationAmount =  _wmul(liquidateableAmount,(percentage + CollateralTypes[collateral].liqBonusMult)); // wad,ray -> wad
 
+
+
+
+
+
+            //Something screwy right below I think -> Amount too low I would guess
+            uint256 liquidateableAmount = _rmul(lockedAmount, valueRatio); // wad,ray -> wad
+            uint256 liquidationAmount =  _rmul(liquidateableAmount,(percentage + (_rmul(percentage, CollateralTypes[collateral].liqBonusMult)))); // wad,ray -> wad
+
+            console.log("\n Collateral: %s", bytes32ToString(collateral));
+            console.log("liquidationAmount   %s", liquidationAmount);
             lockedAmount -= liquidationAmount;
             lockedCollateral[liquidated][collateral] = lockedAmount;
             unlockedCollateral[liquidator][collateral] += liquidationAmount;
@@ -431,6 +436,9 @@ contract LMCV {
 
         //repay liquidated's debt
         debtDPrime[liquidated] -= repaymentValue;
+
+        //TODO: What makes the most sense? Amount of dPrime withdrawn is subtracted by the liquidated amount?
+        // Or does it make most sense to 
         emit Liquidation(liquidated, liquidator, percentage);
     }
 
@@ -507,15 +515,15 @@ contract LMCV {
         array.pop();
     }
 
-    // function bytes32ToString(bytes32 _bytes32) public pure returns (string memory) {
-    //     uint8 i = 0;
-    //     while(i < 32 && _bytes32[i] != 0) {
-    //         i++;
-    //     }
-    //     bytes memory bytesArray = new bytes(i);
-    //     for (i = 0; i < 32 && _bytes32[i] != 0; i++) {
-    //         bytesArray[i] = _bytes32[i];
-    //     }
-    //     return string(bytesArray);
-    // }
+    function bytes32ToString(bytes32 _bytes32) public pure returns (string memory) {
+        uint8 i = 0;
+        while(i < 32 && _bytes32[i] != 0) {
+            i++;
+        }
+        bytes memory bytesArray = new bytes(i);
+        for (i = 0; i < 32 && _bytes32[i] != 0; i++) {
+            bytesArray[i] = _bytes32[i];
+        }
+        return string(bytesArray);
+    }
 }
