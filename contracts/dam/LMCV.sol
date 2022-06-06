@@ -39,7 +39,7 @@ contract LMCV {
     mapping (address => uint256)                        public debtDPrime;          // [rad]
     mapping (address => uint256)                        public withdrawnDPrime;     // [rad]
 
-    //TODO: Appropriate getters and setters
+    //TODO: Appropriate setters
     uint256 public loanLive;
     uint256 public liqLive;
     uint256 public ProtocolDebt;        // [rad]
@@ -48,13 +48,12 @@ contract LMCV {
     address public feeTaker;
 
     //Liquidation
+    uint256 public partialLiqMax;           // [ray] ie. 50% of maxDPrime value of account collateral
+    uint256 public protocolLiqFeeMult;      // [ray] 0.125 * dPrime paid in
+    uint256 public liquidationMult;         // [ray] ie. user at 80% dPrime/collateral ratio -> liquidate
+    uint256 public wholeCDPLiqMult;         // [ray] above this percentage, whole cdp can be liquidated
+    uint256 public liquidiationFloor;       // [rad] user debt below certain amount, liquidate entire portfolio
     mapping (address => uint256)    public liqDPrime; // [rad] dPrime useable in liquidations
-    //TODO: Appropriate getters and setters
-    uint256 public partialLiqMax;               // [ray] ie. 50% of maxDPrime value of account collateral
-    uint256 public protocolLiqFeeMult;          // [ray] 0.125 * dPrime paid in
-    uint256 public liquidationMult;             // [ray] ie. user at 80% dPrime/collateral ratio -> liquidate
-    uint256 public wholeCDPLiqMult;             // [ray] above this percentage, whole cdp can be liquidated
-    uint256 public liquidiationFloor;           // [rad] user debt below certain amount, liquidate entire portfolio
 
 
     // --- Events ---
@@ -372,7 +371,8 @@ contract LMCV {
 
     //Will liquidate half of entire portfolio to regain healthy portfolio status
     //until the portfolio is too small to be split, in which case it liquidates
-    //the entire portfolio - large accounts could liquidate many times
+    //the entire portfolio - large accounts could liquidate many times'
+    //TODO: This will fail at some point when dPrime value is >100% of collateral because of overflow errors - update for that
     function liquidate(
         address liquidated, 
         address liquidator, 
@@ -390,9 +390,7 @@ contract LMCV {
         // console.log("Insolv > wholeCDP %s", valueRatio > wholeCDPLiqMult);
         // console.log("First condition:  %s", _rmul(debtDPrime[liquidated], partialLiqMax) < liquidiationFloor );
         // console.log("Second condition:  %s", valueRatio > wholeCDPLiqMult);
-        if( _rmul(debtDPrime[liquidated], partialLiqMax) < liquidiationFloor 
-            || valueRatio > wholeCDPLiqMult
-        ){
+        if( _rmul(debtDPrime[liquidated], partialLiqMax) < liquidiationFloor || valueRatio > wholeCDPLiqMult){
             percentAllowed = RAY; //100% of dPrime value from collateral
         }
         if(percentage > percentAllowed){
@@ -401,25 +399,19 @@ contract LMCV {
 
         //take dPrime from liquidator
         uint256 repaymentValue = _rmul(debtDPrime[liquidated], percentage); // [rad]
-        console.log("Repayment val: %s", repaymentValue);
+        // console.log("Repayment val: %s", repaymentValue);
         liqDPrime[liquidator] -= repaymentValue;
 
         // Move collateral to liquidator's address
         for(uint256 i = 0; i < lockedCollateralList[liquidated].length; i++){
             bytes32 collateral = lockedCollateralList[liquidated][i];
             uint256 lockedAmount = lockedCollateral[liquidated][collateral]; // [wad]
-
-
-
-
-
-
-            //Something screwy right below I think -> Amount too low I would guess
             uint256 liquidateableAmount = _rmul(lockedAmount, valueRatio); // wad,ray -> wad
             uint256 liquidationAmount =  _rmul(liquidateableAmount,(percentage + (_rmul(percentage, CollateralTypes[collateral].liqBonusMult)))); // wad,ray -> wad
 
             console.log("\n Collateral: %s", bytes32ToString(collateral));
             console.log("liquidationAmount   %s", liquidationAmount);
+            CollateralTypes[collateral].totalDebt -= liquidationAmount; //TODO: Hastily added - check this 
             lockedAmount -= liquidationAmount;
             lockedCollateral[liquidated][collateral] = lockedAmount;
             unlockedCollateral[liquidator][collateral] += liquidationAmount;
@@ -436,9 +428,8 @@ contract LMCV {
 
         //repay liquidated's debt
         debtDPrime[liquidated] -= repaymentValue;
-
-        //TODO: What makes the most sense? Amount of dPrime withdrawn is subtracted by the liquidated amount?
-        // Or does it make most sense to 
+        //TODO: What makes the most sense? Amount of dPrime withdrawn is subtracted by the liquidated amount? TESTTTTTTTTTT
+        withdrawnDPrime[liquidated] <= repaymentValue ? withdrawnDPrime[liquidated] = 0 : withdrawnDPrime[liquidated] -= repaymentValue;
         emit Liquidation(liquidated, liquidator, percentage);
     }
 
