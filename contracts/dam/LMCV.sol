@@ -48,6 +48,7 @@ contract LMCV {
     address public feeTaker;
 
     //Liquidation
+    uint256 public protocolFeeRemovalMult;  // [ray] ie. with 8% across the board, 92% or above
     uint256 public partialLiqMax;           // [ray] ie. 50% of maxDPrime value of account collateral
     uint256 public protocolLiqFeeMult;      // [ray] 0.125 * dPrime paid in
     uint256 public liquidationMult;         // [ray] ie. user at 80% dPrime/collateral ratio -> liquidate
@@ -145,6 +146,10 @@ contract LMCV {
     }
 
     // --- Liquidation Admin ---
+    function setProtocolFeeRemovalMult(uint256 ray) external auth {
+        protocolFeeRemovalMult = ray;
+    }
+
     function setPartialLiqMax(uint256 ray) external auth {
         partialLiqMax = ray;
     }
@@ -309,8 +314,8 @@ contract LMCV {
         dPrimeChange = dPrimeChange * RAY;
 
         //Withdraw their dPrime first then unlock collateral
-        console.log("Withdrawn dPrime: %s", withdrawnDPrime[user]);
-        console.log("New debtDPrime:   %s", (debtDPrime[user]-dPrimeChange));
+        // console.log("Withdrawn dPrime: %s", withdrawnDPrime[user]);
+        // console.log("New debtDPrime:   %s", (debtDPrime[user]-dPrimeChange));
         require(withdrawnDPrime[user] <= (debtDPrime[user]-dPrimeChange), "LMCV/Cannot have more withdrawn dPrime than debt");
         debtDPrime[user] -= dPrimeChange;
         ProtocolDebt -= dPrimeChange;
@@ -387,10 +392,10 @@ contract LMCV {
 
         // console.log("Insolvency percentage %s", valueRatio);
         // console.log("Value x Partial %s", _rmul(debtDPrime[liquidated], partialLiqMax));
-        // console.log("Insolv > wholeCDP %s", valueRatio > wholeCDPLiqMult);
+        // console.log("Insolv > wholeCDP %s", valueRatio >= wholeCDPLiqMult);
         // console.log("First condition:  %s", _rmul(debtDPrime[liquidated], partialLiqMax) < liquidiationFloor );
         // console.log("Second condition:  %s", valueRatio > wholeCDPLiqMult);
-        if( _rmul(debtDPrime[liquidated], partialLiqMax) < liquidiationFloor || valueRatio > wholeCDPLiqMult){
+        if( _rmul(debtDPrime[liquidated], partialLiqMax) < liquidiationFloor || valueRatio >= wholeCDPLiqMult){
             percentAllowed = RAY; //100% of dPrime value from collateral
         }
         if(percentage > percentAllowed){
@@ -399,7 +404,8 @@ contract LMCV {
 
         //take dPrime from liquidator
         uint256 repaymentValue = _rmul(debtDPrime[liquidated], percentage); // [rad]
-        // console.log("Repayment val: %s", repaymentValue);
+        //This requirement not needed because of overflow math but leaving it in on purpose for clarity to the user
+        require(liqDPrime[liquidator] >= repaymentValue, "LMCV/Not enough liquidation dPrime available");
         liqDPrime[liquidator] -= repaymentValue;
 
         // Move collateral to liquidator's address
@@ -409,17 +415,22 @@ contract LMCV {
             uint256 liquidateableAmount = _rmul(lockedAmount, valueRatio); // wad,ray -> wad
             uint256 liquidationAmount =  _rmul(liquidateableAmount,(percentage + (_rmul(percentage, CollateralTypes[collateral].liqBonusMult)))); // wad,ray -> wad
 
-            console.log("\n Collateral: %s", bytes32ToString(collateral));
-            console.log("liquidationAmount   %s", liquidationAmount);
-            CollateralTypes[collateral].totalDebt -= liquidationAmount; //TODO: Hastily added - check this 
-            lockedAmount -= liquidationAmount;
-            lockedCollateral[liquidated][collateral] = lockedAmount;
-            unlockedCollateral[liquidator][collateral] += liquidationAmount;
+            // console.log("\n Collateral: %s", bytes32ToString(collateral));
+            // console.log("liquidationAmount   %s", liquidationAmount);
+            if(liquidationAmount > lockedAmount){
+                CollateralTypes[collateral].totalDebt -= lockedAmount;
+                lockedCollateral[liquidated][collateral] = 0;
+                unlockedCollateral[liquidator][collateral] += lockedAmount;
+            }else{
+                CollateralTypes[collateral].totalDebt -= liquidationAmount;
+                lockedAmount -= liquidationAmount;
+                lockedCollateral[liquidated][collateral] = lockedAmount;
+                unlockedCollateral[liquidator][collateral] += liquidationAmount;
+            }
         }
 
         //take fee
-        //TODO: Remove protocol fee when insolvency is high (governance var)
-        uint256 protocolLiqFee = _rmul(repaymentValue, protocolLiqFeeMult);
+        uint256 protocolLiqFee = valueRatio >= protocolFeeRemovalMult ? 0 : _rmul(repaymentValue, protocolLiqFeeMult);
         repaymentValue -= protocolLiqFee;
         debtDPrime[feeTaker] += protocolLiqFee;
 
@@ -433,7 +444,7 @@ contract LMCV {
         emit Liquidation(liquidated, liquidator, percentage);
     }
 
-    function fork() external {
+    function fork() external auth {
         //TODO: Write fork function
     }
 
