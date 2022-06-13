@@ -20,16 +20,23 @@ contract dPrimeJoin {
     uint256 constant RAY = 10 ** 27;
     uint256 mintFee;                        // [ray]
     address treasury;
+    address lmcvProxy;
 
     // --- Events ---
     event Join(address indexed usr, uint256 wad);
     event Exit(address indexed usr, uint256 wad);
 
-    constructor(address _lmcv, address _dPrime, address _treasury, uint256 _mintFee) {
+    modifier auth {
+        require(msg.sender == lmcvProxy, "dPrimeJoin/not-authorized");
+        _;
+    }
+
+    constructor(address _lmcv, address _dPrime, address _lmcvProxy, address _treasury, uint256 _mintFee) {
         lmcv = LMCVLike(_lmcv);
         dPrime = dPrimeLike(_dPrime);
         mintFee = _mintFee;
         treasury = _treasury;
+        lmcvProxy = _lmcvProxy;
     }
 
     function _rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
@@ -48,6 +55,14 @@ contract dPrimeJoin {
     function exit(address usr, uint256 wad) external {
         uint256 fee = _rmul(wad, mintFee); // [wad]
         lmcv.pullDPrime(msg.sender, wad * RAY);
+        dPrime.mint(treasury, fee);
+        dPrime.mint(usr, wad-fee);
+        emit Exit(usr, wad);
+    }
+
+    function proxyExit(address usr, uint256 wad) external auth {
+        uint256 fee = _rmul(wad, mintFee); // [wad]
+        lmcv.pullDPrime(usr, wad * RAY);
         dPrime.mint(treasury, fee);
         dPrime.mint(usr, wad-fee);
         emit Exit(usr, wad);

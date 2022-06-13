@@ -20,6 +20,7 @@ describe("Connections between contracts so far", function () {
     let tokenFactory, mockToken;
     let collateralJoinFactory, collateralJoin;
     let mockTokenBytes = ethers.utils.formatBytes32String("MOCKTOKEN");
+    let lmcvProxy, lmcvProxyFactory;
 
     beforeEach(async function () {
         [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
@@ -29,9 +30,11 @@ describe("Connections between contracts so far", function () {
 
         LMCVFactory = await ethers.getContractFactory("LMCV");
         lmcv = await LMCVFactory.deploy();
+        lmcvProxyFactory = await ethers.getContractFactory("LMCVProxy");
+        lmcvProxy = await lmcvProxyFactory.deploy(lmcv.address);
 
         dPrimeJoinFactory = await ethers.getContractFactory("dPrimeJoin");
-        dPrimeJoin = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address, owner.address, formatRay("0.03"));
+        dPrimeJoin = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address, lmcvProxy.address, owner.address, formatRay("0.03"));
 
         tokenFactory = await ethers.getContractFactory("MockTokenTwo");
         mockToken = await tokenFactory.deploy("TSTR");
@@ -63,12 +66,6 @@ describe("Connections between contracts so far", function () {
             // console.log(amount.toString());
             expect(amount.toString()).to.equal("37000000000000000000");
         });
-
-        it("dPrimeJoin should successfully transfer tokens out when permissions are configured properly", async function () {
-            //assumes loan is working properly - testing that in separate file now
-
-        });
-
     });
 });
 

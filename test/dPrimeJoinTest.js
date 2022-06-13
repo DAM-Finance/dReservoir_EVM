@@ -14,6 +14,7 @@ let LMCVFactory, lmcv;
 let owner, addr1, addr2, addrs;
 let userDPrime, userDPrimeJoin;
 let userLMCV;
+let lmcvProxy, lmcvProxyFactory;
 
 async function setupUser(addr, amount){
     let mockTokenConnect = mockToken.connect(addr);
@@ -37,8 +38,14 @@ describe("dPrimeJoin Testing", function () {
         LMCVFactory = await ethers.getContractFactory("LMCV");
         lmcv = await LMCVFactory.deploy();
 
+        lmcvProxyFactory = await ethers.getContractFactory("LMCVProxy");
+        lmcvProxy = await lmcvProxyFactory.deploy(lmcv.address);
+
         dPrimeJoinFactory = await ethers.getContractFactory("dPrimeJoin");
-        dPrimeJoin = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address, owner.address, fray("0.01"));
+        dPrimeJoin = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address, lmcvProxy.address, owner.address, fray("0.01"));
+
+        lmcvProxyFactory = await ethers.getContractFactory("LMCVProxy");
+        lmcvProxy = await lmcvProxyFactory.deploy(lmcv.address);
 
         tokenFactory = await ethers.getContractFactory("MockTokenTwo");
         mockToken = await tokenFactory.deploy("TSTR");

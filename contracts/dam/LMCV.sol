@@ -63,12 +63,17 @@ contract LMCV {
     event Loan(uint256 indexed dPrimeChange, address indexed user, bytes32[] collats, uint256[] amounts);
     event MoveCollateral(bytes32 indexed collat, address indexed src, address indexed dst, uint256 wad);
     event Liquidation(address indexed liquidated, address indexed liquidator, uint256 percentage);
-    event ModifyCollateral(bytes32 indexed collat, address indexed user, int256 wad);
+    event PushCollateral(bytes32 indexed collat, address indexed src, uint256 wad);
+    event PullCollateral(bytes32 indexed collat, address indexed src, uint256 wad);
     event MovePortfolio(address indexed src, address indexed dst);
+    event PushLiquidationDPrime(address indexed src, uint256 rad);
+    event PullLiquidationDPrime(address indexed src, uint256 rad);
     event SpotUpdate(bytes32 indexed collateral, uint256 spot);
     event AddLoanedDPrime(address indexed user, uint256 rad);
     event PushDPrime(address indexed src, uint256 rad);
     event PullDPrime(address indexed src, uint256 rad);
+    
+    
 
 
     //Edit for types of auth 
@@ -219,9 +224,14 @@ contract LMCV {
 
     // --- Fungibility ---
     //TODO: Test
-    function modifyCollateral(bytes32 collat, address user, int256 wad) external auth {
-        unlockedCollateral[user][collat] = _add(unlockedCollateral[user][collat], wad);
-        emit ModifyCollateral(collat, user, wad);
+    function pushCollateral(bytes32 collat, address user, uint256 wad) external auth {
+        unlockedCollateral[user][collat] += wad;
+        emit PushCollateral(collat, user, wad);
+    }
+    //TODO: Test
+    function pullCollateral(bytes32 collat, address user, uint256 wad) external auth {
+        unlockedCollateral[user][collat] -= wad;
+        emit PullCollateral(collat, user, wad);
     }
 
     function pushDPrime(address src, uint256 rad) external auth {
@@ -244,9 +254,15 @@ contract LMCV {
     }
 
     //TODO: Test
-    function modifyLiquidationDPrime(address user, int256 rad) external auth {
-        liqDPrime[user] = _add(liqDPrime[user], rad);
-        //TODO: Emit
+    function pushLiquidationDPrime(address user, uint256 rad) external auth {
+        liqDPrime[user] += rad;
+        emit PushLiquidationDPrime(user, rad);
+    }
+
+    //TODO: Test
+    function pullLiquidationDPrime(address user, uint256 rad) external auth {
+        liqDPrime[user] -= rad;
+        emit PullLiquidationDPrime(user, rad);
     }
 
     //All collaterals linked together to be more portfolio centric

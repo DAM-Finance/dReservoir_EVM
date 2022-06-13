@@ -11,7 +11,8 @@ interface CollateralLike {
 }
 
 interface LMCVLike {
-    function modifyCollateral(bytes32, address, int256) external;
+    function pushCollateral(bytes32, address, uint256) external;
+    function pullCollateral(bytes32, address, uint256) external;
 }
 
 /*
@@ -38,15 +39,17 @@ interface LMCVLike {
 
 */
 
+import "hardhat/console.sol";
+
 contract CollateralJoin {
     // --- Data ---
     mapping(address => uint256) public wards;
 
     uint256 public live;  // Active Flag
 
-    LMCVLike public immutable lmcv;   // CDP Engine
-    bytes32 public immutable ilk;   // Collateral Type
-    CollateralLike public immutable collateral;
+    LMCVLike public immutable lmcv; 
+    bytes32 public immutable collateralName; 
+    CollateralLike public immutable collateralContract;
     uint256 public immutable dec;
 
     // --- Events ---
@@ -61,13 +64,13 @@ contract CollateralJoin {
         _;
     }
 
-    constructor(address lmcv_, bytes32 ilk_, address collateral_) {
+    constructor(address lmcv_, bytes32 collateralName_, address collateralContract_) {
         wards[msg.sender] = 1;
         live = 1;
         lmcv = LMCVLike(lmcv_);
-        ilk = ilk_;
-        collateral = CollateralLike(collateral_);
-        dec = collateral.decimals();
+        collateralName = collateralName_;
+        collateralContract = CollateralLike(collateralContract_);
+        dec = collateralContract.decimals();
         emit Rely(msg.sender);
     }
 
@@ -88,18 +91,19 @@ contract CollateralJoin {
     }
 
     // --- User's functions ---
+    //TODO: Test
     function join(address usr, uint256 wad) external {
         require(live == 1, "CollateralJoin/not-live");
-        require(int256(wad) >= 0, "CollateralJoin/overflow");
-        require(collateral.transferFrom(msg.sender, address(this), wad), "CollateralJoin/failed-transfer");
-        lmcv.modifyCollateral(ilk, usr, int256(wad));
+        require(collateralContract.transferFrom(msg.sender, address(this), wad), "CollateralJoin/failed-transfer");
+        lmcv.pushCollateral(collateralName, usr, wad);
         emit Join(usr, wad);
     }
 
+    //TODO: Test
     function exit(address usr, uint256 wad) external {
         require(wad <= 2 ** 255, "CollateralJoin/overflow");
-        lmcv.modifyCollateral(ilk, msg.sender, - int256(wad));
-        require(collateral.transfer(usr, wad), "CollateralJoin/failed-transfer");
+        lmcv.pullCollateral(collateralName, msg.sender, wad);
+        require(collateralContract.transfer(usr, wad), "CollateralJoin/failed-transfer");
         emit Exit(usr, wad);
     }
 }

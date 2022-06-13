@@ -14,6 +14,7 @@ let tokenTwo, tokenThree;
 let collatJoinTwo, collatJoinThree;
 let collateralBytesList = [mockTokenBytes, mockToken2Bytes, mockToken3Bytes];
 let debtCeiling;
+let lmcvProxy, lmcvProxyFactory;
 
 //Format as wad
 function fwad(wad){
@@ -61,8 +62,11 @@ describe("Testing Setup for functions", function () {
         LMCVFactory = await ethers.getContractFactory("LMCV");
         lmcv = await LMCVFactory.deploy();
 
+        lmcvProxyFactory = await ethers.getContractFactory("LMCVProxy");
+        lmcvProxy = await lmcvProxyFactory.deploy(lmcv.address);
+
         dPrimeJoinFactory = await ethers.getContractFactory("dPrimeJoin");
-        dPrimeJoin = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address, owner.address, fray("0.01"));
+        dPrimeJoin = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address, lmcvProxy.address, owner.address, fray("0.01"));
 
         tokenFactory = await ethers.getContractFactory("MockTokenTwo");
         mockToken = await tokenFactory.deploy("TSTR");

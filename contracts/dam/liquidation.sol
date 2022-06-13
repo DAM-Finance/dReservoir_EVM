@@ -14,7 +14,8 @@ interface LMCVLike {
     function pullDPrime(address src, uint256 rad) external;
 }
 
-contract Liquidation {
+contract Liquidation { //TODO: Turn this contract into staking contract instead???? 
+//Then staking contract can control the liquidationDPrime amounts
 
     LMCVLike public immutable lmcv;         // CDP Engine
     dPrimeLike public immutable dPrime;     // Stablecoin Token
