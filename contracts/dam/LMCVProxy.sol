@@ -38,14 +38,14 @@ contract LMCVProxy {
     mapping (bytes32 => address)        public collateralContracts;
     mapping (bytes32 => address)        public collateralJoins;
 
-    address public immutable lmcv;         // CDP Engine
+    address public lmcv;
     address public dPrimeJoin;
-    uint256 public live;  // Active Flag
+    uint256 public live;
 
     // --- Events ---
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event Cage();
+    event Cage(uint256 indexed status);
 
     modifier auth {
         require(wards[msg.sender] == 1, "LMCVProxy/not-authorized");
@@ -65,6 +65,11 @@ contract LMCVProxy {
         emit Rely(msg.sender);
     }
 
+    function setLMCV(address _lmcv) external auth {
+        require(_lmcv != address(0x0), "LMCVProxy/Can't be zero address");
+        lmcv = _lmcv;
+    }
+
     function setDPrimeJoin(address _dPrimeJoin) external auth {
         require(_dPrimeJoin != address(0x0), "LMCVProxy/Can't be zero address");
         dPrimeJoin = _dPrimeJoin;
@@ -81,9 +86,9 @@ contract LMCVProxy {
         emit Deny(usr);
     }
 
-    function cage() external auth {
-        live = 0;
-        emit Cage();
+    function setLive(uint256 status) external auth {
+        live = status;
+        emit Cage(status);
     }
 
     function editCollateral(bytes32 name, address collateralJoin, address collateralContract, uint256 amount) external auth alive {
