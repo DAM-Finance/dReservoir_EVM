@@ -28,7 +28,6 @@ contract LMCV {
         uint256 liqBonusMult;       // [ray] - ie. 5% for bluechip, 15% for junk
     }
 
-    //TODO:acceptCollateral() 
     bytes32[] public CollateralList;
     mapping (bytes32 => CollateralType)                 public CollateralTypes;
 
