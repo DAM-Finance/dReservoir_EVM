@@ -6,7 +6,7 @@
 // - `ray`: fixed point decimal with 27 decimals (for precise quantites, e.g. ratios)
 // - `rad`: fixed point decimal with 45 decimals (result of integer multiplication with a `wad` and a `ray`)
 
-pragma solidity 0.8.14;
+pragma solidity 0.8.7;
 
 import "hardhat/console.sol";
 
@@ -124,14 +124,6 @@ contract LMCV {
 
     // --- Math ---
     uint256 constant RAY = 10 ** 27;
-    function _add(uint256 x, int256 y) internal pure returns (uint256 z) {
-        unchecked {
-            z = x + uint256(y);
-        }
-        require(y >= 0 || z <= x);
-        require(y <= 0 || z >= x);
-    }
-
     // Can only be used sensibly with the following combination of units:
     // - `rmul(wad, ray) -> wad`
     // - `rmul(ray, ray) -> ray`
@@ -143,13 +135,27 @@ contract LMCV {
     }
 
     // --- Protocol Admin ---
-    //TODO: loanAlive,liqAlive,mintFee,feeTaker
+    function setLoanAlive(uint256 flag) external auth {
+        loanLive = flag;
+    }
 
+    function setLiqAlive(uint256 flag) external auth {
+        liqLive = flag;
+    }
 
     function setProtocolDebtCeiling(uint256 rad) external auth {
         ProtocolDebtCeiling = rad;
     }
 
+    function setMintFee(uint256 ray) external auth {
+        mintFee = ray;
+    }
+
+    function setFeeTaker(address treasury) external auth {
+        require(treasury != address(0x0), "LMCV/Can't be zero address");
+        feeTaker = treasury;
+    }
+    
     // --- Liquidation Admin ---
     function setProtocolFeeRemovalMult(uint256 ray) external auth {
         protocolFeeRemovalMult = ray;
@@ -522,10 +528,6 @@ contract LMCV {
         assembly{ z := or(x, y)}
     }
 
-    function both(bool x, bool y) internal pure returns (bool z) {
-        assembly{ z := and(x, y)}
-    }
-
     //WARNING: Does not care about order
     function deleteElement(bytes32[] storage array, uint256 i) internal {
         require(i < array.length, "Array out of bounds");
@@ -533,15 +535,15 @@ contract LMCV {
         array.pop();
     }
 
-    function bytes32ToString(bytes32 _bytes32) public pure returns (string memory) {
-        uint8 i = 0;
-        while(i < 32 && _bytes32[i] != 0) {
-            i++;
-        }
-        bytes memory bytesArray = new bytes(i);
-        for (i = 0; i < 32 && _bytes32[i] != 0; i++) {
-            bytesArray[i] = _bytes32[i];
-        }
-        return string(bytesArray);
-    }
+    // function bytes32ToString(bytes32 _bytes32) public pure returns (string memory) {
+    //     uint8 i = 0;
+    //     while(i < 32 && _bytes32[i] != 0) {
+    //         i++;
+    //     }
+    //     bytes memory bytesArray = new bytes(i);
+    //     for (i = 0; i < 32 && _bytes32[i] != 0; i++) {
+    //         bytesArray[i] = _bytes32[i];
+    //     }
+    //     return string(bytesArray);
+    // }
 }

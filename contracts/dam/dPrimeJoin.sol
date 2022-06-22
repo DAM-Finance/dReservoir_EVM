@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity 0.8.14;
+pragma solidity 0.8.7;
 
 import "hardhat/console.sol";
 
@@ -32,6 +32,12 @@ contract dPrimeJoin {
     }
 
     constructor(address _lmcv, address _dPrime, address _lmcvProxy, address _treasury, uint256 _mintFee) {
+        require(_lmcv != address(0x0)
+            && _dPrime != address(0x0)
+            && _lmcvProxy != address(0x0)
+            && _treasury != address(0x0),
+            "dPrimeJoin/Can't be zero address"
+        );
         lmcv = LMCVLike(_lmcv);
         dPrime = dPrimeLike(_dPrime);
         mintFee = _mintFee;

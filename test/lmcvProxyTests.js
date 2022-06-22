@@ -109,7 +109,7 @@ describe("Testing LMCVProxy", function () {
         await lmcvProxy.editCollateral(mockToken3Bytes, collatJoinThree.address, tokenThree.address, MAX_INT);
     });
 
-    describe("Loan function testing", function () {
+    describe("beginLoan function testing", function () {
 
         beforeEach(async function () {
             userLMCVProxy = lmcvProxy.connect(addr1);
@@ -121,6 +121,9 @@ describe("Testing LMCVProxy", function () {
             await userLMCV.proxyApprove(lmcvProxy.address);
 
             await userLMCVProxy.beginLoan(collateralBytesList, [fwad("100"), fwad("200"), fwad("300")], fwad("1000"));
+
+            expect(await dPrime.balanceOf(owner.address)).to.equal(fwad("10"));
+            expect(await dPrime.balanceOf(addr1.address)).to.equal(fwad("990"));
         });
     });
 

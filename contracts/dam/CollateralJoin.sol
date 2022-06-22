@@ -2,7 +2,7 @@
 
 /// CollateralJoin.sol -- Basic token adapter
 
-pragma solidity 0.8.14;
+pragma solidity 0.8.7;
 
 interface CollateralLike {
     function decimals() external view returns (uint256);
@@ -64,13 +64,13 @@ contract CollateralJoin {
         _;
     }
 
-    constructor(address lmcv_, bytes32 collateralName_, address collateralContract_) {
+    constructor(address lmcv_, bytes32 collateralName_, address collateralContract_, uint256 decimals_) {
         wards[msg.sender] = 1;
         live = 1;
         lmcv = LMCVLike(lmcv_);
         collateralName = collateralName_;
         collateralContract = CollateralLike(collateralContract_);
-        dec = collateralContract.decimals();
+        dec = decimals_;
         emit Rely(msg.sender);
     }
 
@@ -101,7 +101,7 @@ contract CollateralJoin {
 
     //TODO: Test
     function exit(address usr, uint256 wad) external {
-        require(wad <= 2 ** 255, "CollateralJoin/overflow");
+        require(live == 1, "CollateralJoin/not-live");
         lmcv.pullCollateral(collateralName, msg.sender, wad);
         require(collateralContract.transfer(usr, wad), "CollateralJoin/failed-transfer");
         emit Exit(usr, wad);

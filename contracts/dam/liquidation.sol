@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.14;
+pragma solidity 0.8.7;
 
 import "hardhat/console.sol";
 
@@ -19,7 +19,6 @@ contract Liquidation { //TODO: Turn this contract into staking contract instead?
 
     LMCVLike public immutable lmcv;         // CDP Engine
     dPrimeLike public immutable dPrime;     // Stablecoin Token
-    uint256 constant RAY = 10 ** 27;
 
     constructor(address _lmcv, address _dPrime) {
         lmcv = LMCVLike(_lmcv);

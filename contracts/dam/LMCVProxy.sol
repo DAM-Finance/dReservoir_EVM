@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.14;
+pragma solidity 0.8.7;
 
 import "hardhat/console.sol";
 
@@ -41,8 +41,6 @@ contract LMCVProxy {
     address public immutable lmcv;         // CDP Engine
     address public dPrimeJoin;
     uint256 public live;  // Active Flag
-    uint256 constant RAY = 10 ** 27;
-    uint256 constant MAX_INT = 2**256 - 1;
 
     // --- Events ---
     event Rely(address indexed usr);
@@ -60,6 +58,7 @@ contract LMCVProxy {
     }
 
     constructor(address _lmcv) {
+        require(_lmcv != address(0x0), "LMCVProxy/Can't be zero address");
         wards[msg.sender] = 1;
         live = 1;
         lmcv = _lmcv;
@@ -67,6 +66,7 @@ contract LMCVProxy {
     }
 
     function setDPrimeJoin(address _dPrimeJoin) external auth {
+        require(_dPrimeJoin != address(0x0), "LMCVProxy/Can't be zero address");
         dPrimeJoin = _dPrimeJoin;
     }
 
@@ -89,14 +89,14 @@ contract LMCVProxy {
     function editCollateral(bytes32 name, address collateralJoin, address collateralContract, uint256 amount) external auth alive {
         collateralContracts[name] = collateralContract;
         collateralJoins[name] = collateralJoin;
-        ERC20Like(collateralContract).approve(collateralJoin, amount);
+        require(ERC20Like(collateralContract).approve(collateralJoin, amount), "LMCVProxy/Approval failed");
     }
 
     function beginLoan(bytes32[] memory collaterals, uint256[] memory amounts, uint256 wad) external alive {
         require(collaterals.length == amounts.length, "LMCVProxy/Not the same length");
 
         for(uint256 i = 0; i < collaterals.length; i++){
-            ERC20Like(collateralContracts[collaterals[i]]).transferFrom(msg.sender, address(this), amounts[i]);
+            require(ERC20Like(collateralContracts[collaterals[i]]).transferFrom(msg.sender, address(this), amounts[i]), "LMCVProxy/transfer failed");
             CollateralJoinLike(collateralJoins[collaterals[i]]).join(msg.sender, amounts[i]);
         }
         LMCVLike(lmcv).loan(collaterals, amounts, wad, msg.sender);
