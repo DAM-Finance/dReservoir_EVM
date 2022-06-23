@@ -4,7 +4,7 @@
 
 pragma solidity ^0.8.7;
 
-contract MockToken {
+contract MockTokenTwo {
     uint256                                           public  totalSupply;
     mapping (address => uint256)                      public  balanceOf;
     mapping (address => mapping (address => uint256)) public  allowance;
@@ -20,7 +20,7 @@ contract MockToken {
         return approve(guy, type(uint256).max);
     }
 
-    function approve(address guy, uint256 wad) public returns (bool) {
+    function approve(address guy, uint256 wad) internal returns (bool) {
         allowance[msg.sender][guy] = wad;
 
         return true;
@@ -51,7 +51,7 @@ contract MockToken {
         burn(msg.sender, wad);
     }
 
-    function mint(address guy, uint256 wad) public {
+    function mint(address guy, uint256 wad) internal {
         balanceOf[guy] = balanceOf[guy] + wad;
         totalSupply = totalSupply + wad;
     }

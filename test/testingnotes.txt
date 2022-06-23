@@ -1,4 +1,0 @@
-Need tests for (unfinished):
-
-Vat:
-    grab, heal, suck,

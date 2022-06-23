@@ -2,7 +2,7 @@
 
 /// GemJoin.sol -- Basic token adapter
 
-pragma solidity 0.8.9;
+pragma solidity ^0.8.9;
 
 interface GemLike {
     function decimals() external view returns (uint256);
@@ -93,8 +93,8 @@ contract GemJoin {
     function join(address usr, uint256 wad) external {
         require(live == 1, "GemJoin/not-live");
         require(int256(wad) >= 0, "GemJoin/overflow");
-        require(gem.transferFrom(msg.sender, address(this), wad), "GemJoin/failed-transfer");
         vat.slip(ilk, usr, int256(wad));
+        require(gem.transferFrom(msg.sender, address(this), wad), "GemJoin/failed-transfer");
         emit Join(usr, wad);
     }
 
