@@ -51,6 +51,7 @@ contract CollateralJoin {
     bytes32 public immutable collateralName; 
     CollateralLike public immutable collateralContract;
     uint256 public immutable dec;
+    address public immutable lmcvProxy;
 
     // --- Events ---
     event Rely(address indexed usr);
@@ -64,10 +65,16 @@ contract CollateralJoin {
         _;
     }
 
-    constructor(address lmcv_, bytes32 collateralName_, address collateralContract_, uint256 decimals_) {
+    modifier proxyContract {
+        require(msg.sender == lmcvProxy, "CollateralJoin/Not proxy contract");
+        _;
+    }
+
+    constructor(address lmcv_, address _lmcvProxy, bytes32 collateralName_, address collateralContract_, uint256 decimals_) {
         wards[msg.sender] = 1;
         live = 1;
         lmcv = LMCVLike(lmcv_);
+        lmcvProxy = _lmcvProxy;
         collateralName = collateralName_;
         collateralContract = CollateralLike(collateralContract_);
         dec = decimals_;
@@ -103,6 +110,13 @@ contract CollateralJoin {
     function exit(address usr, uint256 wad) external {
         require(live == 1, "CollateralJoin/not-live");
         lmcv.pullCollateral(collateralName, msg.sender, wad);
+        require(collateralContract.transfer(usr, wad), "CollateralJoin/failed-transfer");
+        emit Exit(usr, wad);
+    }
+
+    function proxyExit(address usr, uint256 wad) external proxyContract{
+        require(live == 1, "CollateralJoin/not-live");
+        lmcv.pullCollateral(collateralName, usr, wad);
         require(collateralContract.transfer(usr, wad), "CollateralJoin/failed-transfer");
         emit Exit(usr, wad);
     }

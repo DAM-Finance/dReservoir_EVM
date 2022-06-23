@@ -274,7 +274,7 @@ contract LMCV {
     //eg: measure of whether a vault is safe or not is done based on
     //the vault as a whole being overcollateralized properly
     function loan(
-        bytes32[] memory collats,           // [wad]
+        bytes32[] memory collats,        
         uint256[] memory collateralChange,  // [wad]
         uint256 dPrimeChange,               // [wad]
         address user
