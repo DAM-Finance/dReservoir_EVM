@@ -25,6 +25,7 @@ contract dPrimeJoin {
     // --- Events ---
     event Join(address indexed usr, uint256 wad);
     event Exit(address indexed usr, uint256 wad);
+    event FeeChange(uint256 indexed mintFee);
 
     modifier auth {
         require(msg.sender == lmcvProxy, "dPrimeJoin/not-authorized");
@@ -43,6 +44,16 @@ contract dPrimeJoin {
         mintFee = _mintFee;
         treasury = _treasury;
         lmcvProxy = _lmcvProxy;
+    }
+
+    function setMintFee(uint256 _mintFee) external auth { // [ray]
+        mintFee = _mintFee;
+        emit FeeChange(mintFee);
+    }
+
+    function setTreasury(address _treasury) external auth {
+        require(_treasury != address(0x0), "LMCVProxy/Can't be zero address");
+        treasury = _treasury;
     }
 
     function _rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {

@@ -274,7 +274,7 @@ contract LMCV {
     //eg: measure of whether a vault is safe or not is done based on
     //the vault as a whole being overcollateralized properly
     function loan(
-        bytes32[] memory collats,           // [wad]
+        bytes32[] memory collats,        
         uint256[] memory collateralChange,  // [wad]
         uint256 dPrimeChange,               // [wad]
         address user
@@ -384,7 +384,7 @@ contract LMCV {
 
     //Coin prices increase and they want to take out more without changing collateral
     //Or coin prices decrease and they want to repay dPrime
-    function addLoanedDPrime(address user, uint256 rad) external { // [rad]
+    function addLoanedDPrime(address user, uint256 rad) loanAlive external { // [rad]
         require(approval(user, msg.sender), "LMCV/Owner must consent");
         require(_getMaxDPrime(user) > (debtDPrime[user]+ rad), "LMCV/Minting more dPrime than allowed");
         ProtocolDebt += rad;
