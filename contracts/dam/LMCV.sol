@@ -384,7 +384,7 @@ contract LMCV {
 
     //Coin prices increase and they want to take out more without changing collateral
     //Or coin prices decrease and they want to repay dPrime
-    function addLoanedDPrime(address user, uint256 rad) external { // [rad]
+    function addLoanedDPrime(address user, uint256 rad) loanAlive external { // [rad]
         require(approval(user, msg.sender), "LMCV/Owner must consent");
         require(_getMaxDPrime(user) > (debtDPrime[user]+ rad), "LMCV/Minting more dPrime than allowed");
         ProtocolDebt += rad;
