@@ -81,17 +81,11 @@ describe("Testing LMCVProxy", function () {
 
         debtCeiling = frad("50000");
         await lmcv.setProtocolDebtCeiling(debtCeiling);
-
-        await lmcv.setPartialLiqMax(fray(".50"));
-        await lmcv.setProtocolLiqFeeMult(fray(".015"));
         await lmcv.setLiquidationMult(fray(".60"));
-        await lmcv.setLiquidationFloor(frad("10"));
-        await lmcv.setWholeCDPLiqMult(fray(".75"));
-        await lmcv.setProtocolFeeRemovalMult(fray(".92"));
 
-        await lmcv.editAcceptedCollateralType(mockTokenBytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"));
-        await lmcv.editAcceptedCollateralType(mockToken2Bytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"));
-        await lmcv.editAcceptedCollateralType(mockToken3Bytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"));
+        await lmcv.editAcceptedCollateralType(mockTokenBytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), fray("1"));
+        await lmcv.editAcceptedCollateralType(mockToken2Bytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), fray("1"));
+        await lmcv.editAcceptedCollateralType(mockToken3Bytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), fray("1"));
 
         await lmcv.updateSpotPrice(mockTokenBytes, fray("40"));
         await lmcv.updateSpotPrice(mockToken2Bytes, fray("20"));
@@ -185,8 +179,8 @@ describe("Testing LMCVProxy", function () {
 
             await expect(userTwoLMCV.lockedCollateralList(addr1.address, 0)).to.be.reverted;
 
-            expect(await lmcv.withdrawnDPrime(addr1.address)).to.equal("0");
-            expect(await lmcv.debtDPrime(addr1.address)).to.equal("0");
+            expect(await lmcv.dPrime(addr1.address)).to.equal("0");
+            expect(await lmcv.normalDebt(addr1.address)).to.equal("0");
 
             expect( await mockToken.balanceOf(addr1.address)).to.equal(fwad("1000"));
             expect( await mockTokenTwo.balanceOf(addr1.address)).to.equal(fwad("1000"));
@@ -226,8 +220,8 @@ describe("Testing LMCVProxy", function () {
             expect(await lmcv.lockedCollateral(addr1.address, mockToken2Bytes)).to.equal(fwad("0"));
             expect(await lmcv.lockedCollateral(addr1.address, mockToken3Bytes)).to.equal(fwad("300"));
 
-            expect(await lmcv.withdrawnDPrime(addr1.address)).to.equal(frad("200"));
-            expect(await lmcv.debtDPrime(addr1.address)).to.equal(frad("200"));
+            expect(await lmcv.dPrime(addr1.address)).to.equal(frad("0"));
+            expect(await lmcv.normalDebt(addr1.address)).to.equal(fwad("200"));
 
             expect( await mockToken.balanceOf(addr1.address)).to.equal(fwad("1000"));
             expect( await mockTokenTwo.balanceOf(addr1.address)).to.equal(fwad("1000"));
@@ -237,8 +231,8 @@ describe("Testing LMCVProxy", function () {
 
             await expect(userTwoLMCV.lockedCollateralList(addr1.address, 0)).to.be.reverted;
 
-            expect(await lmcv.withdrawnDPrime(addr1.address)).to.equal("0");
-            expect(await lmcv.debtDPrime(addr1.address)).to.equal("0");
+            expect(await lmcv.dPrime(addr1.address)).to.equal("0");
+            expect(await lmcv.normalDebt(addr1.address)).to.equal("0");
 
             expect( await mockToken.balanceOf(addr1.address)).to.equal(fwad("1000"));
             expect( await mockTokenTwo.balanceOf(addr1.address)).to.equal(fwad("1000"));
