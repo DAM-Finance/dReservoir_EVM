@@ -209,7 +209,7 @@ contract Vat {
 
         urn.ink = _add(urn.ink, dink); //collat
         urn.art = _add(urn.art, dart); //dai
-        ilk.Art = _add(ilk.Art, dart); 
+        ilk.Art = _add(ilk.Art, dart);
 
         int256 dtab = _int256(ilk.rate) * dart;
         uint256 tab = ilk.rate * urn.art;
