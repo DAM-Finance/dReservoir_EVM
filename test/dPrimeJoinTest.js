@@ -55,7 +55,7 @@ describe("dPrimeJoin Testing", function () {
 
         await lmcv.administrate(collateralJoin.address, 1);
         await lmcv.administrate(dPrimeJoin.address, 1);
-        await lmcv.editAcceptedCollateralType(mockTokenBytes, fwad("10000"), fwad("1"), fray("0.5"), fray("0.08"), fray("1"));
+        await lmcv.editAcceptedCollateralType(mockTokenBytes, fwad("10000"), fwad("1"), fray("0.5"), fray("0.08"));
 
         debtCeiling = frad("50000");
         await lmcv.setProtocolDebtCeiling(debtCeiling);

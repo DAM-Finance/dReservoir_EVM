@@ -117,7 +117,7 @@ describe("Testing Setup for functions", function () {
     });
 
     it("should set up collateralType mapping", async function () {
-        await lmcv.editAcceptedCollateralType(mockTokenBytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), fray("1"));
+        await lmcv.editAcceptedCollateralType(mockTokenBytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"));
         let collateralType = await lmcv.CollateralTypes(mockTokenBytes);
         // console.log(collateralType);
         expect(collateralType['spotPrice']).to.equal(0);
@@ -126,9 +126,8 @@ describe("Testing Setup for functions", function () {
         expect(collateralType['debtFloor']).to.equal("1000000000000000000");
         expect(collateralType['debtMult']).to.equal("500000000000000000000000000");
         expect(collateralType['liqBonusMult']).to.equal("80000000000000000000000000");
-        expect(collateralType['rate']).to.equal("1000000000000000000000000000");
 
-        await lmcv.editAcceptedCollateralType(mockToken2Bytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), fray("1"));
+        await lmcv.editAcceptedCollateralType(mockToken2Bytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"));
         let collateralType2 = await lmcv.CollateralTypes(mockToken2Bytes);
         // console.log(collateralType);
         expect(collateralType2['spotPrice']).to.equal(0);
@@ -137,9 +136,8 @@ describe("Testing Setup for functions", function () {
         expect(collateralType2['debtFloor']).to.equal("1000000000000000000");
         expect(collateralType2['debtMult']).to.equal("500000000000000000000000000");
         expect(collateralType2['liqBonusMult']).to.equal("80000000000000000000000000");
-        expect(collateralType2['rate']).to.equal("1000000000000000000000000000");
 
-        await lmcv.editAcceptedCollateralType(mockToken3Bytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), fray("1"));
+        await lmcv.editAcceptedCollateralType(mockToken3Bytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"));
         let collateralType3 = await lmcv.CollateralTypes(mockToken3Bytes);
         // console.log(collateralType);
         expect(collateralType3['spotPrice']).to.equal(0);
@@ -148,7 +146,6 @@ describe("Testing Setup for functions", function () {
         expect(collateralType3['debtFloor']).to.equal("1000000000000000000");
         expect(collateralType3['debtMult']).to.equal("500000000000000000000000000");
         expect(collateralType3['liqBonusMult']).to.equal("80000000000000000000000000");
-        expect(collateralType3['rate']).to.equal("1000000000000000000000000000");
     });
 
     it("should update spotPrice for collaterals and addr1 should have collateral worth $43290", async function () {
