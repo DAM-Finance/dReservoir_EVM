@@ -528,6 +528,46 @@ describe("Testing LMCV", function () {
         });
     });
 
+    describe("Mint Fee testing", function () {
+        it("Mint fee should behave correctly when 2 loans taken out at different stability rates", async function () {
+
+            await lmcv.setMintFee(fray(".0025"));
+
+            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr1.address);
+            expect(await userLMCV.normalDebt(addr1.address)).to.equal(fwad("2000"));
+            expect(await userLMCV.dPrime(addr1.address)).to.equal(frad("1995"));
+            expect(await lmcv.dPrime(owner.address)).to.equal(frad("5"));
+
+            await lmcv.updateRate(fray(".1"));
+            expect(await lmcv.StabilityRate()).to.equal(fray("1.1"));
+
+            expect(await lmcv.dPrime(owner.address)).to.equal(frad("205"));
+
+            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr1.address);
+            expect(await lmcv.dPrime(addr1.address)).to.equal(frad("4189.5"));
+            expect(await lmcv.normalDebt(addr1.address)).to.equal(fwad("4000"));
+            expect(await lmcv.dPrime(owner.address)).to.equal(frad("210.5"));
+
+
+            await userTwoLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr2.address);
+            expect(await userTwoLMCV.normalDebt(addr2.address)).to.equal(fwad("2000"));
+            expect(await userTwoLMCV.dPrime(addr2.address)).to.equal(frad("2194.5"));
+
+            await userTwoLMCV.moveDPrime(addr2.address, addr1.address, frad("2194.5"));
+            expect(await userLMCV.dPrime(addr1.address)).to.equal(frad("6384"));
+
+            await lmcv.updateRate(fray(".1"));
+            expect(await lmcv.StabilityRate()).to.equal(fray("1.2"));
+
+            expect(await lmcv.dPrime(owner.address)).to.equal(frad("816"));
+
+            await userLMCV.repay(collateralBytesList, [fwad("100"), fwad("200"), fwad("400")], fwad("4000"), addr1.address);
+            expect(await lmcv.dPrime(addr1.address)).to.equal(frad("1584"));
+            expect(await lmcv.normalDebt(addr1.address)).to.equal(0);
+            expect(await lmcv.totalNormalizedDebt()).to.equal(fwad("2000"));
+        });
+    });
+
     //TODO: Minting fee in LMCV Tests
 });
 
