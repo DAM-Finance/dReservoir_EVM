@@ -93,8 +93,10 @@ contract LMCV {
     }
 
     // --- Allowance ---
-    function proxyApprove(address user) external {
-        proxyApprovals[msg.sender][user] = 1;
+    function proxyApprove(address[] memory users) external {
+        for(uint256 i = 0; i < users.length; i++){
+            proxyApprovals[msg.sender][users[i]] = 1;
+        }
     }
 
     function proxyDisapprove(address user) external {

@@ -110,7 +110,7 @@ async function main() {
     // await dPrime.rely(dPrimeJoin.address);
 
     let userDPrimeJoin = dPrimeJoin.connect(addr1);
-    await userLMCV.proxyApprove(userDPrimeJoin.address);
+    await userLMCV.proxyApprove([userDPrimeJoin.address]);
     await userDPrimeJoin.exit(addr1.address, fwad("2000"));
    
 

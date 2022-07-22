@@ -405,7 +405,7 @@ describe("Testing LMCV", function () {
             await dPrime.rely(dPrimeJoin.address);
 
             let userDPrimeJoin = dPrimeJoin.connect(addr1);
-            await userLMCV.proxyApprove(userDPrimeJoin.address);
+            await userLMCV.proxyApprove([userDPrimeJoin.address]);
             await userDPrimeJoin.exit(addr1.address, fwad("50"));
 
             await userLMCV.repay(collateralBytesList, [fwad("0"), fwad("100"), fwad("200")], fwad("900"), addr1.address);
@@ -427,7 +427,7 @@ describe("Testing LMCV", function () {
             await dPrime.rely(dPrimeJoin.address);
 
             let userDPrimeJoin = dPrimeJoin.connect(addr1);
-            await userLMCV.proxyApprove(userDPrimeJoin.address);
+            await userLMCV.proxyApprove([userDPrimeJoin.address]);
             await userDPrimeJoin.exit(addr1.address, fwad("777"));
             await userDPrimeJoin.join(addr1.address, fwad("769"));
             
@@ -498,7 +498,7 @@ describe("Testing LMCV", function () {
             await dPrime.rely(dPrimeJoin.address);
 
             let userDPrimeJoin = dPrimeJoin.connect(addr1);
-            await userLMCV.proxyApprove(userDPrimeJoin.address);
+            await userLMCV.proxyApprove([userDPrimeJoin.address]);
             await userDPrimeJoin.exit(addr1.address, fwad("777"));
             await userDPrimeJoin.join(addr1.address, fwad("600"));
 

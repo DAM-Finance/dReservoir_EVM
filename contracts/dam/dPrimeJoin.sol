@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.7;
 
+import "hardhat/console.sol";
+
 interface dPrimeLike {
     function burn(address,uint256) external;
     function mint(address,uint256) external;
@@ -9,6 +11,7 @@ interface dPrimeLike {
 
 interface LMCVLike {
     function moveDPrime(address src, address dst, uint256 frad) external;
+    function dPrime(address user) external returns (uint256);
 }
 
 contract dPrimeJoin {
