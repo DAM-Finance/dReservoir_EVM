@@ -21,6 +21,7 @@ contract LMCV {
         uint256 debtFloor;          // [wad] - Account level
         uint256 debtMult;           // [ray] - ie. max 70% loaned out as dPrime
         uint256 liqBonusMult;       // [ray] - ie. 5% for bluechip, 15% for junk
+        bool    leveraged;
     }
 
     bytes32[] public CollateralList;
@@ -50,7 +51,7 @@ contract LMCV {
 
 
     // --- Events ---
-    event EditAcceptedCollateralType(bytes32 indexed collateralName, uint256 _debtCeiling, uint256 _debtFloor, uint256 _debtMult, uint256 _liqBonusMult);
+    event EditAcceptedCollateralType(bytes32 indexed collateralName, uint256 debtCeiling, uint256 debtFloor, uint256 debtMult, uint256 liqBonusMult, bool leveraged);
     event Liquidation(address indexed liquidated, address indexed liquidator, uint256 normalDebtChange, bytes32[] collats, uint256[] collateralChange);
     event LoanRepayment(uint256 indexed dPrimeChange, address indexed user, bytes32[] collats, uint256[] amounts);
     event CreateLiquidationDebt(address indexed debtReceiver, address indexed dPrimeReceiver, uint256 rad);
@@ -142,7 +143,7 @@ contract LMCV {
     }
 
     function setTreasury(address _treasury) external auth {
-        require(Treasury != address(0x0), "LMCV/Can't be zero address");
+        require(_treasury != address(0x0), "LMCV/Can't be zero address");
         Treasury = _treasury;
     }
     
@@ -169,6 +170,10 @@ contract LMCV {
         CollateralTypes[collateral].liqBonusMult = ray;
     }
 
+    function collatLeveraged(bytes32 collateral, bool _leveraged) external auth {
+        CollateralTypes[collateral].leveraged = _leveraged;
+    }
+
     function updateSpotPrice(bytes32 collateral, uint256 ray) external auth {
         CollateralTypes[collateral].spotPrice = ray;
         emit SpotUpdate(collateral, ray);
@@ -187,16 +192,18 @@ contract LMCV {
         uint256 _debtCeiling,       // [wad] - Protocol Level
         uint256 _debtFloor,         // [wad] - Account level
         uint256 _debtMult,          // [ray] - ie. max 70% loaned out as dPrime
-        uint256 _liqBonusMult      // [ray] - ie. 5% for bluechip, 15% for junk
+        uint256 _liqBonusMult,      // [ray] - ie. 5% for bluechip, 15% for junk
+        bool    _leveraged
     ) external auth {
         CollateralType memory collateralType = CollateralTypes[collateralName];
         collateralType.debtCeiling = _debtCeiling;
         collateralType.debtFloor = _debtFloor;
         collateralType.debtMult = _debtMult;
         collateralType.liqBonusMult = _liqBonusMult;
+        collateralType.leveraged = _leveraged;
 
         CollateralTypes[collateralName] = collateralType;
-        emit EditAcceptedCollateralType(collateralName, _debtCeiling, _debtFloor, _debtMult, _liqBonusMult);
+        emit EditAcceptedCollateralType(collateralName, _debtCeiling, _debtFloor, _debtMult, _liqBonusMult, _leveraged);
     }
 
     // --- Fungibility ---
@@ -208,16 +215,6 @@ contract LMCV {
     function pullCollateral(bytes32 collat, address user, uint256 wad) external auth {
         unlockedCollateral[user][collat] -= wad;
         emit PullCollateral(collat, user, wad);
-    }
-
-    function exitDPrime(address src, uint256 rad) external auth {
-        dPrime[src] -= rad;
-        emit ExitDPrime(src, rad);
-    }
-
-    function enterDPrime(address src, uint256 rad) external auth {
-        dPrime[src] += rad;
-        emit EnterDPrime(src, rad);
     }
 
     function moveCollateral(bytes32 collat, address src, address dst, uint256 wad) external {
@@ -245,8 +242,6 @@ contract LMCV {
     ) external loanAlive {
         require(collats.length == collateralChange.length, "LMCV/Need amount for each collateral");
         require(approval(user, msg.sender), "LMCV/Owner must consent");
-
-        //TODO: On a per collateral basis like repay
 
         //Locks up all collateral
         for(uint256 i = 0; i < collats.length; i++){
@@ -280,6 +275,11 @@ contract LMCV {
         //Need to check to make sure its under liquidation amount
         normalDebt[user]    += normalDebtChange;
         totalNormalizedDebt += normalDebtChange;
+        // console.log("NOLEV:     %s", getPortfolioValue(user));
+        // console.log("LEVERED:   %s\n", getPortfolioValue(user));
+        // console.log("MAXDEBT:   %s\n", getMaxDPrimeDebt(user));
+        
+
         require(_rmul(getPortfolioValue(user), liquidationMult) > normalDebt[user] * StabilityRate 
             && getMaxDPrimeDebt(user) > normalDebt[user] * StabilityRate, 
             "LMCV/Minting more dPrime than allowed"
@@ -289,8 +289,7 @@ contract LMCV {
         require(dPrimeTotalDebt < ProtocolDebtCeiling, "LMCV/Cannot extend past protocol debt ceiling");
 
         //Last thing that happens is actual ability to mint dPrime
-        //TODO: TEST MINTING FEE
-        uint256 mintingFee = normalDebtChange * StabilityRate / RAY * MintFee;
+        uint256 mintingFee = _rmul(normalDebtChange * StabilityRate, MintFee);
         dPrime[Treasury] += mintingFee;
         dPrime[user] += normalDebtChange * StabilityRate - mintingFee; //Test
         emit Loan(normalDebt[user], user, collats, collateralChange);
@@ -362,7 +361,9 @@ contract LMCV {
         require(dPrimeTotalDebt < ProtocolDebtCeiling, "LMCV/Cannot extend past protocol debt ceiling");
 
         //Last thing that happens is actual ability to mint dPrime
-        dPrime[user] += normalDebtChange * StabilityRate; //TODO: Test
+        uint256 mintingFee = _rmul(normalDebtChange * StabilityRate, MintFee);
+        dPrime[Treasury] += mintingFee;
+        dPrime[user] += normalDebtChange * StabilityRate - mintingFee; //Test
         emit AddLoanedDPrime(user, normalDebtChange);
     }
 
@@ -449,16 +450,42 @@ contract LMCV {
         return maxDPrime;
     }
 
-    function getPortfolioValue(address user) internal view returns (uint256 value){
+    function getPortfolioValue(address user) public view returns (uint256 value){ // [rad]
         bytes32[] storage lockedList = lockedCollateralList[user];
+        uint256 nlVal = 0;
+        uint256 lVal = 0;
         for(uint256 i = 0; i < lockedList.length; i++){
             CollateralType storage collateralType = CollateralTypes[lockedList[i]];
             if(lockedCollateral[user][lockedList[i]] > collateralType.debtFloor){
-                uint256 collatVal = lockedCollateral[user][lockedList[i]] * collateralType.spotPrice; // wad*ray -> rad
-                value += collatVal;
+                if(!collateralType.leveraged){
+                    nlVal += lockedCollateral[user][lockedList[i]] * collateralType.spotPrice; // wad*ray -> rad
+                } else {
+                    lVal += lockedCollateral[user][lockedList[i]] * collateralType.spotPrice;
+                }
             }
         }
-        return value;
+        // console.log("FNOLEV:        %s", nlVal);
+        // console.log("FLEVERED:      %s", lVal);
+        // console.log("FRMUL:         %s\n", _rmul(nlVal, RAY + lVal * RAY / nlVal));
+        return _rmul(nlVal, RAY + lVal * RAY / nlVal);
+    }
+
+    //TODO: Do we really need this?
+    function getLeverMult(address user) public view returns (uint256 leverMult){ // [ray]
+        bytes32[] storage lockedList = lockedCollateralList[user];
+        uint256 nlVal = 0;
+        uint256 lVal = 0;
+        for(uint256 i = 0; i < lockedList.length; i++){
+            CollateralType storage collateralType = CollateralTypes[lockedList[i]];
+            if(lockedCollateral[user][lockedList[i]] > collateralType.debtFloor){
+                if(!collateralType.leveraged){
+                    nlVal += lockedCollateral[user][lockedList[i]] * collateralType.spotPrice; // wad*ray -> rad
+                } else {
+                    lVal += lockedCollateral[user][lockedList[i]] * collateralType.spotPrice;
+                }
+            }
+        }
+        return RAY + lVal * RAY / nlVal;
     }
 
     function getUnlockedCollateralValue(address user, bytes32[] memory collateralList) external view returns (uint256 unlockedValue) {
@@ -482,15 +509,15 @@ contract LMCV {
         array.pop();
     }
 
-    // function bytes32ToString(bytes32 _bytes32) public pure returns (string memory) {
-    //     uint8 i = 0;
-    //     while(i < 32 && _bytes32[i] != 0) {
-    //         i++;
-    //     }
-    //     bytes memory bytesArray = new bytes(i);
-    //     for (i = 0; i < 32 && _bytes32[i] != 0; i++) {
-    //         bytesArray[i] = _bytes32[i];
-    //     }
-    //     return string(bytesArray);
-    // }
+    function bytes32ToString(bytes32 _bytes32) public pure returns (string memory) {
+        uint8 i = 0;
+        while(i < 32 && _bytes32[i] != 0) {
+            i++;
+        }
+        bytes memory bytesArray = new bytes(i);
+        for (i = 0; i < 32 && _bytes32[i] != 0; i++) {
+            bytesArray[i] = _bytes32[i];
+        }
+        return string(bytesArray);
+    }
 }

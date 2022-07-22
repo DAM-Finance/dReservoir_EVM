@@ -66,7 +66,7 @@ describe("Testing Setup for functions", function () {
         lmcvProxy = await lmcvProxyFactory.deploy(lmcv.address);
 
         dPrimeJoinFactory = await ethers.getContractFactory("dPrimeJoin");
-        dPrimeJoin = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address, lmcvProxy.address, owner.address, fray("0.01"));
+        dPrimeJoin = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address, lmcvProxy.address);
 
         tokenFactory = await ethers.getContractFactory("MockTokenTwo");
         mockToken = await tokenFactory.deploy("TSTR");
@@ -117,7 +117,7 @@ describe("Testing Setup for functions", function () {
     });
 
     it("should set up collateralType mapping", async function () {
-        await lmcv.editAcceptedCollateralType(mockTokenBytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"));
+        await lmcv.editAcceptedCollateralType(mockTokenBytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), false);
         let collateralType = await lmcv.CollateralTypes(mockTokenBytes);
         // console.log(collateralType);
         expect(collateralType['spotPrice']).to.equal(0);
@@ -127,7 +127,7 @@ describe("Testing Setup for functions", function () {
         expect(collateralType['debtMult']).to.equal("500000000000000000000000000");
         expect(collateralType['liqBonusMult']).to.equal("80000000000000000000000000");
 
-        await lmcv.editAcceptedCollateralType(mockToken2Bytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"));
+        await lmcv.editAcceptedCollateralType(mockToken2Bytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), false);
         let collateralType2 = await lmcv.CollateralTypes(mockToken2Bytes);
         // console.log(collateralType);
         expect(collateralType2['spotPrice']).to.equal(0);
@@ -137,7 +137,7 @@ describe("Testing Setup for functions", function () {
         expect(collateralType2['debtMult']).to.equal("500000000000000000000000000");
         expect(collateralType2['liqBonusMult']).to.equal("80000000000000000000000000");
 
-        await lmcv.editAcceptedCollateralType(mockToken3Bytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"));
+        await lmcv.editAcceptedCollateralType(mockToken3Bytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), false);
         let collateralType3 = await lmcv.CollateralTypes(mockToken3Bytes);
         // console.log(collateralType);
         expect(collateralType3['spotPrice']).to.equal(0);
