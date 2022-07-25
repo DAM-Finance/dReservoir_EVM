@@ -1,0 +1,1 @@
+//GLMR is base currency and not XRC20 - Must be treated differently

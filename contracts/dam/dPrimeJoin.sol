@@ -10,8 +10,8 @@ interface dPrimeLike {
 }
 
 interface LMCVLike {
-    function pushDPrime(address src, uint256 rad) external;
-    function pullDPrime(address src, uint256 rad) external;
+    function enterDPrime(address src, uint256 rad) external;
+    function exitDPrime(address src, uint256 rad) external;
 }
 
 contract dPrimeJoin {
@@ -65,13 +65,13 @@ contract dPrimeJoin {
     // --- User's functions ---
     function join(address usr, uint256 wad) external {
         dPrime.burn(msg.sender, wad);
-        lmcv.pushDPrime(usr, wad * RAY);
+        lmcv.enterDPrime(usr, wad * RAY);
         emit Join(usr, wad);
     }
 
     function exit(address usr, uint256 wad) external {
         uint256 fee = _rmul(wad, mintFee); // [wad]
-        lmcv.pullDPrime(msg.sender, wad * RAY);
+        lmcv.exitDPrime(msg.sender, wad * RAY);
         dPrime.mint(treasury, fee);
         dPrime.mint(usr, wad-fee);
         emit Exit(usr, wad);
@@ -79,7 +79,7 @@ contract dPrimeJoin {
 
     function proxyExit(address usr, uint256 wad) external auth {
         uint256 fee = _rmul(wad, mintFee); // [wad]
-        lmcv.pullDPrime(usr, wad * RAY);
+        lmcv.exitDPrime(usr, wad * RAY);
         dPrime.mint(treasury, fee);
         dPrime.mint(usr, wad-fee);
         emit Exit(usr, wad);

@@ -85,15 +85,8 @@ describe("Testing LMCV", function () {
 
         debtCeiling = frad("50000");
         await lmcv.setProtocolDebtCeiling(debtCeiling);
-
-        await lmcv.setPartialLiqMax(fray(".50"));
-        await lmcv.setProtocolLiqFeeMult(fray(".015"));
         await lmcv.setLiquidationMult(fray(".60"));
-        await lmcv.setLiquidationFloor(frad("10"));
-        await lmcv.setWholeCDPLiqMult(fray(".75"));
-        await lmcv.setProtocolFeeRemovalMult(fray(".92"));
         
-
         await setupUser(addr1, ["555", "666", "777"]);
         await setupUser(addr2, ["1000", "1000", "1000"]);
         await setupUser(addr3, ["0", "0", "0"]);
@@ -111,7 +104,7 @@ describe("Testing LMCV", function () {
         userThreeLMCV = lmcv.connect(addr3);
     });
 
-    describe("Loan function testing", function () {
+    describe("Loan() testing", function () {
         
         let inconsequentialAmounts = [fwad("50"), fwad("50"), fwad("50")];
         beforeEach(async function () {
@@ -173,7 +166,7 @@ describe("Testing LMCV", function () {
         });
 
         it("Should behave correctly when given collateral", async function () {
-            //Total value of collateral: $6000 
+            //Total value of collateral: $6000
             //Total loanable amount: $3000
             await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr1.address);
 
@@ -189,7 +182,7 @@ describe("Testing LMCV", function () {
             expect(await userLMCV.lockedCollateral(addr1.address, mockToken2Bytes)).to.equal(fwad("100"));
             expect(await userLMCV.lockedCollateral(addr1.address, mockToken3Bytes)).to.equal(fwad("200"));
 
-            expect(await userLMCV.debtDPrime(addr1.address)).to.equal("2000000000000000000000000000000000000000000000000");
+            expect(await userLMCV.normalDebt(addr1.address)).to.equal(fwad("2000"));
 
             let collateralType = await lmcv.CollateralTypes(mockTokenBytes);
             expect(collateralType['totalDebt']).to.equal(fwad("50"));
@@ -198,7 +191,8 @@ describe("Testing LMCV", function () {
             let collateralType3 = await lmcv.CollateralTypes(mockToken3Bytes);
             expect(collateralType3['totalDebt']).to.equal(fwad("200"));
 
-            expect(await lmcv.ProtocolDebt()).to.equal("2000000000000000000000000000000000000000000000000");
+            expect(await lmcv.dPrimeTotalDebt()).to.equal(frad("2000"));
+            expect(await lmcv.totalNormalizedDebt()).to.equal(fwad("2000"));
         });
 
         it("Should behave correctly when given collateral a second time", async function () {
@@ -221,7 +215,7 @@ describe("Testing LMCV", function () {
             expect(await userLMCV.lockedCollateral(addr1.address, mockToken2Bytes)).to.equal(fwad("200"));
             expect(await userLMCV.lockedCollateral(addr1.address, mockToken3Bytes)).to.equal(fwad("300"));
 
-            expect(await userLMCV.debtDPrime(addr1.address)).to.equal("3000000000000000000000000000000000000000000000000");
+            expect(await userLMCV.normalDebt(addr1.address)).to.equal(fwad("3000"));
 
             let collateralType = await lmcv.CollateralTypes(mockTokenBytes);
             expect(collateralType['totalDebt']).to.equal(fwad("150"));
@@ -230,7 +224,8 @@ describe("Testing LMCV", function () {
             let collateralType3 = await lmcv.CollateralTypes(mockToken3Bytes);
             expect(collateralType3['totalDebt']).to.equal(fwad("300"));
 
-            expect(await lmcv.ProtocolDebt()).to.equal("3000000000000000000000000000000000000000000000000");
+            expect(await lmcv.dPrimeTotalDebt()).to.equal(frad("3000"));
+            expect(await lmcv.totalNormalizedDebt()).to.equal(fwad("3000"));
         });
 
         it("Should behave correctly for second account", async function () {
@@ -255,7 +250,7 @@ describe("Testing LMCV", function () {
             expect(await userTwoLMCV.lockedCollateral(addr2.address, mockToken2Bytes)).to.equal(fwad("99"));
             expect(await userTwoLMCV.lockedCollateral(addr2.address, mockToken3Bytes)).to.equal(fwad("111"));
 
-            expect(await userTwoLMCV.debtDPrime(addr2.address)).to.equal("1475000000000000000000000000000000000000000000000");
+            expect(await userTwoLMCV.normalDebt(addr2.address)).to.equal(fwad("1475"));
 
             let collateralType = await lmcv.CollateralTypes(mockTokenBytes);
             expect(collateralType['totalDebt']).to.equal(fwad("238"));
@@ -264,7 +259,8 @@ describe("Testing LMCV", function () {
             let collateralType3 = await lmcv.CollateralTypes(mockToken3Bytes);
             expect(collateralType3['totalDebt']).to.equal(fwad("411"));
 
-            expect(await lmcv.ProtocolDebt()).to.equal("4475000000000000000000000000000000000000000000000");
+            expect(await lmcv.dPrimeTotalDebt()).to.equal(frad("4475"));
+            expect(await lmcv.totalNormalizedDebt()).to.equal(fwad("4475"));
         });
 
         it("Should behave correctly when given no collateral and more dPrime taken out", async function () {
@@ -290,7 +286,7 @@ describe("Testing LMCV", function () {
             expect(await userTwoLMCV.lockedCollateral(addr2.address, mockToken2Bytes)).to.equal(fwad("99"));
             expect(await userTwoLMCV.lockedCollateral(addr2.address, mockToken3Bytes)).to.equal(fwad("111"));
 
-            expect(await userTwoLMCV.debtDPrime(addr2.address)).to.equal("2475000000000000000000000000000000000000000000000");
+            expect(await userTwoLMCV.normalDebt(addr2.address)).to.equal(fwad("2475"));
 
             let collateralType = await lmcv.CollateralTypes(mockTokenBytes);
             expect(collateralType['totalDebt']).to.equal(fwad("238"));
@@ -299,7 +295,8 @@ describe("Testing LMCV", function () {
             let collateralType3 = await lmcv.CollateralTypes(mockToken3Bytes);
             expect(collateralType3['totalDebt']).to.equal(fwad("411"));
 
-            expect(await lmcv.ProtocolDebt()).to.equal("5475000000000000000000000000000000000000000000000");
+            expect(await lmcv.dPrimeTotalDebt()).to.equal(frad("5475"));
+            expect(await lmcv.totalNormalizedDebt()).to.equal(fwad("5475"));
         });
 
         it("Should break when more collateral taken out than allowed from multiple transactions", async function () {
@@ -321,7 +318,7 @@ describe("Testing LMCV", function () {
             await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("40"), addr1.address);
             await lmcv.collatDebtFloor(mockToken2Bytes, fwad("120"));
             await userLMCV.loan([mockTokenBytes, mockToken3Bytes], [fwad("0"), fwad("0")], fwad("100"), addr1.address);
-            expect(await userLMCV.debtDPrime(addr1.address)).to.equal(frad("140"));
+            expect(await userLMCV.normalDebt(addr1.address)).to.equal(fwad("140"));
         });
 
         it("When dust level is set to be above loan's collateral amount for specific token, puts CDP in unhealthy state and denies more dPrime loan", async function () {
@@ -331,7 +328,7 @@ describe("Testing LMCV", function () {
         });
     });
 
-    describe("AddLoanedDPrime", function () {
+    describe("AddLoanedDPrime() tests", function () {
         it("Should break if minting more dPrime than allowed from collateral", async function () {
             await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("40"), addr1.address);
             await expect(
@@ -343,15 +340,15 @@ describe("Testing LMCV", function () {
             await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("40"), addr1.address);
             await lmcv.setProtocolDebtCeiling(frad("50")); // [rad] $50
             await expect(
-                userLMCV.addLoanedDPrime( addr1.address, frad("51"))
+                userLMCV.addLoanedDPrime( addr1.address, fwad("51"))
             ).to.be.revertedWith("LMCV/Cannot extend past protocol debt ceiling");
             await lmcv.setProtocolDebtCeiling(debtCeiling);
         });
 
         it("Should work if everything filled in properly and below maxDPrime", async function () {
             await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("40"), addr1.address);
-            await userLMCV.addLoanedDPrime(addr1.address, frad("1000"));
-            expect(await userLMCV.debtDPrime(addr1.address)).to.equal(frad("1040"));
+            await userLMCV.addLoanedDPrime(addr1.address, fwad("1000"));
+            expect(await userLMCV.normalDebt(addr1.address)).to.equal(fwad("1040"));
         });
 
         it("When dust level is set to be above loan amount, this leads to no extra dPrime being loanable", async function () {
@@ -359,11 +356,9 @@ describe("Testing LMCV", function () {
             await lmcv.collatDebtFloor(mockToken2Bytes, fwad("120"));
             await expect(userLMCV.addLoanedDPrime(addr1.address, frad("1"))).to.be.revertedWith("LMCV/Minting more dPrime than allowed");
         });
-
-        
     });
 
-    describe("Repay function testing", function () {
+    describe("Repay() testing", function () {
         it("Should succeed when given a collateral and an appropriate amount of dPrime back", async function () {
             await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("777"), addr1.address);
             
@@ -378,7 +373,7 @@ describe("Testing LMCV", function () {
             expect(await userLMCV.lockedCollateral(addr1.address, mockToken2Bytes)).to.equal(fwad("100"));
             expect(await userLMCV.lockedCollateral(addr1.address, mockToken3Bytes)).to.equal(fwad("200"));
 
-            expect(await userLMCV.debtDPrime(addr1.address)).to.equal(frad("277"));
+            expect(await userLMCV.normalDebt(addr1.address)).to.equal(fwad("277"));
 
             expect(await userLMCV.unlockedCollateral(addr1.address, mockTokenBytes)).to.equal(fwad("555"));
             expect(await userLMCV.unlockedCollateral(addr1.address, mockToken2Bytes)).to.equal(fwad("566"));
@@ -397,20 +392,23 @@ describe("Testing LMCV", function () {
             expect(await userLMCV.lockedCollateral(addr1.address, mockToken2Bytes)).to.equal(0);
             expect(await userLMCV.lockedCollateral(addr1.address, mockToken3Bytes)).to.equal(0);
 
-            expect(await userLMCV.debtDPrime(addr1.address)).to.equal(0);
+            expect(await userLMCV.normalDebt(addr1.address)).to.equal(0);
         });
 
         it("Should succeed in repaying most of the collateral", async function () {
-            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("777"), addr1.address);
+            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("1000"), addr1.address);
+
+            expect(await userLMCV.normalDebt(addr1.address)).to.equal(fwad("1000"));
+            expect(await userLMCV.dPrime(addr1.address)).to.equal(frad("1000"));
 
             await lmcv.administrate(dPrimeJoin.address, 1);
             await dPrime.rely(dPrimeJoin.address);
 
             let userDPrimeJoin = dPrimeJoin.connect(addr1);
             await userLMCV.proxyApprove(userDPrimeJoin.address);
-            await userDPrimeJoin.exit(addr1.address, fwad("8"));
+            await userDPrimeJoin.exit(addr1.address, fwad("50"));
 
-            await userLMCV.repay(collateralBytesList, [fwad("0"), fwad("100"), fwad("200")], fwad("760"), addr1.address);
+            await userLMCV.repay(collateralBytesList, [fwad("0"), fwad("100"), fwad("200")], fwad("900"), addr1.address);
 
             await expect(userLMCV.lockedCollateralList(addr1.address, 1)).to.be.reverted;
 
@@ -418,8 +416,8 @@ describe("Testing LMCV", function () {
             expect(await userLMCV.lockedCollateral(addr1.address, mockToken2Bytes)).to.equal(0);
             expect(await userLMCV.lockedCollateral(addr1.address, mockToken3Bytes)).to.equal(0);
 
-            expect(await userLMCV.debtDPrime(addr1.address)).to.equal(frad("17"));
-            expect(await userLMCV.withdrawnDPrime(addr1.address)).to.equal(frad("8"));
+            expect(await userLMCV.normalDebt(addr1.address)).to.equal(fwad("100"));
+            expect(await userLMCV.dPrime(addr1.address)).to.equal(frad("50"));
         });
 
         it("Should be able to repay with all dPrime user has after protocol fee", async function () {
@@ -442,8 +440,8 @@ describe("Testing LMCV", function () {
             expect(await userLMCV.lockedCollateral(addr1.address, mockToken2Bytes)).to.equal(0);
             expect(await userLMCV.lockedCollateral(addr1.address, mockToken3Bytes)).to.equal(0);
 
-            expect(await userLMCV.debtDPrime(addr1.address)).to.equal(frad("8"));
-            expect(await userLMCV.withdrawnDPrime(addr1.address)).to.equal(frad("8"));
+            expect(await userLMCV.normalDebt(addr1.address)).to.equal(fwad("8"));
+            expect(await userLMCV.dPrime(addr1.address)).to.equal(frad("0"));
         });
 
         it("Should succeed when given a collateral and an appropriate amount of dPrime back", async function () {
@@ -460,7 +458,7 @@ describe("Testing LMCV", function () {
             expect(await userLMCV.lockedCollateral(addr1.address, mockToken2Bytes)).to.equal(fwad("100"));
             expect(await userLMCV.lockedCollateral(addr1.address, mockToken3Bytes)).to.equal(fwad("200"));
 
-            expect(await userLMCV.debtDPrime(addr1.address)).to.equal(frad("277"));
+            expect(await userLMCV.normalDebt(addr1.address)).to.equal(fwad("277"));
 
             expect(await userLMCV.unlockedCollateral(addr1.address, mockTokenBytes)).to.equal(fwad("555"));
             expect(await userLMCV.unlockedCollateral(addr1.address, mockToken2Bytes)).to.equal(fwad("566"));
@@ -469,7 +467,11 @@ describe("Testing LMCV", function () {
         
 
         it("Should fail when not repaying amount of dPrime needed to unlock collateral", async function () {
-            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("777"), addr1.address);
+            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("1000"), addr1.address);
+
+            expect(await lmcv.dPrime(addr1.address)).to.equal(frad("1000"));
+            expect(await lmcv.normalDebt(addr1.address)).to.equal(fwad("1000"));
+
             await expect(
                 userLMCV.repay(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("0"), addr1.address)
             ).to.be.revertedWith("LMCV/More dPrime left than allowed");
@@ -500,444 +502,12 @@ describe("Testing LMCV", function () {
             await userDPrimeJoin.exit(addr1.address, fwad("777"));
             await userDPrimeJoin.join(addr1.address, fwad("600"));
 
-            expect(await lmcv.withdrawnDPrime(addr1.address)).to.equal(frad("177"));
+            expect(await lmcv.dPrime(addr1.address)).to.equal(frad("600"));
             
             // //repay a collateral amount
             await expect(
                 userLMCV.repay(collateralBytesList, [fwad("0"), fwad("100"), fwad("200")], fwad("601"), addr1.address)
-            ).to.be.revertedWith("LMCV/Cannot have more withdrawn dPrime than debt");
-        });
-    });
-
-    describe("Liquidation function testing", function () {
-        it("Liquidation works with 50% liquidation", async function () {
-
-            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("3000"), addr1.address);
-
-            await lmcv.administrate(dPrimeJoin.address, 1);
-            await dPrime.rely(dPrimeJoin.address);
-
-            let userDPrimeJoin = dPrimeJoin.connect(addr1);
-            await userLMCV.proxyApprove(userDPrimeJoin.address);
-            await userDPrimeJoin.exit(addr1.address, fwad("3000"));
-
-            await lmcv.updateSpotPrice(mockToken2Bytes, fray("8"));
-            expect(await lmcv.getMaxDPrime(addr1.address)).to.equal(frad("2400"));
-            expect(await userLMCV.isHealthy(addr1.address)).to.equal(false);
-
-            await lmcv.pushLiquidationDPrime(addr3.address, frad("10000"));
-
-
-            const liquidation = await userThreeLMCV.liquidate(addr1.address, addr3.address, fray(".5"));
-            // console.log(await liquidation.wait());
-
-            expect(await lmcv.getUnlockedCollateralValue(addr3.address, collateralBytesList)).to.equal(frad("1620"));
-            expect(await lmcv.liqDPrime(addr3.address)).to.equal(frad("8500"));
-            expect(await lmcv.debtDPrime(addr1.address)).to.equal(frad("1522.5"));
-            expect(await lmcv.withdrawnDPrime(addr1.address)).to.equal(frad("1522.5"));
-            expect(await lmcv.ProtocolDebt()).to.equal(frad("1522.5"));
-            
-
-            expect(await lmcv.lockedCollateral(addr1.address, mockTokenBytes)).to.equal(fwad("33.125"));
-            expect(await lmcv.lockedCollateral(addr1.address, mockToken2Bytes)).to.equal(fwad("66.25"));
-            expect(await lmcv.lockedCollateral(addr1.address, mockToken3Bytes)).to.equal(fwad("132.5"));
-
-            let collateralType = await lmcv.CollateralTypes(mockTokenBytes);
-            expect(collateralType['totalDebt']).to.equal(fwad("33.125"));
-            let collateralType2 = await lmcv.CollateralTypes(mockToken2Bytes);
-            expect(collateralType2['totalDebt']).to.equal(fwad("66.25"));
-            let collateralType3 = await lmcv.CollateralTypes(mockToken3Bytes);
-            expect(collateralType3['totalDebt']).to.equal(fwad("132.5"));
-
-            expect(await lmcv.unlockedCollateral(addr3.address, mockTokenBytes)).to.equal(fwad("16.875"));
-            expect(await lmcv.unlockedCollateral(addr3.address, mockToken2Bytes)).to.equal(fwad("33.75"));
-            expect(await lmcv.unlockedCollateral(addr3.address, mockToken3Bytes)).to.equal(fwad("67.5"));
-        });
-
-        it("liquidates only partialLiqMax depsite user asking for more", async function () {
-
-            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("3000"), addr1.address);
-
-            await lmcv.administrate(dPrimeJoin.address, 1);
-            await dPrime.rely(dPrimeJoin.address);
-
-            let userDPrimeJoin = dPrimeJoin.connect(addr1);
-            await userLMCV.proxyApprove(userDPrimeJoin.address);
-            await userDPrimeJoin.exit(addr1.address, fwad("3000"));
-
-            await lmcv.updateSpotPrice(mockToken2Bytes, fray("8"));
-            expect(await lmcv.getMaxDPrime(addr1.address)).to.equal(frad("2400"));
-            expect(await userLMCV.isHealthy(addr1.address)).to.equal(false);
-
-            await lmcv.pushLiquidationDPrime(addr3.address, frad("10000"));
-
-
-            const liquidation = await userThreeLMCV.liquidate(addr1.address, addr3.address, fray("1000000000")); 
-            // console.log(await liquidation.wait());
-
-            expect(await lmcv.getUnlockedCollateralValue(addr3.address, collateralBytesList)).to.equal(frad("1620"));
-            expect(await lmcv.liqDPrime(addr3.address)).to.equal(frad("8500"));
-            expect(await lmcv.debtDPrime(addr1.address)).to.equal(frad("1522.5"));
-            expect(await lmcv.withdrawnDPrime(addr1.address)).to.equal(frad("1522.5"));
-            expect(await lmcv.ProtocolDebt()).to.equal(frad("1522.5"));
-            
-
-            expect(await lmcv.lockedCollateral(addr1.address, mockTokenBytes)).to.equal(fwad("33.125"));
-            expect(await lmcv.lockedCollateral(addr1.address, mockToken2Bytes)).to.equal(fwad("66.25"));
-            expect(await lmcv.lockedCollateral(addr1.address, mockToken3Bytes)).to.equal(fwad("132.5"));
-
-            let collateralType = await lmcv.CollateralTypes(mockTokenBytes);
-            expect(collateralType['totalDebt']).to.equal(fwad("33.125"));
-            let collateralType2 = await lmcv.CollateralTypes(mockToken2Bytes);
-            expect(collateralType2['totalDebt']).to.equal(fwad("66.25"));
-            let collateralType3 = await lmcv.CollateralTypes(mockToken3Bytes);
-            expect(collateralType3['totalDebt']).to.equal(fwad("132.5"));
-
-            expect(await lmcv.unlockedCollateral(addr3.address, mockTokenBytes)).to.equal(fwad("16.875"));
-            expect(await lmcv.unlockedCollateral(addr3.address, mockToken2Bytes)).to.equal(fwad("33.75"));
-            expect(await lmcv.unlockedCollateral(addr3.address, mockToken3Bytes)).to.equal(fwad("67.5"));
-        });
-
-        it("Liquidates a lower portion than partialLiqMax", async function () {
-
-            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("3000"), addr1.address);
-
-            await lmcv.administrate(dPrimeJoin.address, 1);
-            await dPrime.rely(dPrimeJoin.address);
-
-            let userDPrimeJoin = dPrimeJoin.connect(addr1);
-            await userLMCV.proxyApprove(userDPrimeJoin.address);
-            await userDPrimeJoin.exit(addr1.address, fwad("3000"));
-
-            await lmcv.updateSpotPrice(mockToken2Bytes, fray("8"));
-            expect(await lmcv.getMaxDPrime(addr1.address)).to.equal(frad("2400"));
-            expect(await userLMCV.isHealthy(addr1.address)).to.equal(false);
-
-            await lmcv.pushLiquidationDPrime(addr3.address, frad("10000"));
-
-
-            const liquidation = await userThreeLMCV.liquidate(addr1.address, addr3.address, fray(".25")); 
-            // console.log(await liquidation.wait());
-
-            expect(await lmcv.getUnlockedCollateralValue(addr3.address, collateralBytesList)).to.equal(frad("810"));
-            expect(await lmcv.liqDPrime(addr3.address)).to.equal(frad("9250"));
-            expect(await lmcv.debtDPrime(addr1.address)).to.equal(frad("2261.25"));
-            expect(await lmcv.withdrawnDPrime(addr1.address)).to.equal(frad("2261.25"));
-            expect(await lmcv.ProtocolDebt()).to.equal(frad("2261.25"));
-            
-
-            expect(await lmcv.lockedCollateral(addr1.address, mockTokenBytes)).to.equal(fwad("41.5625"));
-            expect(await lmcv.lockedCollateral(addr1.address, mockToken2Bytes)).to.equal(fwad("83.125"));
-            expect(await lmcv.lockedCollateral(addr1.address, mockToken3Bytes)).to.equal(fwad("166.25"));
-
-            let collateralType = await lmcv.CollateralTypes(mockTokenBytes);
-            expect(collateralType['totalDebt']).to.equal(fwad("41.5625"));
-            let collateralType2 = await lmcv.CollateralTypes(mockToken2Bytes);
-            expect(collateralType2['totalDebt']).to.equal(fwad("83.125"));
-            let collateralType3 = await lmcv.CollateralTypes(mockToken3Bytes);
-            expect(collateralType3['totalDebt']).to.equal(fwad("166.25"));
-
-            expect(await lmcv.unlockedCollateral(addr3.address, mockTokenBytes)).to.equal(fwad("8.4375"));
-            expect(await lmcv.unlockedCollateral(addr3.address, mockToken2Bytes)).to.equal(fwad("16.875"));
-            expect(await lmcv.unlockedCollateral(addr3.address, mockToken3Bytes)).to.equal(fwad("33.75"));
-        });
-
-        it("Liquidates 100% of dPrime value because of high account insolvency percentage", async function () {
-            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("3000"), addr1.address);
-
-            await lmcv.administrate(dPrimeJoin.address, 1);
-            await dPrime.rely(dPrimeJoin.address);
-
-            let userDPrimeJoin = dPrimeJoin.connect(addr1);
-            await userLMCV.proxyApprove(userDPrimeJoin.address);
-            await userDPrimeJoin.exit(addr1.address, fwad("3000"));
-
-            await lmcv.updateSpotPrice(mockToken2Bytes, fray("10"));
-            await lmcv.updateSpotPrice(mockToken3Bytes, fray("5"));
-            expect(await lmcv.getPortfolioValue(addr1.address)).to.equal(frad("4000"));
-            expect(await lmcv.getMaxDPrime(addr1.address)).to.equal(frad("2000"));
-            expect(await userLMCV.isHealthy(addr1.address)).to.equal(false);
-
-            await lmcv.pushLiquidationDPrime(addr3.address, frad("10000"));
-            await userThreeLMCV.liquidate(addr1.address, addr3.address, fray("1")); 
-
-            expect(await lmcv.getUnlockedCollateralValue(addr3.address, collateralBytesList)).to.equal(frad("3240"));
-            expect(await lmcv.liqDPrime(addr3.address)).to.equal(frad("7000"));
-            expect(await lmcv.debtDPrime(addr1.address)).to.equal(frad("45"));
-            expect(await lmcv.withdrawnDPrime(addr1.address)).to.equal(frad("45"));
-            expect(await lmcv.ProtocolDebt()).to.equal(frad("45"));
-            
-
-            expect(await lmcv.lockedCollateral(addr1.address, mockTokenBytes)).to.equal(fwad("9.5"));
-            expect(await lmcv.lockedCollateral(addr1.address, mockToken2Bytes)).to.equal(fwad("19"));
-            expect(await lmcv.lockedCollateral(addr1.address, mockToken3Bytes)).to.equal(fwad("38"));
-
-            let collateralType = await lmcv.CollateralTypes(mockTokenBytes);
-            expect(collateralType['totalDebt']).to.equal(fwad("9.5"));
-            let collateralType2 = await lmcv.CollateralTypes(mockToken2Bytes);
-            expect(collateralType2['totalDebt']).to.equal(fwad("19"));
-            let collateralType3 = await lmcv.CollateralTypes(mockToken3Bytes);
-            expect(collateralType3['totalDebt']).to.equal(fwad("38"));
-
-            expect(await lmcv.unlockedCollateral(addr3.address, mockTokenBytes)).to.equal(fwad("40.5"));
-            expect(await lmcv.unlockedCollateral(addr3.address, mockToken2Bytes)).to.equal(fwad("81"));
-            expect(await lmcv.unlockedCollateral(addr3.address, mockToken3Bytes)).to.equal(fwad("162"));
-        });
-
-        it("Fails to liquidate because account is still healthy", async function () {
-            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("3000"), addr1.address);
-
-            await lmcv.administrate(dPrimeJoin.address, 1);
-            await dPrime.rely(dPrimeJoin.address);
-
-            let userDPrimeJoin = dPrimeJoin.connect(addr1);
-            await userLMCV.proxyApprove(userDPrimeJoin.address);
-            await userDPrimeJoin.exit(addr1.address, fwad("3000"));
-            await lmcv.pushLiquidationDPrime(addr3.address, frad("10000"));
-
-            await expect(userThreeLMCV.liquidate(addr1.address, addr3.address, fray(".25"))).to.be.revertedWith("LMCV/Vault is healthy");
-        });
-
-        it("Can't liquidate because they don't have enough dPrime", async function () {
-
-            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("3000"), addr1.address);
-
-            await lmcv.administrate(dPrimeJoin.address, 1);
-            await dPrime.rely(dPrimeJoin.address);
-
-            let userDPrimeJoin = dPrimeJoin.connect(addr1);
-            await userLMCV.proxyApprove(userDPrimeJoin.address);
-            await userDPrimeJoin.exit(addr1.address, fwad("3000"));
-
-            await lmcv.updateSpotPrice(mockToken2Bytes, fray("10"));
-            await lmcv.updateSpotPrice(mockToken3Bytes, fray("5"));
-            expect(await lmcv.getPortfolioValue(addr1.address)).to.equal(frad("4000"));
-            expect(await lmcv.getMaxDPrime(addr1.address)).to.equal(frad("2000"));
-            expect(await userLMCV.isHealthy(addr1.address)).to.equal(false);
-            await lmcv.pushLiquidationDPrime(addr3.address, frad("2000"));
-
-            await expect(userThreeLMCV.liquidate(addr1.address, addr3.address, fray("1"))).to.be.revertedWith("LMCV/Not enough liquidation dPrime available");
-        });
-
-        it("Liquidates 100% of dPrime value because value lower than liq floor", async function () {
-            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("3000"), addr1.address);
-
-            await lmcv.setLiquidationFloor(frad("10000"));
-            await lmcv.setWholeCDPLiqMult(fray(".8"));
-
-            await lmcv.administrate(dPrimeJoin.address, 1);
-            await dPrime.rely(dPrimeJoin.address);
-
-            let userDPrimeJoin = dPrimeJoin.connect(addr1);
-            await userLMCV.proxyApprove(userDPrimeJoin.address);
-            await userDPrimeJoin.exit(addr1.address, fwad("3000"));
-
-            await lmcv.updateSpotPrice(mockToken2Bytes, fray("10"));
-            await lmcv.updateSpotPrice(mockToken3Bytes, fray("5"));
-            expect(await lmcv.getPortfolioValue(addr1.address)).to.equal(frad("4000"));
-            expect(await lmcv.getMaxDPrime(addr1.address)).to.equal(frad("2000"));
-            expect(await userLMCV.isHealthy(addr1.address)).to.equal(false);
-
-            await lmcv.pushLiquidationDPrime(addr3.address, frad("10000"));
-            await userThreeLMCV.liquidate(addr1.address, addr3.address, fray("1")); 
-
-            expect(await lmcv.getUnlockedCollateralValue(addr3.address, collateralBytesList)).to.equal(frad("3240"));
-            expect(await lmcv.liqDPrime(addr3.address)).to.equal(frad("7000"));
-            expect(await lmcv.debtDPrime(addr1.address)).to.equal(frad("45"));
-            expect(await lmcv.withdrawnDPrime(addr1.address)).to.equal(frad("45"));
-            expect(await lmcv.ProtocolDebt()).to.equal(frad("45"));
-            
-
-            expect(await lmcv.lockedCollateral(addr1.address, mockTokenBytes)).to.equal(fwad("9.5"));
-            expect(await lmcv.lockedCollateral(addr1.address, mockToken2Bytes)).to.equal(fwad("19"));
-            expect(await lmcv.lockedCollateral(addr1.address, mockToken3Bytes)).to.equal(fwad("38"));
-
-            let collateralType = await lmcv.CollateralTypes(mockTokenBytes);
-            expect(collateralType['totalDebt']).to.equal(fwad("9.5"));
-            let collateralType2 = await lmcv.CollateralTypes(mockToken2Bytes);
-            expect(collateralType2['totalDebt']).to.equal(fwad("19"));
-            let collateralType3 = await lmcv.CollateralTypes(mockToken3Bytes);
-            expect(collateralType3['totalDebt']).to.equal(fwad("38"));
-
-            expect(await lmcv.unlockedCollateral(addr3.address, mockTokenBytes)).to.equal(fwad("40.5"));
-            expect(await lmcv.unlockedCollateral(addr3.address, mockToken2Bytes)).to.equal(fwad("81"));
-            expect(await lmcv.unlockedCollateral(addr3.address, mockToken3Bytes)).to.equal(fwad("162"));
-        });
-
-        it("Removal of protocol fee because valueRatio got too high", async function () {
-            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("3000"), addr1.address);
-
-            await lmcv.setProtocolFeeRemovalMult(fray(".75"));
-
-            await lmcv.administrate(dPrimeJoin.address, 1);
-            await dPrime.rely(dPrimeJoin.address);
-
-            let userDPrimeJoin = dPrimeJoin.connect(addr1);
-            await userLMCV.proxyApprove(userDPrimeJoin.address);
-            await userDPrimeJoin.exit(addr1.address, fwad("3000"));
-
-            await lmcv.updateSpotPrice(mockToken2Bytes, fray("10"));
-            await lmcv.updateSpotPrice(mockToken3Bytes, fray("5"));
-            expect(await lmcv.getPortfolioValue(addr1.address)).to.equal(frad("4000"));
-            expect(await lmcv.getMaxDPrime(addr1.address)).to.equal(frad("2000"));
-            expect(await userLMCV.isHealthy(addr1.address)).to.equal(false);
-
-            await lmcv.pushLiquidationDPrime(addr3.address, frad("10000"));
-            await userThreeLMCV.liquidate(addr1.address, addr3.address, fray("1")); 
-
-            expect(await lmcv.getUnlockedCollateralValue(addr3.address, collateralBytesList)).to.equal(frad("3240"));
-            expect(await lmcv.liqDPrime(addr3.address)).to.equal(frad("7000"));
-            expect(await lmcv.debtDPrime(addr1.address)).to.equal(frad("0"));
-            expect(await lmcv.withdrawnDPrime(addr1.address)).to.equal(frad("0"));
-            expect(await lmcv.ProtocolDebt()).to.equal(frad("0"));
-            
-
-            expect(await lmcv.lockedCollateral(addr1.address, mockTokenBytes)).to.equal(fwad("9.5"));
-            expect(await lmcv.lockedCollateral(addr1.address, mockToken2Bytes)).to.equal(fwad("19"));
-            expect(await lmcv.lockedCollateral(addr1.address, mockToken3Bytes)).to.equal(fwad("38"));
-
-            let collateralType = await lmcv.CollateralTypes(mockTokenBytes);
-            expect(collateralType['totalDebt']).to.equal(fwad("9.5"));
-            let collateralType2 = await lmcv.CollateralTypes(mockToken2Bytes);
-            expect(collateralType2['totalDebt']).to.equal(fwad("19"));
-            let collateralType3 = await lmcv.CollateralTypes(mockToken3Bytes);
-            expect(collateralType3['totalDebt']).to.equal(fwad("38"));
-
-            expect(await lmcv.unlockedCollateral(addr3.address, mockTokenBytes)).to.equal(fwad("40.5"));
-            expect(await lmcv.unlockedCollateral(addr3.address, mockToken2Bytes)).to.equal(fwad("81"));
-            expect(await lmcv.unlockedCollateral(addr3.address, mockToken3Bytes)).to.equal(fwad("162"));
-        });
-
-        it("Insolvency percentage at 93.75%, liq fee at whatever is left and no protocol fee", async function () {
-            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("3000"), addr1.address);
-
-            await lmcv.administrate(dPrimeJoin.address, 1);
-            await dPrime.rely(dPrimeJoin.address);
-
-            let userDPrimeJoin = dPrimeJoin.connect(addr1);
-            await userLMCV.proxyApprove(userDPrimeJoin.address);
-            await userDPrimeJoin.exit(addr1.address, fwad("3000"));
-
-            await lmcv.updateSpotPrice(mockTokenBytes, fray("20"));
-            await lmcv.updateSpotPrice(mockToken2Bytes, fray("12"));
-            await lmcv.updateSpotPrice(mockToken3Bytes, fray("5"));
-            expect(await lmcv.getPortfolioValue(addr1.address)).to.equal(frad("3200"));
-            expect(await lmcv.getMaxDPrime(addr1.address)).to.equal(frad("1600"));
-            expect(await userLMCV.isHealthy(addr1.address)).to.equal(false);
-
-            await lmcv.pushLiquidationDPrime(addr3.address, frad("10000"));
-            await userThreeLMCV.liquidate(addr1.address, addr3.address, fray("1")); 
-
-            expect(await lmcv.getUnlockedCollateralValue(addr3.address, collateralBytesList)).to.equal(frad("3200"));
-            expect(await lmcv.liqDPrime(addr3.address)).to.equal(frad("7000"));
-            expect(await lmcv.debtDPrime(addr1.address)).to.equal(frad("0"));
-            expect(await lmcv.withdrawnDPrime(addr1.address)).to.equal(frad("0"));
-            expect(await lmcv.ProtocolDebt()).to.equal(frad("0"));
-            
-
-            expect(await lmcv.lockedCollateral(addr1.address, mockTokenBytes)).to.equal(fwad("0"));
-            expect(await lmcv.lockedCollateral(addr1.address, mockToken2Bytes)).to.equal(fwad("0"));
-            expect(await lmcv.lockedCollateral(addr1.address, mockToken3Bytes)).to.equal(fwad("0"));
-
-            let collateralType = await lmcv.CollateralTypes(mockTokenBytes);
-            expect(collateralType['totalDebt']).to.equal(fwad("0"));
-            let collateralType2 = await lmcv.CollateralTypes(mockToken2Bytes);
-            expect(collateralType2['totalDebt']).to.equal(fwad("0"));
-            let collateralType3 = await lmcv.CollateralTypes(mockToken3Bytes);
-            expect(collateralType3['totalDebt']).to.equal(fwad("0"));
-
-            expect(await lmcv.unlockedCollateral(addr3.address, mockTokenBytes)).to.equal(fwad("50"));
-            expect(await lmcv.unlockedCollateral(addr3.address, mockToken2Bytes)).to.equal(fwad("100"));
-            expect(await lmcv.unlockedCollateral(addr3.address, mockToken3Bytes)).to.equal(fwad("200"));
-        });
-
-        it("Insolvency percentage at 101.7%, liquidator takes a loss on the trade", async function () {
-            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("3000"), addr1.address);
-
-            await lmcv.administrate(dPrimeJoin.address, 1);
-            await dPrime.rely(dPrimeJoin.address);
-
-            let userDPrimeJoin = dPrimeJoin.connect(addr1);
-            await userLMCV.proxyApprove(userDPrimeJoin.address);
-            await userDPrimeJoin.exit(addr1.address, fwad("3000"));
-
-            await lmcv.updateSpotPrice(mockTokenBytes, fray("20"));
-            await lmcv.updateSpotPrice(mockToken2Bytes, fray("9.5"));
-            await lmcv.updateSpotPrice(mockToken3Bytes, fray("5"));
-            expect(await lmcv.getPortfolioValue(addr1.address)).to.equal(frad("2950"));
-            expect(await lmcv.getMaxDPrime(addr1.address)).to.equal(frad("1475"));
-            expect(await userLMCV.isHealthy(addr1.address)).to.equal(false);
-
-            await lmcv.pushLiquidationDPrime(addr3.address, frad("10000"));
-            await userThreeLMCV.liquidate(addr1.address, addr3.address, fray("1")); 
-
-            expect(await lmcv.getUnlockedCollateralValue(addr3.address, collateralBytesList)).to.equal(frad("2950"));
-            expect(await lmcv.liqDPrime(addr3.address)).to.equal(frad("7000"));
-            expect(await lmcv.debtDPrime(addr1.address)).to.equal(frad("0"));
-            expect(await lmcv.withdrawnDPrime(addr1.address)).to.equal(frad("0"));
-            expect(await lmcv.ProtocolDebt()).to.equal(frad("0"));
-            
-
-            expect(await lmcv.lockedCollateral(addr1.address, mockTokenBytes)).to.equal(fwad("0"));
-            expect(await lmcv.lockedCollateral(addr1.address, mockToken2Bytes)).to.equal(fwad("0"));
-            expect(await lmcv.lockedCollateral(addr1.address, mockToken3Bytes)).to.equal(fwad("0"));
-
-            let collateralType = await lmcv.CollateralTypes(mockTokenBytes);
-            expect(collateralType['totalDebt']).to.equal(fwad("0"));
-            let collateralType2 = await lmcv.CollateralTypes(mockToken2Bytes);
-            expect(collateralType2['totalDebt']).to.equal(fwad("0"));
-            let collateralType3 = await lmcv.CollateralTypes(mockToken3Bytes);
-            expect(collateralType3['totalDebt']).to.equal(fwad("0"));
-
-            expect(await lmcv.unlockedCollateral(addr3.address, mockTokenBytes)).to.equal(fwad("50"));
-            expect(await lmcv.unlockedCollateral(addr3.address, mockToken2Bytes)).to.equal(fwad("100"));
-            expect(await lmcv.unlockedCollateral(addr3.address, mockToken3Bytes)).to.equal(fwad("200"));
-        });
-
-        it("Withdrawn dPrime hits 0 when full liquidation because withdrawDPrime < debtDPrime", async function () {
-            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("3000"), addr1.address);
-
-            await lmcv.administrate(dPrimeJoin.address, 1);
-            await dPrime.rely(dPrimeJoin.address);
-
-            let userDPrimeJoin = dPrimeJoin.connect(addr1);
-            await userLMCV.proxyApprove(userDPrimeJoin.address);
-            await userDPrimeJoin.exit(addr1.address, fwad("1500"));
-
-            expect(await lmcv.debtDPrime(addr1.address)).to.equal(frad("3000"));
-            expect(await lmcv.withdrawnDPrime(addr1.address)).to.equal(frad("1500"));
-            
-
-            await lmcv.updateSpotPrice(mockToken2Bytes, fray("10"));
-            await lmcv.updateSpotPrice(mockToken3Bytes, fray("5"));
-            expect(await lmcv.getPortfolioValue(addr1.address)).to.equal(frad("4000"));
-            expect(await lmcv.getMaxDPrime(addr1.address)).to.equal(frad("2000"));
-            expect(await userLMCV.isHealthy(addr1.address)).to.equal(false);
-
-            await lmcv.pushLiquidationDPrime(addr3.address, frad("10000"));
-            await userThreeLMCV.liquidate(addr1.address, addr3.address, fray("1")); 
-
-            expect(await lmcv.getUnlockedCollateralValue(addr3.address, collateralBytesList)).to.equal(frad("3240"));
-            expect(await lmcv.liqDPrime(addr3.address)).to.equal(frad("7000"));
-            expect(await lmcv.debtDPrime(addr1.address)).to.equal(frad("45"));
-            expect(await lmcv.withdrawnDPrime(addr1.address)).to.equal(frad("0"));
-            expect(await lmcv.ProtocolDebt()).to.equal(frad("45"));
-            
-
-            expect(await lmcv.lockedCollateral(addr1.address, mockTokenBytes)).to.equal(fwad("9.5"));
-            expect(await lmcv.lockedCollateral(addr1.address, mockToken2Bytes)).to.equal(fwad("19"));
-            expect(await lmcv.lockedCollateral(addr1.address, mockToken3Bytes)).to.equal(fwad("38"));
-
-            let collateralType = await lmcv.CollateralTypes(mockTokenBytes);
-            expect(collateralType['totalDebt']).to.equal(fwad("9.5"));
-            let collateralType2 = await lmcv.CollateralTypes(mockToken2Bytes);
-            expect(collateralType2['totalDebt']).to.equal(fwad("19"));
-            let collateralType3 = await lmcv.CollateralTypes(mockToken3Bytes);
-            expect(collateralType3['totalDebt']).to.equal(fwad("38"));
-
-            expect(await lmcv.unlockedCollateral(addr3.address, mockTokenBytes)).to.equal(fwad("40.5"));
-            expect(await lmcv.unlockedCollateral(addr3.address, mockToken2Bytes)).to.equal(fwad("81"));
-            expect(await lmcv.unlockedCollateral(addr3.address, mockToken3Bytes)).to.equal(fwad("162"));
+            ).to.be.revertedWith("VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)");
         });
     });
 
@@ -950,12 +520,54 @@ describe("Testing LMCV", function () {
 
         it("When dust level is set to be above loan amount, this leads to unhealthy account", async function () {
             await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2900"), addr1.address);
-            expect(await lmcv.getMaxDPrime(addr1.address)).to.equal(frad("3000"));
+            expect(await lmcv.getMaxDPrimeDebt(addr1.address)).to.equal(frad("3000"));
 
             await lmcv.updateSpotPrice(mockToken2Bytes, fray("8"));
-            expect(await lmcv.getMaxDPrime(addr1.address)).to.equal(frad("2400"));
+            expect(await lmcv.getMaxDPrimeDebt(addr1.address)).to.equal(frad("2400"));
             expect(await userLMCV.isHealthy(addr1.address)).to.equal(false);
         });
     });
+
+    describe("Mint Fee testing", function () {
+        it("Mint fee should behave correctly when 2 loans taken out at different stability rates", async function () {
+
+            await lmcv.setMintFee(fray(".0025"));
+
+            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr1.address);
+            expect(await userLMCV.normalDebt(addr1.address)).to.equal(fwad("2000"));
+            expect(await userLMCV.dPrime(addr1.address)).to.equal(frad("1995"));
+            expect(await lmcv.dPrime(owner.address)).to.equal(frad("5"));
+
+            await lmcv.updateRate(fray(".1"));
+            expect(await lmcv.StabilityRate()).to.equal(fray("1.1"));
+
+            expect(await lmcv.dPrime(owner.address)).to.equal(frad("205"));
+
+            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr1.address);
+            expect(await lmcv.dPrime(addr1.address)).to.equal(frad("4189.5"));
+            expect(await lmcv.normalDebt(addr1.address)).to.equal(fwad("4000"));
+            expect(await lmcv.dPrime(owner.address)).to.equal(frad("210.5"));
+
+
+            await userTwoLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr2.address);
+            expect(await userTwoLMCV.normalDebt(addr2.address)).to.equal(fwad("2000"));
+            expect(await userTwoLMCV.dPrime(addr2.address)).to.equal(frad("2194.5"));
+
+            await userTwoLMCV.moveDPrime(addr2.address, addr1.address, frad("2194.5"));
+            expect(await userLMCV.dPrime(addr1.address)).to.equal(frad("6384"));
+
+            await lmcv.updateRate(fray(".1"));
+            expect(await lmcv.StabilityRate()).to.equal(fray("1.2"));
+
+            expect(await lmcv.dPrime(owner.address)).to.equal(frad("816"));
+
+            await userLMCV.repay(collateralBytesList, [fwad("100"), fwad("200"), fwad("400")], fwad("4000"), addr1.address);
+            expect(await lmcv.dPrime(addr1.address)).to.equal(frad("1584"));
+            expect(await lmcv.normalDebt(addr1.address)).to.equal(0);
+            expect(await lmcv.totalNormalizedDebt()).to.equal(fwad("2000"));
+        });
+    });
+
+    //TODO: Minting fee in LMCV Tests
 });
 
