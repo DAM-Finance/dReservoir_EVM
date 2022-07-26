@@ -113,7 +113,7 @@ describe("Testing LMCVProxy", function () {
         it("Should properly add collateral, loan, and exit with dPrime", async function () {
             //Below calls are what website would have to do
             await setupUser(addr1, ["1000", "1000", "1000"]);
-            await userLMCV.proxyApprove([lmcvProxy.address, dPrimeJoin.address]);
+            await userLMCV.approveMultiple([lmcvProxy.address, dPrimeJoin.address]);
 
             await userLMCVProxy.createLoan(collateralBytesList, [fwad("100"), fwad("200"), fwad("300")], fwad("1000"));
 
@@ -140,7 +140,7 @@ describe("Testing LMCVProxy", function () {
         it("Should break when account doesn't have enough collateral", async function () {
             //Below calls are what website would have to do
             await setupUser(addr1, ["10", "1000", "1000"]);
-            await userLMCV.proxyApprove([lmcvProxy.address, dPrimeJoin.address]);
+            await userLMCV.approveMultiple([lmcvProxy.address, dPrimeJoin.address]);
 
             await expect(
                 userLMCVProxy.createLoan(collateralBytesList, [fwad("100"), fwad("200"), fwad("300")], fwad("1000"))
@@ -164,11 +164,11 @@ describe("Testing LMCVProxy", function () {
 
         it("Should properly add collateral, loan, and exit with dPrime", async function () {
             await setupUser(addr1, ["1000", "1000", "1000"]);
-            await userLMCV.proxyApprove([lmcvProxy.address, dPrimeJoin.address]);
+            await userLMCV.approveMultiple([lmcvProxy.address, dPrimeJoin.address]);
             await userLMCVProxy.createLoan(collateralBytesList, [fwad("100"), fwad("200"), fwad("300")], fwad("1000"));
 
             await setupUser(addr2, ["1000", "1000", "1000"]);
-            await userTwoLMCV.proxyApprove([lmcvProxy.address, dPrimeJoin.address]);
+            await userTwoLMCV.approveMultiple([lmcvProxy.address, dPrimeJoin.address]);
             await userTwoLMCVProxy.createLoan(collateralBytesList, [fwad("100"), fwad("200"), fwad("300")], fwad("1000"));
             await userTwoDPrime.transfer(addr1.address, fwad("990"));
 
@@ -190,11 +190,11 @@ describe("Testing LMCVProxy", function () {
 
         it("Should be able to not repay one coin and still finish loan", async function () {
             await setupUser(addr1, ["1000", "1000", "1000"]);
-            await userLMCV.proxyApprove([lmcvProxy.address, dPrimeJoin.address]);
+            await userLMCV.approveMultiple([lmcvProxy.address, dPrimeJoin.address]);
             await userLMCVProxy.createLoan(collateralBytesList, [fwad("100"), fwad("200"), fwad("300")], fwad("1000"));
 
             await setupUser(addr2, ["1000", "1000", "1000"]);
-            await userTwoLMCV.proxyApprove([lmcvProxy.address, dPrimeJoin.address]);
+            await userTwoLMCV.approveMultiple([lmcvProxy.address, dPrimeJoin.address]);
             await userTwoLMCVProxy.createLoan(collateralBytesList, [fwad("100"), fwad("200"), fwad("300")], fwad("1000"));
             await userTwoDPrime.transfer(addr1.address, fwad("990"));
 

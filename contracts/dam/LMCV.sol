@@ -96,13 +96,21 @@ contract LMCV {
     }
 
     // --- Allowance ---
-    function proxyApprove(address[] memory users) external {
+    function approveMultiple(address[] memory users) external {
         for(uint256 i = 0; i < users.length; i++){
-            proxyApprovals[msg.sender][users[i]] = 1;
+            approve(users[i]);
         }
     }
+    function approve(address user) public {
+        proxyApprovals[msg.sender][user] = 1;
+    }
 
-    function proxyDisapprove(address user) external {
+    function disapproveMultiple(address[] memory users) external {
+        for(uint256 i = 0; i < users.length; i++){
+            disapprove(users[i]);
+        }
+    }
+    function disapprove(address user) public {
         proxyApprovals[msg.sender][user] = 0;
     }
 
@@ -232,17 +240,17 @@ contract LMCV {
     }
 
     function moveCollateral(bytes32 collat, address src, address dst, uint256 wad) external {
-        require(approval(src, msg.sender), "LMCV/not allowed");
+        require(approval(src, msg.sender), "LMCV/collateral move not allowed");
         unlockedCollateral[src][collat] -= wad;
         unlockedCollateral[dst][collat] += wad;
         emit MoveCollateral(collat, src, dst, wad);
     }
 
-    function moveDPrime(address src, address dst, uint256 frad) external {
-        require(approval(src, msg.sender), "LMCV/not allowed");
-        dPrime[src] -= frad;
-        dPrime[dst] += frad;
-        emit MoveDPrime(src, dst, frad);
+    function moveDPrime(address src, address dst, uint256 rad) external {
+        require(approval(src, msg.sender), "LMCV/dPrime move not allowed");
+        dPrime[src] -= rad;
+        dPrime[dst] += rad;
+        emit MoveDPrime(src, dst, rad);
     }
 
     //All collaterals linked together to be more portfolio centric
@@ -342,20 +350,12 @@ contract LMCV {
         emit LoanRepayment(normalDebt[user], user, collats, collateralChange);
     }
 
-    //Coin prices increase and they want to take out more without changing collateral
-    //Or coin prices decrease and they want to repay dPrime
-    function addLoanedDPrime(address user, uint256 normalDebtChange) loanAlive external { // [wad]
-        require(approval(user, msg.sender), "LMCV/Owner must consent");
-        _addLoanedDPrime(user, normalDebtChange);
-        emit AddLoanedDPrime(user, normalDebtChange);
-    }
-
     function _addLoanedDPrime(address user, uint256 normalDebtChange) internal { // [wad]
         uint256 rateMult = StabilityRate;
         uint256 mintingFee = _rmul(normalDebtChange * rateMult, MintFee);
         if(PSMAddresses[user]){
             rateMult = RAY;
-            mintingFee = _rmul(normalDebtChange * rateMult, PSMMintFee);
+            mintingFee = 0;
         }
 
         normalDebt[user] += normalDebtChange;

@@ -328,11 +328,11 @@ describe("Testing LMCV", function () {
         });
     });
 
-    describe("AddLoanedDPrime() tests", function () {
+    describe("Loan tests no collateral", function () {
         it("Should break if minting more dPrime than allowed from collateral", async function () {
             await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("40"), addr1.address);
             await expect(
-                userLMCV.addLoanedDPrime(addr1.address, frad("100000"))
+                userLMCV.loan([],[], fwad("100000"), addr1.address)
             ).to.be.revertedWith("LMCV/Minting more dPrime than allowed");
         });
 
@@ -340,21 +340,21 @@ describe("Testing LMCV", function () {
             await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("40"), addr1.address);
             await lmcv.setProtocolDebtCeiling(frad("50")); // [rad] $50
             await expect(
-                userLMCV.addLoanedDPrime( addr1.address, fwad("51"))
+                userLMCV.loan([],[], fwad("51"), addr1.address)
             ).to.be.revertedWith("LMCV/Cannot extend past protocol debt ceiling");
             await lmcv.setProtocolDebtCeiling(debtCeiling);
         });
 
         it("Should work if everything filled in properly and below maxDPrime", async function () {
             await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("40"), addr1.address);
-            await userLMCV.addLoanedDPrime(addr1.address, fwad("1000"));
+            await userLMCV.loan([],[], fwad("1000"), addr1.address)
             expect(await userLMCV.normalDebt(addr1.address)).to.equal(fwad("1040"));
         });
 
         it("When dust level is set to be above loan amount, this leads to no extra dPrime being loanable", async function () {
             await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("1999"), addr1.address);
             await lmcv.collatDebtFloor(mockToken2Bytes, fwad("120"));
-            await expect(userLMCV.addLoanedDPrime(addr1.address, frad("1"))).to.be.revertedWith("LMCV/Minting more dPrime than allowed");
+            await expect(userLMCV.loan([],[], fwad("1"), addr1.address)).to.be.revertedWith("LMCV/Minting more dPrime than allowed");
         });
     });
 
@@ -405,7 +405,7 @@ describe("Testing LMCV", function () {
             await dPrime.rely(dPrimeJoin.address);
 
             let userDPrimeJoin = dPrimeJoin.connect(addr1);
-            await userLMCV.proxyApprove([userDPrimeJoin.address]);
+            await userLMCV.approveMultiple([userDPrimeJoin.address]);
             await userDPrimeJoin.exit(addr1.address, fwad("50"));
 
             await userLMCV.repay(collateralBytesList, [fwad("0"), fwad("100"), fwad("200")], fwad("900"), addr1.address);
@@ -427,7 +427,7 @@ describe("Testing LMCV", function () {
             await dPrime.rely(dPrimeJoin.address);
 
             let userDPrimeJoin = dPrimeJoin.connect(addr1);
-            await userLMCV.proxyApprove([userDPrimeJoin.address]);
+            await userLMCV.approveMultiple([userDPrimeJoin.address]);
             await userDPrimeJoin.exit(addr1.address, fwad("777"));
             await userDPrimeJoin.join(addr1.address, fwad("769"));
             
@@ -498,7 +498,7 @@ describe("Testing LMCV", function () {
             await dPrime.rely(dPrimeJoin.address);
 
             let userDPrimeJoin = dPrimeJoin.connect(addr1);
-            await userLMCV.proxyApprove([userDPrimeJoin.address]);
+            await userLMCV.approveMultiple([userDPrimeJoin.address]);
             await userDPrimeJoin.exit(addr1.address, fwad("777"));
             await userDPrimeJoin.join(addr1.address, fwad("600"));
 

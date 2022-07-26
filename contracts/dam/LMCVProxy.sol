@@ -23,8 +23,6 @@ interface dPrimeJoinLike {
 
 interface LMCVLike {
     function dPrime(address user) external returns (uint256);
-    function pushDPrime(address src, uint256 rad) external;
-    function pullDPrime(address src, uint256 rad) external;
     function loan(
         bytes32[] memory collats,           
         uint256[] memory collateralChange,  // [wad]

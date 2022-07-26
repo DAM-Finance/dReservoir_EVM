@@ -80,7 +80,7 @@ describe("dPrimeJoin Testing", function () {
         await userLMCV.loan([mockTokenBytes], [fwad("500")], fwad("2000"), addr1.address);
         expect(await lmcv.normalDebt(addr1.address)).to.equal(fwad("2000"));
 
-        await userLMCV.proxyApprove([userDPrimeJoin.address]);
+        await userLMCV.approveMultiple([userDPrimeJoin.address]);
         await userDPrimeJoin.exit(addr1.address, fwad("100"));
 
         expect(await lmcv.normalDebt(addr1.address)).to.equal(fwad("2000"));
@@ -93,7 +93,7 @@ describe("dPrimeJoin Testing", function () {
         await userLMCV.loan([mockTokenBytes], [fwad("500")], fwad("2000"), addr1.address);
         expect(await lmcv.normalDebt(addr1.address)).to.equal(fwad("2000"));
 
-        await userLMCV.proxyApprove([userDPrimeJoin.address]);
+        await userLMCV.approveMultiple([userDPrimeJoin.address]);
         await userDPrimeJoin.exit(addr1.address, fwad("100"));
 
         expect(await lmcv.normalDebt(addr1.address)).to.equal(fwad("2000"));
@@ -107,10 +107,10 @@ describe("dPrimeJoin Testing", function () {
         await userTwoLMCV.loan([mockTokenBytes], [fwad("500")], fwad("2000"), addr2.address);
         expect(await lmcv.normalDebt(addr1.address)).to.equal(fwad("2000"));
 
-        await userLMCV.proxyApprove([userDPrimeJoin.address]);
+        await userLMCV.approveMultiple([userDPrimeJoin.address]);
         await userDPrimeJoin.exit(addr1.address, fwad("1000"));
 
-        await userTwoLMCV.proxyApprove([userDPrimeJoin.address]);
+        await userTwoLMCV.approveMultiple([userDPrimeJoin.address]);
         await userTwoDPrimeJoin.exit(addr2.address, fwad("1000"));
 
         expect(await lmcv.normalDebt(addr1.address)).to.equal(fwad("2000"));
@@ -123,7 +123,7 @@ describe("dPrimeJoin Testing", function () {
         await userLMCV.loan([mockTokenBytes], [fwad("500")], fwad("2000"), addr1.address);
         expect(await lmcv.normalDebt(addr1.address)).to.equal(fwad("2000"));
 
-        await userLMCV.proxyApprove([userDPrimeJoin.address]);
+        await userLMCV.approveMultiple([userDPrimeJoin.address]);
         await userDPrimeJoin.exit(addr1.address, fwad("1000"));
         expect(await lmcv.dPrime(addr1.address)).to.equal(frad("980"));
 
@@ -132,8 +132,8 @@ describe("dPrimeJoin Testing", function () {
     });
 
     it("User gets more dPrime and repays fully", async function () {
-        await userLMCV.proxyApprove([userDPrimeJoin.address]);
-        await userTwoLMCV.proxyApprove([userTwoDPrimeJoin.address]);
+        await userLMCV.approveMultiple([userDPrimeJoin.address]);
+        await userTwoLMCV.approveMultiple([userTwoDPrimeJoin.address]);
 
         await userLMCV.loan([mockTokenBytes], [fwad("500")], fwad("2000"), addr1.address);
         expect(await lmcv.normalDebt(addr1.address)).to.equal(fwad("2000"));
