@@ -43,6 +43,7 @@ contract LMCV {
     uint256 public dPrimeTotalDebt;     // [rad]
     uint256 public ProtocolDebtCeiling; // [rad]
     uint256 public MintFee;             // [ray]
+    uint256 public PSMMintFee;          // [ray]
     uint256 public StabilityRate;       // [ray]
     address public Treasury;
 
@@ -144,6 +145,10 @@ contract LMCV {
 
     function setMintFee(uint256 ray) external auth {
         MintFee = ray;
+    }
+
+    function setPSMMintFee(uint256 ray) external auth {
+        PSMMintFee = ray;
     }
 
     function setTreasury(address _treasury) external auth {
@@ -281,28 +286,7 @@ contract LMCV {
             unlockedCollateral[user][collats[i]] = newUnlockedCollat;
         }
 
-        uint256 rateMult = StabilityRate;
-        uint256 mintingFee = _rmul(normalDebtChange * rateMult, MintFee);
-        if(PSMAddresses[user]){
-            rateMult = RAY;
-            mintingFee = 0;
-        }
-
-        //Need to check to make sure its under liquidation amount
-        normalDebt[user]    += normalDebtChange;
-        totalNormalizedDebt += normalDebtChange;
-
-        require(_rmul(getPortfolioValue(user), liquidationMult) > normalDebt[user] * rateMult 
-            && getMaxDPrimeDebt(user) > normalDebt[user] * rateMult, 
-            "LMCV/Minting more dPrime than allowed"
-        );
-        
-        dPrimeTotalDebt += normalDebtChange * rateMult;
-        require(dPrimeTotalDebt < ProtocolDebtCeiling, "LMCV/Cannot extend past protocol debt ceiling");
-
-        //Last thing that happens is actual ability to mint dPrime
-        dPrime[Treasury] += mintingFee;
-        dPrime[user] += normalDebtChange * rateMult - mintingFee; //Test
+        _addLoanedDPrime(user, normalDebtChange);
         emit Loan(normalDebt[user], user, collats, collateralChange);
     }
 
@@ -362,12 +346,16 @@ contract LMCV {
     //Or coin prices decrease and they want to repay dPrime
     function addLoanedDPrime(address user, uint256 normalDebtChange) loanAlive external { // [wad]
         require(approval(user, msg.sender), "LMCV/Owner must consent");
+        _addLoanedDPrime(user, normalDebtChange);
+        emit AddLoanedDPrime(user, normalDebtChange);
+    }
 
+    function _addLoanedDPrime(address user, uint256 normalDebtChange) internal { // [wad]
         uint256 rateMult = StabilityRate;
         uint256 mintingFee = _rmul(normalDebtChange * rateMult, MintFee);
         if(PSMAddresses[user]){
             rateMult = RAY;
-            mintingFee = 0;
+            mintingFee = _rmul(normalDebtChange * rateMult, PSMMintFee);
         }
 
         normalDebt[user] += normalDebtChange;
@@ -383,7 +371,6 @@ contract LMCV {
         //Last thing that happens is actual ability to mint dPrime
         dPrime[Treasury] += mintingFee;
         dPrime[user] += normalDebtChange * rateMult - mintingFee; //Test
-        emit AddLoanedDPrime(user, normalDebtChange);
     }
 
     //Basic liquidation to allow for liquidation contract management
