@@ -12,6 +12,7 @@ import "hardhat/console.sol";
 
 contract LMCV {
     mapping (address => uint256) public admins;
+    mapping (address => bool)    public PSMAddresses;
     mapping (address => mapping (address => uint256))    public proxyApprovals;
 
     struct CollateralType {
@@ -38,6 +39,7 @@ contract LMCV {
     //Admin
     uint256 public loanLive;
     uint256 public totalNormalizedDebt; // [wad] //TODO: Test
+    uint256 public totalPSMDebt;        // [wad]
     uint256 public dPrimeTotalDebt;     // [rad]
     uint256 public ProtocolDebtCeiling; // [rad]
     uint256 public MintFee;             // [ray]
@@ -147,6 +149,11 @@ contract LMCV {
     function setTreasury(address _treasury) external auth {
         require(_treasury != address(0x0), "LMCV/Can't be zero address");
         Treasury = _treasury;
+    }
+
+    function setPSMAddress(address psm, bool status) external auth {
+        require(psm != address(0x0), "LMCV/Can't be zero address");
+        PSMAddresses[psm] = status;
     }
     
     // --- Liquidation Admin ---
@@ -274,26 +281,28 @@ contract LMCV {
             unlockedCollateral[user][collats[i]] = newUnlockedCollat;
         }
 
+        uint256 rateMult = StabilityRate;
+        uint256 mintingFee = _rmul(normalDebtChange * rateMult, MintFee);
+        if(PSMAddresses[user]){
+            rateMult = RAY;
+            mintingFee = 0;
+        }
+
         //Need to check to make sure its under liquidation amount
         normalDebt[user]    += normalDebtChange;
         totalNormalizedDebt += normalDebtChange;
-        // console.log("NOLEV:     %s", getPortfolioValue(user));
-        // console.log("LEVERED:   %s\n", getPortfolioValue(user));
-        // console.log("MAXDEBT:   %s\n", getMaxDPrimeDebt(user));
-        
 
-        require(_rmul(getPortfolioValue(user), liquidationMult) > normalDebt[user] * StabilityRate 
-            && getMaxDPrimeDebt(user) > normalDebt[user] * StabilityRate, 
+        require(_rmul(getPortfolioValue(user), liquidationMult) > normalDebt[user] * rateMult 
+            && getMaxDPrimeDebt(user) > normalDebt[user] * rateMult, 
             "LMCV/Minting more dPrime than allowed"
         );
         
-        dPrimeTotalDebt += normalDebtChange * StabilityRate;
+        dPrimeTotalDebt += normalDebtChange * rateMult;
         require(dPrimeTotalDebt < ProtocolDebtCeiling, "LMCV/Cannot extend past protocol debt ceiling");
 
         //Last thing that happens is actual ability to mint dPrime
-        uint256 mintingFee = _rmul(normalDebtChange * StabilityRate, MintFee);
         dPrime[Treasury] += mintingFee;
-        dPrime[user] += normalDebtChange * StabilityRate - mintingFee; //Test
+        dPrime[user] += normalDebtChange * rateMult - mintingFee; //Test
         emit Loan(normalDebt[user], user, collats, collateralChange);
     }
 
@@ -307,9 +316,11 @@ contract LMCV {
     ) external loanAlive {
         require(collats.length == collateralChange.length, "LMCV/Need amount for each collateral");
         require(approval(user, msg.sender), "LMCV/Owner must consent");
+        
+        uint256 rateMult = PSMAddresses[user] ? RAY : StabilityRate;
 
-        dPrime[user]        -= normalDebtChange * StabilityRate;
-        dPrimeTotalDebt     -= normalDebtChange * StabilityRate;
+        dPrime[user]        -= normalDebtChange * rateMult;
+        dPrimeTotalDebt     -= normalDebtChange * rateMult;
         normalDebt[user]    -= normalDebtChange;
         totalNormalizedDebt -= normalDebtChange;
         
@@ -328,7 +339,7 @@ contract LMCV {
             //New locked collateral set then immediately check solvency
             //Has to call getWeightedRate again because weighted rate has changed since above
             lockedCollateral[user][collats[i]] = newLockedCollat;
-            require(getMaxDPrimeDebt(user) >= normalDebt[user] * StabilityRate, "LMCV/More dPrime left than allowed");
+            require(getMaxDPrimeDebt(user) >= normalDebt[user] * rateMult, "LMCV/More dPrime left than allowed");
 
             //Give user their unlocked collateral
             collateralType.totalDebt -= collateralChange[i];
@@ -352,20 +363,26 @@ contract LMCV {
     function addLoanedDPrime(address user, uint256 normalDebtChange) loanAlive external { // [wad]
         require(approval(user, msg.sender), "LMCV/Owner must consent");
 
+        uint256 rateMult = StabilityRate;
+        uint256 mintingFee = _rmul(normalDebtChange * rateMult, MintFee);
+        if(PSMAddresses[user]){
+            rateMult = RAY;
+            mintingFee = 0;
+        }
+
         normalDebt[user] += normalDebtChange;
         totalNormalizedDebt += normalDebtChange;
-        require(_rmul(getPortfolioValue(user), liquidationMult) > normalDebt[user] * StabilityRate 
-            && getMaxDPrimeDebt(user) > normalDebt[user] * StabilityRate, 
+        require(_rmul(getPortfolioValue(user), liquidationMult) > normalDebt[user] * rateMult 
+            && getMaxDPrimeDebt(user) > normalDebt[user] * rateMult, 
             "LMCV/Minting more dPrime than allowed"
         );
         
-        dPrimeTotalDebt += normalDebtChange * StabilityRate;
+        dPrimeTotalDebt += normalDebtChange * rateMult;
         require(dPrimeTotalDebt < ProtocolDebtCeiling, "LMCV/Cannot extend past protocol debt ceiling");
 
         //Last thing that happens is actual ability to mint dPrime
-        uint256 mintingFee = _rmul(normalDebtChange * StabilityRate, MintFee);
         dPrime[Treasury] += mintingFee;
-        dPrime[user] += normalDebtChange * StabilityRate - mintingFee; //Test
+        dPrime[user] += normalDebtChange * rateMult - mintingFee; //Test
         emit AddLoanedDPrime(user, normalDebtChange);
     }
 
@@ -388,8 +405,6 @@ contract LMCV {
         // Move collateral from liquidated address to liquidator's address
         for(uint256 i = 0; i < collats.length; i++){
             bytes32 collateral = collats[i];
-            // console.log("\n Collateral: %s", bytes32ToString(collateral));
-            // console.log("liquidationAmount   %s", liquidationAmount);
             CollateralTypes[collateral].totalDebt -= collateralChange[i];
             lockedCollateral[liquidated][collateral] -= collateralChange[i];
             unlockedCollateral[liquidator][collateral] += collateralChange[i];
@@ -402,7 +417,7 @@ contract LMCV {
     }
 
     // --- Settlement ---
-    // Only liquidation contract can successfully call heal
+    // Only liquidation contract can successfully call repayLiquidationDebt
     function repayLiquidationDebt(uint256 rad) external {
         address u = msg.sender;
         liquidationDebt[u] -= rad;
@@ -425,7 +440,7 @@ contract LMCV {
     // --- Rates ---
     function updateRate(int256 rateIncrease) external auth loanAlive {
         StabilityRate       = _add(StabilityRate, rateIncrease);
-        int256 rad          = _int256(totalNormalizedDebt) * rateIncrease;
+        int256 rad          = _int256(totalNormalizedDebt - totalPSMDebt) * rateIncrease;
         dPrime[Treasury]    = _add(dPrime[Treasury], rad);
         dPrimeTotalDebt     = _add(dPrimeTotalDebt, rad);
 
@@ -454,8 +469,8 @@ contract LMCV {
 
     function getPortfolioValue(address user) public view returns (uint256 value){ // [rad]
         bytes32[] storage lockedList = lockedCollateralList[user];
-        uint256 nlVal = 0;
-        uint256 lVal = 0;
+        uint256 nlVal;
+        uint256 lVal;
         for(uint256 i = 0; i < lockedList.length; i++){
             CollateralType storage collateralType = CollateralTypes[lockedList[i]];
             if(lockedCollateral[user][lockedList[i]] > collateralType.debtFloor){
@@ -472,11 +487,11 @@ contract LMCV {
         return _rmul(nlVal, RAY + lVal * RAY / nlVal);
     }
 
-    //TODO: Do we really need this?
-    function getLeverMult(address user) public view returns (uint256 leverMult){ // [ray]
+    //TODO: Do we need this?
+    function getLeverMult(address user) external view returns (uint256 leverMult){ // [ray]
         bytes32[] storage lockedList = lockedCollateralList[user];
-        uint256 nlVal = 0;
-        uint256 lVal = 0;
+        uint256 nlVal;
+        uint256 lVal;
         for(uint256 i = 0; i < lockedList.length; i++){
             CollateralType storage collateralType = CollateralTypes[lockedList[i]];
             if(lockedCollateral[user][lockedList[i]] > collateralType.debtFloor){
@@ -511,6 +526,7 @@ contract LMCV {
         array.pop();
     }
 
+    //TODO: Only for testing
     function bytes32ToString(bytes32 _bytes32) public pure returns (string memory) {
         uint8 i = 0;
         while(i < 32 && _bytes32[i] != 0) {
