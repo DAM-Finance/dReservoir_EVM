@@ -85,7 +85,7 @@ describe("Testing LMCV", function () {
 
         debtCeiling = frad("50000");
         await lmcv.setProtocolDebtCeiling(debtCeiling);
-        await lmcv.setLiquidationMult(fray(".60"));
+        await lmcv.setLiquidationMult(fray(".85"));
         
         await setupUser(addr1, ["2000", "2000", "2000"]);
         await setupUser(addr2, ["2000", "2000", "2000"]);
@@ -163,9 +163,14 @@ describe("Testing LMCV", function () {
             expect(await lmcv.dPrime(addr1.address)).to.equal(frad("787.272727279"));
         });
 
-        //TODO: AddLoanedDPrime testing as well
-
-        //TODO: Test for only lever token - low LTV can technically lever until miniscule amounts
+        it("Lever tokens only", async function () {
+            let collateralType3 = await lmcv.CollateralTypes(dPRIMEsBytes);
+            expect(collateralType3['leveraged']).to.be.true;
+            
+            await userLMCV.loan([dPRIMEsBytes], [fwad("1000")], fwad("800"), addr1.address);
+            expect(await lmcv.dPrime(addr1.address)).to.equal(frad("800"));
+            expect(await lmcv.getPortfolioValue(addr1.address)).to.equal(frad("1000"));
+        });
     });
 });
 

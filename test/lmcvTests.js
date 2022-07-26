@@ -352,7 +352,7 @@ describe("Testing LMCV", function () {
         });
 
         it("When dust level is set to be above loan amount, this leads to no extra dPrime being loanable", async function () {
-            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("1999"), addr1.address);
+            await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr1.address);
             await lmcv.collatDebtFloor(mockToken2Bytes, fwad("120"));
             await expect(userLMCV.loan([],[], fwad("1"), addr1.address)).to.be.revertedWith("LMCV/Minting more dPrime than allowed");
         });
@@ -567,7 +567,5 @@ describe("Testing LMCV", function () {
             expect(await lmcv.totalNormalizedDebt()).to.equal(fwad("2000"));
         });
     });
-
-    //TODO: Minting fee in LMCV Tests
 });
 

@@ -294,7 +294,27 @@ contract LMCV {
             unlockedCollateral[user][collats[i]] = newUnlockedCollat;
         }
 
-        _addLoanedDPrime(user, normalDebtChange);
+        uint256 rateMult = StabilityRate;
+        uint256 mintingFee = _rmul(normalDebtChange * rateMult, MintFee);
+        if(PSMAddresses[user]){
+            rateMult = RAY;
+            mintingFee = 0;
+        }
+
+        normalDebt[user] += normalDebtChange;
+        totalNormalizedDebt += normalDebtChange;
+
+        require(_rmul(getPortfolioValue(user), liquidationMult) >= normalDebt[user] * rateMult 
+            && getMaxDPrimeDebt(user) >= normalDebt[user] * rateMult, 
+            "LMCV/Minting more dPrime than allowed"
+        );
+        
+        dPrimeTotalDebt += normalDebtChange * rateMult;
+        require(dPrimeTotalDebt < ProtocolDebtCeiling, "LMCV/Cannot extend past protocol debt ceiling");
+
+        //Last thing that happens is actual ability to mint dPrime
+        dPrime[Treasury] += mintingFee;
+        dPrime[user] += normalDebtChange * rateMult - mintingFee;
         emit Loan(normalDebt[user], user, collats, collateralChange);
     }
 
@@ -348,29 +368,6 @@ contract LMCV {
         }
 
         emit LoanRepayment(normalDebt[user], user, collats, collateralChange);
-    }
-
-    function _addLoanedDPrime(address user, uint256 normalDebtChange) internal { // [wad]
-        uint256 rateMult = StabilityRate;
-        uint256 mintingFee = _rmul(normalDebtChange * rateMult, MintFee);
-        if(PSMAddresses[user]){
-            rateMult = RAY;
-            mintingFee = 0;
-        }
-
-        normalDebt[user] += normalDebtChange;
-        totalNormalizedDebt += normalDebtChange;
-        require(_rmul(getPortfolioValue(user), liquidationMult) > normalDebt[user] * rateMult 
-            && getMaxDPrimeDebt(user) > normalDebt[user] * rateMult, 
-            "LMCV/Minting more dPrime than allowed"
-        );
-        
-        dPrimeTotalDebt += normalDebtChange * rateMult;
-        require(dPrimeTotalDebt < ProtocolDebtCeiling, "LMCV/Cannot extend past protocol debt ceiling");
-
-        //Last thing that happens is actual ability to mint dPrime
-        dPrime[Treasury] += mintingFee;
-        dPrime[user] += normalDebtChange * rateMult - mintingFee; //Test
     }
 
     //Basic liquidation to allow for liquidation contract management
@@ -468,28 +465,7 @@ contract LMCV {
                 }
             }
         }
-        // console.log("FNOLEV:        %s", nlVal);
-        // console.log("FLEVERED:      %s", lVal);
-        // console.log("FRMUL:         %s\n", _rmul(nlVal, RAY + lVal * RAY / nlVal));
-        return _rmul(nlVal, RAY + lVal * RAY / nlVal);
-    }
-
-    //TODO: Do we need this?
-    function getLeverMult(address user) external view returns (uint256 leverMult){ // [ray]
-        bytes32[] storage lockedList = lockedCollateralList[user];
-        uint256 nlVal;
-        uint256 lVal;
-        for(uint256 i = 0; i < lockedList.length; i++){
-            CollateralType storage collateralType = CollateralTypes[lockedList[i]];
-            if(lockedCollateral[user][lockedList[i]] > collateralType.debtFloor){
-                if(!collateralType.leveraged){
-                    nlVal += lockedCollateral[user][lockedList[i]] * collateralType.spotPrice; // wad*ray -> rad
-                } else {
-                    lVal += lockedCollateral[user][lockedList[i]] * collateralType.spotPrice;
-                }
-            }
-        }
-        return RAY + lVal * RAY / nlVal;
+        return nlVal > 0 ? _rmul(nlVal, RAY + lVal * RAY / nlVal) : lVal;
     }
 
     function getUnlockedCollateralValue(address user, bytes32[] memory collateralList) external view returns (uint256 unlockedValue) {
