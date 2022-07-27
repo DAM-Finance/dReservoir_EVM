@@ -115,18 +115,54 @@ describe("Testing LMCV", function () {
             expect(await psm.collateralJoin()).to.equal(collateralJoin.address);
             await collateralJoin.rely(psm.address);
 
-            await userPSM.createDPrime(addr1.address, [USDCMockBytes],["9990000000000"]); //10 zeroes not 18
-            await userPSM.createDPrime(addr2.address, [USDCMockBytes],["9990000000000"]); //10 zeroes not 18
+            expect(await USDCMock.balanceOf(addr1.address)).to.equal("2000000000000000000000")
 
-            expect(await dPrime.balanceOf(addr1.address)).to.equal(fwad("999"));
-            expect(await dPrime.balanceOf(addr2.address)).to.equal(fwad("999"));
-            expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("1998"));
+            await userPSM.createDPrime(addr1.address, [USDCMockBytes],["10000000000000"]); //10 zeroes not 18
+            await userPSM.createDPrime(addr2.address, [USDCMockBytes],["10000000000000"]); //10 zeroes not 18
 
-            await userPSM.removeDPrime(addr1.address, [USDCMockBytes],["9990000000000"]);
+            expect(await dPrime.balanceOf(addr1.address)).to.equal(fwad("1000"));
+            expect(await dPrime.balanceOf(addr2.address)).to.equal(fwad("1000"));
+            expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("2000"));
+
+            await userPSM.getCollateral(addr1.address, [USDCMockBytes], ["10000000000000"]);
 
             expect(await dPrime.balanceOf(addr1.address)).to.equal(0);
-            expect(await dPrime.balanceOf(addr2.address)).to.equal(fwad("999"));
-            expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("999"));
+            expect(await dPrime.balanceOf(addr2.address)).to.equal(fwad("1000"));
+            expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("1000"));
+            expect(await USDCMock.balanceOf(addr1.address)).to.equal("1999999990000000000000")
+        });
+
+        it("Should work properly with fee", async function () {
+            await lmcv.setPSMAddress(psm.address, true);
+            await userDPrime.approve(psm.address, fray("100000"));
+            expect(await psm.collateralJoin()).to.equal(collateralJoin.address);
+            await collateralJoin.rely(psm.address);
+
+            await psm.setMintRepayFees(fray(".01"), fray(".01"));
+
+            expect(await USDCMock.balanceOf(addr1.address)).to.equal("2000000000000000000000")
+
+            await userPSM.createDPrime(addr1.address, [USDCMockBytes],["10000000000000"]); //10 zeroes not 18
+            await userPSM.createDPrime(addr2.address, [USDCMockBytes],["10000000000000"]); //10 zeroes not 18
+
+            expect(await dPrime.balanceOf(addr1.address)).to.equal(fwad("990"));
+            expect(await dPrime.balanceOf(addr2.address)).to.equal(fwad("990"));
+            expect(await lmcv.dPrime(owner.address)).to.equal(frad("20"));
+
+            expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("2000"));
+
+            let user2dPrime = dPrime.connect(addr2);
+            await user2dPrime.transfer(addr1.address, fwad("20"));
+
+            await userPSM.getCollateral(addr1.address, [USDCMockBytes], ["10000000000000"]);
+
+            expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("1000"));
+
+            expect(await dPrime.balanceOf(addr1.address)).to.equal(0);
+            expect(await dPrime.balanceOf(addr2.address)).to.equal(fwad("970"));
+            expect(await lmcv.dPrime(owner.address)).to.equal(frad("30"));
+            expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("1000"));
+            expect(await USDCMock.balanceOf(addr1.address)).to.equal("1999999990000000000000")
         });
     });
 });

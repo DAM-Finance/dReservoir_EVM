@@ -125,6 +125,8 @@ contract PSM {
         // console.log("fee:               %s", fee);
         // console.log("dPrimeAmt:         %s", dPrimeAmt);
 
+        // console.log("balance            %s", dPrime.balanceOf(usr));
+
         collateralJoin.join(address(this), collatAmount[0], msg.sender);
 
         collatAmount[0] = collatAmount18;
@@ -132,31 +134,32 @@ contract PSM {
         lmcv.moveDPrime(address(this), treasury, fee * RAY);
 
         dPrimeJoin.exit(usr, dPrimeAmt);
-        emit CreateDPrime(usr, collatAmount[0], fee);
+        emit CreateDPrime(usr, collatAmount18, fee);
     }
 
-    function removeDPrime(address usr, bytes32[] memory collateral, uint256[] memory collatAmount) external {
+    function getCollateral(address usr, bytes32[] memory collateral, uint256[] memory collatAmount) external {
         require(collateral.length == 1 && collatAmount.length == 1 && collateral[0] == collateralName, "PSM/Incorrect setup");
         uint256 collatAmount18 = collatAmount[0] * to18ConversionFactor;
         uint256 fee = _rmul(collatAmount18, repayFee); // rmul(wad, ray) = wad
         uint256 dPrimeAmt = collatAmount18 + fee;
 
-        console.log("collatAmount:      %s", collatAmount[0]);
-        console.log("collatAmount18:    %s", collatAmount18);
-        console.log("fee:               %s", fee);
-        console.log("dPrimeAmt:         %s", dPrimeAmt);
+        // console.log("collatAmount:      %s", collatAmount[0]);
+        // console.log("collatAmount18:    %s", collatAmount18);
+        // console.log("fee:               %s", fee);
+        // console.log("dPrimeAmt:         %s", dPrimeAmt);
 
-        console.log(dPrime.balanceOf(usr));
+        // console.log("balance            %s", dPrime.balanceOf(usr));
 
         require(dPrime.transferFrom(msg.sender, address(this), dPrimeAmt), "PSM/dPrime failed transfer");
         dPrimeJoin.join(address(this), dPrimeAmt);
 
+        uint256 lowDecCollatAmount = collatAmount[0];
         collatAmount[0] = collatAmount18;
         lmcv.repay(collateral, collatAmount, collatAmount18, address(this));
-        collateralJoin.exit(usr, collatAmount[0]);
+        collateralJoin.exit(usr, lowDecCollatAmount);
         
         lmcv.moveDPrime(address(this), treasury, fee * RAY);
-        emit RemoveDPrime(usr, collatAmount[0], fee);
+        emit RemoveDPrime(usr, collatAmount18, fee);
     }
 
 }

@@ -230,13 +230,13 @@ contract LMCV {
 
     // --- Fungibility ---
     function pushCollateral(bytes32 collat, address user, uint256 wad) external auth {
-        console.log("gets here111");
         unlockedCollateral[user][collat] += wad;
         emit PushCollateral(collat, user, wad);
     }
 
     function pullCollateral(bytes32 collat, address user, uint256 wad) external auth {
-        console.log("Collat pull %s", wad);
+        // console.log("WAD                %s", wad);
+        // console.log("UNL                %s", unlockedCollateral[user][collat]);
         unlockedCollateral[user][collat] -= wad;
         emit PullCollateral(collat, user, wad);
     }
