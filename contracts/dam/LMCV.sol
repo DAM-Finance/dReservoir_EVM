@@ -168,7 +168,7 @@ contract LMCV {
         require(psm != address(0x0), "LMCV/Can't be zero address");
         PSMAddresses[psm] = status;
     }
-    
+
     // --- Liquidation Admin ---
     function setLiquidationMult(uint256 ray) external auth {
         liquidationMult = ray;
@@ -230,11 +230,13 @@ contract LMCV {
 
     // --- Fungibility ---
     function pushCollateral(bytes32 collat, address user, uint256 wad) external auth {
+        console.log("gets here111");
         unlockedCollateral[user][collat] += wad;
         emit PushCollateral(collat, user, wad);
     }
 
     function pullCollateral(bytes32 collat, address user, uint256 wad) external auth {
+        console.log("Collat pull %s", wad);
         unlockedCollateral[user][collat] -= wad;
         emit PullCollateral(collat, user, wad);
     }
@@ -257,7 +259,7 @@ contract LMCV {
     //eg: measure of whether a vault is safe or not is done based on
     //the vault as a whole being overcollateralized properly
     function loan(
-        bytes32[] memory collats,        
+        bytes32[] memory collats,
         uint256[] memory collateralChange,  // [wad]
         uint256 normalDebtChange,           // [wad] normalized
         address user
@@ -269,7 +271,7 @@ contract LMCV {
         for(uint256 i = 0; i < collats.length; i++){
             CollateralType memory collateralType = CollateralTypes[collats[i]];
             require(collateralType.debtCeiling > 0 && collateralType.debtMult > 0, "LMCV/collateral type not initialized");
-
+            
             //if collateral is newly introduced to cdp
             //add it to the locked collateral list
             if(lockedCollateral[user][collats[i]] == 0){
@@ -304,8 +306,13 @@ contract LMCV {
         normalDebt[user] += normalDebtChange;
         totalNormalizedDebt += normalDebtChange;
 
-        require(_rmul(getPortfolioValue(user), liquidationMult) >= normalDebt[user] * rateMult 
-            && getMaxDPrimeDebt(user) >= normalDebt[user] * rateMult, 
+        // console.log("case1:         %s", _rmul(getPortfolioValue(user), liquidationMult));
+        // console.log("case2:         %s", getMaxDPrimeDebt(user));
+        // console.log("dPrime:        %s", normalDebt[user] * rateMult);
+
+        //CHange this when Roger impl per coin liquidation ratio to remove PSMAddresses
+        require((PSMAddresses[user] || _rmul(getPortfolioValue(user), liquidationMult) >= normalDebt[user] * rateMult) 
+            && getMaxDPrimeDebt(user) >= normalDebt[user] * rateMult,
             "LMCV/Minting more dPrime than allowed"
         );
         

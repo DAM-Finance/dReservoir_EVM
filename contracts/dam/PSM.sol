@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.7;
 
+import "hardhat/console.sol";
 
 interface dPrimeJoinLike {
     function join(address user,uint256 wad) external;
@@ -46,7 +47,7 @@ interface CollateralJoinLike {
 // Allows anyone to go between dPrime and the Collateral by pooling the liquidity
 // An optional fee is charged for incoming and outgoing transfers
 
-contract DssPsm {
+contract PSM {
 
     // --- Auth ---
     mapping (address => uint256) public wards;
@@ -119,8 +120,14 @@ contract DssPsm {
         uint256 fee = _rmul(collatAmount18, mintFee); // rmul(wad, ray) = wad
         uint256 dPrimeAmt = collatAmount18 - fee;
 
+        // console.log("collatAmount:      %s", collatAmount[0]);
+        // console.log("collatAmount18:    %s", collatAmount18);
+        // console.log("fee:               %s", fee);
+        // console.log("dPrimeAmt:         %s", dPrimeAmt);
+
         collateralJoin.join(address(this), collatAmount[0], msg.sender);
 
+        collatAmount[0] = collatAmount18;
         lmcv.loan(collateral, collatAmount, collatAmount18, address(this));
         lmcv.moveDPrime(address(this), treasury, fee * RAY);
 
@@ -134,9 +141,17 @@ contract DssPsm {
         uint256 fee = _rmul(collatAmount18, repayFee); // rmul(wad, ray) = wad
         uint256 dPrimeAmt = collatAmount18 + fee;
 
-        require(dPrime.transferFrom(msg.sender, address(this), dPrimeAmt), "PSM/dPrime failed-transfer");
+        console.log("collatAmount:      %s", collatAmount[0]);
+        console.log("collatAmount18:    %s", collatAmount18);
+        console.log("fee:               %s", fee);
+        console.log("dPrimeAmt:         %s", dPrimeAmt);
+
+        console.log(dPrime.balanceOf(usr));
+
+        require(dPrime.transferFrom(msg.sender, address(this), dPrimeAmt), "PSM/dPrime failed transfer");
         dPrimeJoin.join(address(this), dPrimeAmt);
 
+        collatAmount[0] = collatAmount18;
         lmcv.repay(collateral, collatAmount, collatAmount18, address(this));
         collateralJoin.exit(usr, collatAmount[0]);
         

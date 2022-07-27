@@ -5,17 +5,17 @@ let owner, addr1, addr2, addr3, addrs;
 let dPrimeFactory, dPrime;
 let dPrimeJoinFactory, dPrimeJoin;
 let LMCVFactory, lmcv;
-let tokenFactory, mockToken;
+let tokenFactory, USDCMock;
 let collateralJoinFactory, collateralJoin;
-let glmrBytes = ethers.utils.formatBytes32String("MOCKTOKEN");
-let dotBytes = ethers.utils.formatBytes32String("MOCKTOKENTWO");
-let dPRIMEsBytes = ethers.utils.formatBytes32String("MOCKTOKENTHREE");
+let USDCMockBytes = ethers.utils.formatBytes32String("USDC");
 let tokenTwo, tokenThree;
 let collatJoinTwo, collatJoinThree;
-let collateralBytesList = [glmrBytes, dotBytes, dPRIMEsBytes];
 let debtCeiling;
 let userLMCV, userTwoLMCV, userThreeLMCV;
 let lmcvProxy, lmcvProxyFactory;
+let psm, psmFactory;
+let userPSM;
+let userDPrime;
 
 
 //Format as wad, ray, rad
@@ -28,26 +28,11 @@ function pray(bigNumber){ return bigNumber.div("1000000000000000000000000000")}
 function prad(bigNumber){ return bigNumber.div("1000000000000000000000000000000000000000000000")}
 
 async function setupUser(addr, amounts){
-    let mockTokenConnect = mockToken.connect(addr);
-    let mockToken2Connect = tokenTwo.connect(addr);
-    let mockToken3Connect = tokenThree.connect(addr);
+    let mockTokenConnect = USDCMock.connect(addr);
     
     await mockTokenConnect.approve(collateralJoin.address);
-    await mockToken2Connect.approve(collatJoinTwo.address);
-    await mockToken3Connect.approve(collatJoinThree.address);
 
     await mockTokenConnect.mint(fwad(amounts.at(0)));
-    await mockToken2Connect.mint(fwad(amounts.at(1)));
-    await mockToken3Connect.mint(fwad(amounts.at(2)));
-
-    let collatJoinConnect = collateralJoin.connect(addr);
-    await collatJoinConnect.join(addr.address, fwad(amounts.at(0)));
-
-    let collatJoin2Connect = collatJoinTwo.connect(addr);
-    await collatJoin2Connect.join(addr.address, fwad(amounts.at(1)));
-
-    let collatJoin3Connect = collatJoinThree.connect(addr);
-    await collatJoin3Connect.join(addr.address, fwad(amounts.at(2)));
 }
 
 describe("Testing LMCV", function () {
@@ -56,9 +41,10 @@ describe("Testing LMCV", function () {
         dPrimeFactory = await ethers.getContractFactory("dPrime");
         LMCVFactory = await ethers.getContractFactory("LMCV");
         dPrimeJoinFactory = await ethers.getContractFactory("dPrimeJoin");
-        tokenFactory = await ethers.getContractFactory("MockTokenTwo");
-        collateralJoinFactory = await ethers.getContractFactory("CollateralJoin");
+        tokenFactory = await ethers.getContractFactory("MockTokenThree");
+        collateralJoinFactory = await ethers.getContractFactory("CollateralJoinDecimals");
         lmcvProxyFactory = await ethers.getContractFactory("LMCVProxy");
+        psmFactory = await ethers.getContractFactory("PSM");
     });
 
     beforeEach(async function () {
@@ -69,43 +55,79 @@ describe("Testing LMCV", function () {
         lmcvProxy = await lmcvProxyFactory.deploy(lmcv.address);
         dPrimeJoin = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address, lmcvProxy.address);
 
-        mockToken = await tokenFactory.deploy("TSTR");
+        USDCMock = await tokenFactory.deploy("TSTR", 10);
 
-        collateralJoin = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, glmrBytes, mockToken.address, 18);
-
-        tokenTwo = await tokenFactory.deploy("TST2");
-        tokenThree = await tokenFactory.deploy("TST3");
-
-        collatJoinTwo = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, dotBytes, tokenTwo.address, 18);
-        collatJoinThree = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, dPRIMEsBytes, tokenThree.address, 18);
-
+        collateralJoin = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, USDCMockBytes, USDCMock.address);
+        
         await lmcv.administrate(collateralJoin.address, 1);
-        await lmcv.administrate(collatJoinTwo.address, 1);
-        await lmcv.administrate(collatJoinThree.address, 1);
 
         debtCeiling = frad("50000");
         await lmcv.setProtocolDebtCeiling(debtCeiling);
         await lmcv.setLiquidationMult(fray(".60"));
         
         await setupUser(addr1, ["2000", "2000", "2000"]);
-        await setupUser(addr2, ["2000", "2000", "2000"]);
-        await setupUser(addr3, ["0", "0", "0"]);
 
-        await lmcv.editAcceptedCollateralType(glmrBytes, fwad("10000"), fwad("1"), fray("0.5"), fray("0.08"), false);
-        await lmcv.editAcceptedCollateralType(dotBytes, fwad("10000"), fwad("1"), fray("0.5"), fray("0.08"), false);
-        await lmcv.editAcceptedCollateralType(dPRIMEsBytes, fwad("10000"), fwad("1"), fray("0.8"), fray("0.08"), true);
+        await lmcv.editAcceptedCollateralType(USDCMockBytes, fwad("10000"), fwad("1"), fray("1"), fray("0.00"), false);
 
-        await lmcv.updateSpotPrice(glmrBytes, fray("1"));
-        await lmcv.updateSpotPrice(dotBytes, fray("8"));
-        await lmcv.updateSpotPrice(dPRIMEsBytes, fray("1"));
+        await lmcv.updateSpotPrice(USDCMockBytes, fray("1"));
+
+        await dPrime.rely(dPrimeJoin.address);
 
         userLMCV = lmcv.connect(addr1);
         userTwoLMCV = lmcv.connect(addr2);
         userThreeLMCV = lmcv.connect(addr3);
+
+        psm = await psmFactory.deploy(collateralJoin.address, dPrimeJoin.address, owner.address);
+        userPSM = psm.connect(addr1);
+        userDPrime = dPrime.connect(addr1);
     });
 
     describe("PSM testing", function () {
-        
+        it("Should properly add collateral, loan, and exit with dPrime", async function () {
+            await lmcv.setPSMAddress(psm.address, true);
+
+            // console.log(await psm.lmcv());
+            // console.log(await psm.collateralJoin());
+            // console.log(await psm.dPrime());
+            // console.log(await psm.dPrimeJoin());
+            // console.log(await psm.collateralName());
+            // console.log(await psm.treasury() + "\n");
+
+            // console.log(await collateralJoin.lmcv());
+            // console.log(await collateralJoin.collateralContract());
+            // console.log(await collateralJoin.lmcvProxy());
+            // console.log(await collateralJoin.dec());
+            // console.log(await collateralJoin.collateralName() + "\n");
+
+            expect(await psm.collateralJoin()).to.equal(collateralJoin.address);
+            await collateralJoin.rely(psm.address);
+
+            await userPSM.createDPrime(addr1.address, [USDCMockBytes],["9990000000000"]); //10 zeroes not 18
+
+            expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("999"));
+            expect(await dPrime.balanceOf(addr1.address)).to.equal(fwad("999"));
+        });
+
+        it("Should properly add collateral, loan, and exit with dPrime", async function () {
+            await lmcv.setPSMAddress(psm.address, true);
+            await userDPrime.approve(psm.address, fray("100000"));
+
+            expect(await psm.collateralJoin()).to.equal(collateralJoin.address);
+            await collateralJoin.rely(psm.address);
+
+            await userPSM.createDPrime(addr1.address, [USDCMockBytes],["9990000000000"]); //10 zeroes not 18
+            await userPSM.createDPrime(addr2.address, [USDCMockBytes],["9990000000000"]); //10 zeroes not 18
+
+            expect(await dPrime.balanceOf(addr1.address)).to.equal(fwad("999"));
+            expect(await dPrime.balanceOf(addr2.address)).to.equal(fwad("999"));
+            expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("1998"));
+
+            await userPSM.removeDPrime(addr1.address, [USDCMockBytes],["9990000000000"]);
+
+            expect(await dPrime.balanceOf(addr1.address)).to.equal(0);
+            expect(await dPrime.balanceOf(addr2.address)).to.equal(fwad("999"));
+            expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("999"));
+        });
     });
 });
 
