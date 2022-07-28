@@ -85,7 +85,6 @@ async function main() {
 
     // await lmcv.setPartialLiqMax(fray(".50"));
     // await lmcv.setProtocolLiqFeeMult(fray(".015"));
-    // await lmcv.setLiquidationMult(fray(".60"));
     // await lmcv.setLiquidationFloor(frad("10"));
     // await lmcv.setWholeCDPLiqMult(fray(".80"));
 

@@ -63,8 +63,7 @@ describe("Testing LMCV", function () {
 
         debtCeiling = frad("50000");
         await lmcv.setProtocolDebtCeiling(debtCeiling);
-        await lmcv.setLiquidationMultiple(fray(".60"));
-        
+
         await setupUser(addr1, ["2000", "2000", "2000"]);
 
         await lmcv.editAcceptedCollateralType(USDCMockBytes, fwad("10000"), fwad("1"), fray("1"), fray("0.00"), false);

@@ -67,7 +67,6 @@ describe("dPrimeJoin Testing", function () {
         debtCeiling = frad("50000");
         await lmcv.setProtocolDebtCeiling(debtCeiling);
 
-        await lmcv.setLiquidationMultiple(fray(".60"));
         await lmcv.updateSpotPrice(mockTokenBytes, fray("10"));
 
         await dPrime.rely(dPrimeJoin.address);

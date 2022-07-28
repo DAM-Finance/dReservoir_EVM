@@ -85,8 +85,7 @@ describe("Testing LMCV", function () {
 
         debtCeiling = frad("50000");
         await lmcv.setProtocolDebtCeiling(debtCeiling);
-        await lmcv.setLiquidationMultiple(fray(".60"));
-        
+
         await setupUser(addr1, ["555", "666", "777"]);
         await setupUser(addr2, ["1000", "1000", "1000"]);
         await setupUser(addr3, ["0", "0", "0"]);
@@ -94,8 +93,6 @@ describe("Testing LMCV", function () {
         await lmcv.editAcceptedCollateralType(mockTokenBytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), false);
         await lmcv.editAcceptedCollateralType(mockToken2Bytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), false);
         await lmcv.editAcceptedCollateralType(mockToken3Bytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), false);
-
-        await lmcv.setLiquidationMultiple(fray("1.10"));
 
         await lmcv.updateSpotPrice(mockTokenBytes, fray("40"));
         await lmcv.updateSpotPrice(mockToken2Bytes, fray("20"));

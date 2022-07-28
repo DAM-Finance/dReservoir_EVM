@@ -69,14 +69,12 @@ contract LMCV {
     //
 
     mapping (address => uint256)                        public liquidationDebt;         // [rad]
-    uint256 public totalLiquidationDebt;                                                // [rad] -
-    uint256 public liquidationMultiple;                                                 // [ray] - A multiple of the credit limit. E.g. 1.15 to set a liquidation threshold 15% higher than the credit limit.
+    uint256 public totalLiquidationDebt;                                                // [rad]
 
     //
     // Events
     //
 
-    // --- Events ---
     event EditAcceptedCollateralType(bytes32 indexed collateralName, uint256 _debtCeiling, uint256 _debtFloor, uint256 _creditRatio, uint256 _liqBonusMult, bool _leveraged);
     event Liquidation(address indexed liquidated, address indexed liquidator, uint256 normalDebtChange, bytes32[] collats, uint256[] collateralChange);
     event LoanRepayment(uint256 indexed dPrimeChange, address indexed user, bytes32[] collats, uint256[] amounts);
@@ -194,14 +192,6 @@ contract LMCV {
     function setPSMAddress(address psm, bool status) external auth {
         require(psm != address(0x0), "LMCV/Can't be zero address");
         PSMAddresses[psm] = status;
-    }
-    
-    //
-    // Liquidation Admin.
-    //
-
-    function setLiquidationMultiple(uint256 ray) external auth {
-        liquidationMultiple = ray;
     }
 
     //
@@ -520,7 +510,8 @@ contract LMCV {
     function isWithinCreditLimit(address user, uint256 rate) private view returns (bool) {
         bytes32[] storage lockedList = lockedCollateralList[user];
         uint256 creditLimit;
-        uint256 noLeverageTotal; // [rad]
+        uint256 leverTokenCreditLimit;
+        uint256 noLeverageTotal; // [wad]
         uint256 leverageTotal;   // [rad]
         for (uint256 i = 0; i < lockedList.length; i++) {
             Collateral memory collateralData = CollateralData[lockedList[i]];
@@ -530,38 +521,37 @@ contract LMCV {
 
                 if(!collateralData.leveraged){
                     creditLimit += _rmul(collateralValue, collateralData.creditRatio);
-                    noLeverageTotal += collateralValue;
+                    noLeverageTotal += collateralValue / RAY;
                 } else {
                     leverageTotal += collateralValue;
-                    creditLimit += _rmul(collateralValue, collateralData.creditRatio);
+                    leverTokenCreditLimit += _rmul(collateralValue, collateralData.creditRatio);
                 }
             }
         }
 
-        //Get value of levered portfolio or if no nonlevered tokens, set to leveredToken value
-        uint256 portfolioValueLeveraged = noLeverageTotal > 0 ? _rmul(noLeverageTotal, RAY + leverageTotal * RAY / noLeverageTotal) : leverageTotal;
-        //TODO: Test this >= or normalizedDebt == 0 better?
-        if (creditLimit >= normalizedDebt[user] * rate && portfolioValueLeveraged >= _rmul(creditLimit, liquidationMultiple)) {
+//        console.log("Reg Credit Limit       %s", creditLimit);
+//        console.log("Lev Token Credit Limit %s", leverTokenCreditLimit);
+//        console.log("No Lev Total           %s", noLeverageTotal);
+//        console.log("Lev Total              %s", leverageTotal);
+
+        // If only leverage tokens exist, just return their credit limit
+        // Keep credit ratio low on levered tokens (60% or lower) to incentivize having non levered collateral in the vault
+        if(noLeverageTotal == 0 && leverageTotal > 0 && leverTokenCreditLimit >= normalizedDebt[user] * rate){
+//            console.log("Top pass\n");
+            return true;
+        }
+
+        uint256 leverageMultiple = noLeverageTotal == 0 && leverageTotal == 0 ? RAY : RAY + leverageTotal / noLeverageTotal;
+//        console.log("Lev Mult               %s", leverageMultiple);
+//
+//        console.log("First Check            %s", _rmul(creditLimit, leverageMultiple));
+//        console.log("Second check           %s", normalizedDebt[user] * rate);
+
+        if (_rmul(creditLimit, leverageMultiple) >= (normalizedDebt[user] * rate)) {
+//            console.log("Bottom pass\n");
             return true;
         }
         return false;
-    }
-
-    function getPortfolioValue(address user) public view returns (uint256 value){ // [rad]
-        bytes32[] storage lockedList = lockedCollateralList[user];
-        uint256 nlVal;
-        uint256 lVal;
-        for(uint256 i = 0; i < lockedList.length; i++){
-            Collateral storage collateralType = CollateralData[lockedList[i]];
-            if(lockedCollateral[user][lockedList[i]] > collateralType.dustLevel){
-                if(!collateralType.leveraged){
-                    nlVal += lockedCollateral[user][lockedList[i]] * collateralType.spotPrice; // wad*ray -> rad
-                } else {
-                    lVal += lockedCollateral[user][lockedList[i]] * collateralType.spotPrice;
-                }
-            }
-        }
-        return nlVal > 0 ? _rmul(nlVal, RAY + lVal * RAY / nlVal) : lVal;
     }
 
     function either(bool x, bool y) internal pure returns (bool z) {

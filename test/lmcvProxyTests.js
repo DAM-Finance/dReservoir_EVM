@@ -81,7 +81,6 @@ describe("Testing LMCVProxy", function () {
 
         debtCeiling = frad("50000");
         await lmcv.setProtocolDebtCeiling(debtCeiling);
-        await lmcv.setLiquidationMultiple(fray(".60"));
         await lmcv.setMintFee(fray(".01"));
 
         await lmcv.editAcceptedCollateralType(mockTokenBytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), false);
