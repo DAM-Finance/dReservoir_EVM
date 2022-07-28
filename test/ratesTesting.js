@@ -114,11 +114,11 @@ describe("Testing LMCV", function () {
             //Total value of collateral: $6000
             //Total loanable amount: $3000
             await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr1.address);
-            expect(await userLMCV.normalDebt(addr1.address)).to.equal(fwad("2000"));
+            expect(await userLMCV.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
             expect(await userLMCV.dPrime(addr1.address)).to.equal(frad("2000"));
 
             await userTwoLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr2.address);
-            expect(await userTwoLMCV.normalDebt(addr2.address)).to.equal(fwad("2000"));
+            expect(await userTwoLMCV.normalizedDebt(addr2.address)).to.equal(fwad("2000"));
             expect(await userTwoLMCV.dPrime(addr2.address)).to.equal(frad("2000"));
 
             await userTwoLMCV.moveDPrime(addr2.address, addr1.address, frad("2000"));
@@ -129,13 +129,13 @@ describe("Testing LMCV", function () {
 
             await userLMCV.repay(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr1.address);
             expect(await lmcv.dPrime(addr1.address)).to.equal(frad("1800"));
-            expect(await lmcv.normalDebt(addr1.address)).to.equal(0);
+            expect(await lmcv.normalizedDebt(addr1.address)).to.equal(0);
         });
 
         it("Should behave correctly when 2 loans taken out at different stability rates", async function () {
 
             await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr1.address);
-            expect(await userLMCV.normalDebt(addr1.address)).to.equal(fwad("2000"));
+            expect(await userLMCV.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
             expect(await userLMCV.dPrime(addr1.address)).to.equal(frad("2000"));
 
             await lmcv.updateRate(fray(".1"));
@@ -145,11 +145,11 @@ describe("Testing LMCV", function () {
 
             await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr1.address);
             expect(await lmcv.dPrime(addr1.address)).to.equal(frad("4200"));
-            expect(await lmcv.normalDebt(addr1.address)).to.equal(fwad("4000"));
+            expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("4000"));
 
 
             await userTwoLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr2.address);
-            expect(await userTwoLMCV.normalDebt(addr2.address)).to.equal(fwad("2000"));
+            expect(await userTwoLMCV.normalizedDebt(addr2.address)).to.equal(fwad("2000"));
             expect(await userTwoLMCV.dPrime(addr2.address)).to.equal(frad("2200"));
 
             await userTwoLMCV.moveDPrime(addr2.address, addr1.address, frad("2200"));
@@ -162,7 +162,7 @@ describe("Testing LMCV", function () {
 
             await userLMCV.repay(collateralBytesList, [fwad("100"), fwad("200"), fwad("400")], fwad("4000"), addr1.address);
             expect(await lmcv.dPrime(addr1.address)).to.equal(frad("1600"));
-            expect(await lmcv.normalDebt(addr1.address)).to.equal(0);
+            expect(await lmcv.normalizedDebt(addr1.address)).to.equal(0);
             expect(await lmcv.totalNormalizedDebt()).to.equal(fwad("2000"));
         });
     });

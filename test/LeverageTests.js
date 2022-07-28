@@ -85,7 +85,7 @@ describe("Testing LMCV", function () {
 
         debtCeiling = frad("50000");
         await lmcv.setProtocolDebtCeiling(debtCeiling);
-        await lmcv.setLiquidationMult(fray(".85"));
+        await lmcv.setLiquidationMultiple(fray(".85"));
         
         await setupUser(addr1, ["2000", "2000", "2000"]);
         await setupUser(addr2, ["2000", "2000", "2000"]);
@@ -106,7 +106,7 @@ describe("Testing LMCV", function () {
 
     describe("Leverage testing", function () {
         it("getPortfolioValue should work", async function () {
-            let collateralType3 = await lmcv.CollateralTypes(dPRIMEsBytes);
+            let collateralType3 = await lmcv.CollateralData(dPRIMEsBytes);
             expect(collateralType3['leveraged']).to.be.true;
 
             await lmcv.updateRate(fray(".1"));
@@ -123,7 +123,7 @@ describe("Testing LMCV", function () {
         });
 
         it("Loan and repayment should work with lower spot price - no minting fee or rate", async function () {
-            let collateralType3 = await lmcv.CollateralTypes(dPRIMEsBytes);
+            let collateralType3 = await lmcv.CollateralData(dPRIMEsBytes);
             expect(collateralType3['leveraged']).to.be.true;
             
             await lmcv.updateRate(fray(".1"));
@@ -134,12 +134,12 @@ describe("Testing LMCV", function () {
 
             await lmcv.updateSpotPrice(dotBytes, fray("6"));
             expect(await lmcv.getPortfolioValue(addr1.address)).to.equal("3499999999999999999999999998000000000000000000000");
-            await userLMCV.repay([glmrBytes, dotBytes, dPRIMEsBytes], [fwad("1000"), fwad("200"), fwad("1300")], await lmcv.normalDebt(addr1.address), addr1.address);
+            await userLMCV.repay([glmrBytes, dotBytes, dPRIMEsBytes], [fwad("1000"), fwad("200"), fwad("1300")], await lmcv.normalizedDebt(addr1.address), addr1.address);
             expect(await lmcv.dPrime(addr1.address)).to.equal(0);
         });
 
         it("Loan and repayment should work - with rate", async function () {
-            let collateralType3 = await lmcv.CollateralTypes(dPRIMEsBytes);
+            let collateralType3 = await lmcv.CollateralData(dPRIMEsBytes);
             expect(collateralType3['leveraged']).to.be.true;
             
             await lmcv.updateRate(fray(".1"));
@@ -159,12 +159,12 @@ describe("Testing LMCV", function () {
 
             await lmcv.updateRate(fray(".1"));
 
-            await userLMCV.repay([glmrBytes, dotBytes, dPRIMEsBytes], [fwad("1000"), fwad("200"), fwad("1300")], await lmcv.normalDebt(addr1.address), addr1.address);
+            await userLMCV.repay([glmrBytes, dotBytes, dPRIMEsBytes], [fwad("1000"), fwad("200"), fwad("1300")], await lmcv.normalizedDebt(addr1.address), addr1.address);
             expect(await lmcv.dPrime(addr1.address)).to.equal(frad("787.272727279"));
         });
 
         it("Lever tokens only", async function () {
-            let collateralType3 = await lmcv.CollateralTypes(dPRIMEsBytes);
+            let collateralType3 = await lmcv.CollateralData(dPRIMEsBytes);
             expect(collateralType3['leveraged']).to.be.true;
             
             await userLMCV.loan([dPRIMEsBytes], [fwad("1000")], fwad("800"), addr1.address);

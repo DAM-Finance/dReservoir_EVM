@@ -181,7 +181,7 @@ describe("Testing LMCVProxy", function () {
             await expect(userTwoLMCV.lockedCollateralList(addr1.address, 0)).to.be.reverted;
 
             expect(await lmcv.dPrime(addr1.address)).to.equal("0");
-            expect(await lmcv.normalDebt(addr1.address)).to.equal("0");
+            expect(await lmcv.normalizedDebt(addr1.address)).to.equal("0");
 
             expect( await mockToken.balanceOf(addr1.address)).to.equal(fwad("1000"));
             expect( await mockTokenTwo.balanceOf(addr1.address)).to.equal(fwad("1000"));
@@ -220,7 +220,7 @@ describe("Testing LMCVProxy", function () {
             expect(await lmcv.lockedCollateral(addr1.address, mockToken3Bytes)).to.equal(fwad("300"));
 
             expect(await lmcv.dPrime(addr1.address)).to.equal(frad("0"));
-            expect(await lmcv.normalDebt(addr1.address)).to.equal(fwad("200"));
+            expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("200"));
 
             expect( await mockToken.balanceOf(addr1.address)).to.equal(fwad("1000"));
             expect( await mockTokenTwo.balanceOf(addr1.address)).to.equal(fwad("1000"));
@@ -231,7 +231,7 @@ describe("Testing LMCVProxy", function () {
             await expect(userTwoLMCV.lockedCollateralList(addr1.address, 0)).to.be.reverted;
 
             expect(await lmcv.dPrime(addr1.address)).to.equal("0");
-            expect(await lmcv.normalDebt(addr1.address)).to.equal("0");
+            expect(await lmcv.normalizedDebt(addr1.address)).to.equal("0");
 
             expect( await mockToken.balanceOf(addr1.address)).to.equal(fwad("1000"));
             expect( await mockTokenTwo.balanceOf(addr1.address)).to.equal(fwad("1000"));
