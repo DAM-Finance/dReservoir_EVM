@@ -432,7 +432,19 @@ contract LMCV {
     }
 
     /*
-     * Basic liquidation to allow for liquidation contract management.
+     * If the value of dPRIME issued by a user falls below the credit limit for their vault, then
+     * their vault (or a portion of it) can be liquidated. This function provides the liquidation 
+     * contract an interface to the LMCV.
+     *
+     * When a liquidation happens, the amount of collateral to be liquidated is determined by the
+     * liquidation contract. The resulting amount of debt change and collateral change is passed
+     * on to this function.
+     *
+     * The effect of this function is to reduce the normalized debt and the locked collateral for
+     * the user in question and the protocol as a whole. It is expected that the user's collateral
+     * will reduce my more than the normalized debt balance due to the liquidation discount. It 
+     * might be the case that the user's vault is still eligible for liquidation if it's a large
+     * vault and the amount to liquidate is significantly larger than the auction lot size.
      */
     function liquidate(
         bytes32[] memory collateralList,    // List of collateral identifiers.
@@ -445,21 +457,43 @@ contract LMCV {
         require(collateralList.length == collateralChange.length, "LMCV/Missing collateral type or collateral amount");
         uint256 dPrimeChange = normalizedDebtChange * StabilityRate;
 
-        // Add debt to the protocol's liquidation contract
+        // This debt represnts the amount of liquidated user's dPRIME which is still floating around. 
+        // We need to burn the same amount of dPRIME raised via auction. Assuming a successful
+        // auction, any increase to `liquidationDebt` will be reversed. An auction which raises less
+        // than the required dPRIME amount will result in some amount of `liquidationDebt` persisting
+        // over time. This means that, on aggregate, dPRIME will be less collateralised than it 
+        // previously was. However, this should only become a problem if the collateral to debt ratio 
+        // approaches 1:1, which is given the risk management controls we have in place.
         totalLiquidationDebt                    += dPrimeChange;
         liquidationDebt[liquidationContract]    += dPrimeChange;
 
-        // Move collateral from liquidated address to liquidator's address
-        for(uint256 i = 0; i < collateralList.length; i++){
-            bytes32 collateral = collateralList[i];
-            CollateralData[collateral].lockedAmount -= collateralChange[i];
-            lockedCollateral[liquidated][collateral] -= collateralChange[i];
-            unlockedCollateral[liquidator][collateral] += collateralChange[i];
-        }
-
+        // Here, we reduce the amount of outstanding debt for the liquidated user and the protocol
+        // as a whole because we accounted for it above in 1liquidationDebt`. This operation and the one
+        // above has the effect of moving the debt to where it will be handled by the liquidation contract.
+        // Above, we increase `liquidationDebt` by the dPRIME amount which also takes into account
+        // accrued interat interest to date.
         normalizedDebt[liquidated]  -= normalizedDebtChange;
         totalNormalizedDebt         -= normalizedDebtChange;
-        totalDPrime                 -= dPrimeChange;
+
+        // Move collateral from the liquidated user's address to liquidator's address. 
+        // This might leave the vault in a dusty state.
+        for (uint256 i = 0; i < collateralList.length; i++) {
+            bytes32 collateral = collateralList[i];
+            CollateralData[collateral].lockedAmount -= collateralChange[i];     // Reduce total locked.
+            lockedCollateral[liquidated][collateral] -= collateralChange[i];    // Reduce locked for user.
+            unlockedCollateral[liquidator][collateral] += collateralChange[i];  // Increase unlocked for user.
+        }
+
+        // Remove collateral from the list of locked collateral indicies if all of it is confiscated
+        // by the liquidator. This may happen if the vault in question is small (well below the lot size).
+        bytes32[] storage lockedCollats = lockedCollateralList[user];
+        for (uint j = lockedCollats.length; j > 0; j--) {
+            uint256 iter = j - 1;
+            if (lockedCollateral[user][lockedCollats[iter]] == 0) {
+                deleteElement(lockedCollats, iter);
+            }
+        }
+
         emit Liquidation(liquidated, liquidator, normalizedDebtChange, collateralList, collateralChange);
     }
 
