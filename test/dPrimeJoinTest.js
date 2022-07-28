@@ -60,7 +60,8 @@ describe("dPrimeJoin Testing", function () {
             fwad("10000"),      // Amount limit.
             fwad("1"),          // Dust level.
             fray("0.5"),        // Credit limit. I.e. an LTV of 50%.
-            fray("0.08")        // Liquidation bonus.
+            fray("0.08"),        // Liquidation bonus.
+            false
         );
 
         debtCeiling = frad("50000");
@@ -89,13 +90,13 @@ describe("dPrimeJoin Testing", function () {
         await userLMCV.approveMultiple([userDPrimeJoin.address]);
         await userDPrimeJoin.exit(addr1.address, fwad("100"));
 
-        expect(await lmcv.normalDebt(addr1.address)).to.equal(fwad("2000"));
+        expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
         expect(await lmcv.dPrime(addr1.address)).to.equal(frad("1880"));
         expect(await dPrime.balanceOf(addr1.address)).to.equal(fwad("100"));
         expect(await lmcv.dPrime(owner.address)).to.equal(frad("20"));
     });
 
-    it("Should not let user withdraw dPrime greater than specified in normalDebt * StabilityRate", async function () {
+    it("Should not let user withdraw dPrime greater than specified in normalizedDebt * StabilityRate", async function () {
         await userLMCV.loan([mockTokenBytes], [fwad("500")], fwad("2000"), addr1.address);
         expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
 

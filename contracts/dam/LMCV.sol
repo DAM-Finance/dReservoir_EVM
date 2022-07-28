@@ -531,7 +531,7 @@ contract LMCV {
 
                 if(!collateralData.leveraged){
                     creditLimit += _rmul(collateralValue, collateralData.creditRatio);
-                    noLeverageTotal += collateralValue; // [rad]
+                    noLeverageTotal += collateralValue;
                 } else {
                     leverageTotal += collateralValue;
                     creditLimit += _rmul(collateralValue, collateralData.creditRatio);
