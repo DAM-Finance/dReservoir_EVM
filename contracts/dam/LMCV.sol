@@ -381,7 +381,11 @@ contract LMCV {
         require(collateralList.length == collateralChange.length, "LMCV/Missing collateral type or collateral amount");
         require(approval(user, msg.sender), "LMCV/Owner must consent");
 
-        uint256 rateMult = PSMAddresses[user] ? RAY : StabilityRate;
+        uint256 rateMult = StabilityRate;
+        if(PSMAddresses[user]){
+            rateMult = RAY;
+            totalPSMDebt        -= normalizedDebtChange;
+        }
 
         // 1. Update debt balances.
         //@Roger first thing we should be doing is setting owed debts correct
