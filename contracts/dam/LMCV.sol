@@ -296,6 +296,10 @@ contract LMCV {
         emit MoveDPrime(src, dst, rad);
     }
 
+    //
+    // Borrowing and repayment.
+    //
+
     /*
      * Creating a loan is a three stage process:
      *
@@ -431,6 +435,10 @@ contract LMCV {
         emit LoanRepayment(normalizedDebt[user], user, collateralList, collateralChange);
     }
 
+    //
+    // Liquidation
+    //
+
     /*
      * If the value of dPRIME issued by a user falls below the credit limit for their vault, then
      * their vault (or a portion of it) can be liquidated. This function provides the liquidation 
@@ -497,18 +505,17 @@ contract LMCV {
         emit Liquidation(liquidated, liquidator, normalizedDebtChange, collateralList, collateralChange);
     }
 
-    //
-    // Settlement
-    //
-
     /*
-     * Only the liquidation contract can settle bad debts.
+     * Only the liquidation contract can settle bad debts. This function reduces the amount of `liquidationDebt`
+     * by the amount of dPRIME which was raised via auction. The amount of dPRIME raised is burnt and therefore, 
+     * upon settlement of the auction, when this function is called, the total amount of dPRIME issued is reduced 
+     * by the amount of dPRIME raised through the auction.
      */
     function repayLiquidationDebt(uint256 rad) external {
         address u = msg.sender;
         liquidationDebt[u]      -= rad;
-        dPrime[u]               -= rad;
         totalLiquidationDebt    -= rad;
+        dPrime[u]               -= rad;
         totalDPrime             -= rad;
 
         emit RepayLiquidationDebt(msg.sender, rad);
