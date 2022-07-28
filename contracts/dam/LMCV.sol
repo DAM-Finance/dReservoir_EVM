@@ -349,19 +349,17 @@ contract LMCV {
             unlockedCollateral[user][collateralList[i]] = newUnlockedCollateralAmount;
         }
 
-
-//TODO: Noah's setup
         uint256 rateMult = StabilityRate;
-        uint256 mintingFee = _rmul(normalizedDebtChange * rateMult, MintFee); //TODO: RMUL this
+        uint256 mintingFee = _rmul(normalizedDebtChange * rateMult, MintFee);
         if(PSMAddresses[user]){
             rateMult = RAY;
             mintingFee = 0;
+            totalPSMDebt += normalizedDebtChange;
         }
 
         // 2. Update vault debt value, total debt value and then check credit limit not exceeded.
         normalizedDebt[user]    += normalizedDebtChange;
         totalNormalizedDebt     += normalizedDebtChange;
-        //TODO: Change to accept rate difference and PSM addresses
         require(isWithinCreditLimit(user, rateMult), "LMCV/Exceeded portfolio credit limit");
 
         // console.log("case1:         %s", _rmul(getPortfolioValue(user), liquidationMult));
@@ -408,6 +406,7 @@ contract LMCV {
         uint256 rateMult = PSMAddresses[user] ? RAY : StabilityRate;
 
         // 1. Update debt balances.
+        //@Roger first thing we should be doing is setting owed debts correct
         dPrime[user]            -= normalizedDebtChange * rateMult;
         totalDPrime             -= normalizedDebtChange * rateMult;
         normalizedDebt[user]    -= normalizedDebtChange;
@@ -426,14 +425,11 @@ contract LMCV {
 
             // Update collateral amounts.
             lockedCollateral[user][collateralList[i]]   = newLockedCollateralAmount;
-            //TODO: Reconcile this check with Roger's
-            require(getMaxDPrimeDebt(user) >= normalizedDebt[user] * rateMult, "LMCV/More dPrime left than allowed");
-
+            //@Roger check right here (multiple times) for reentrancy attacks - the audit will tell us if that's overkill
+            require(isWithinCreditLimit(user, rateMult), "LMCV/Exceeded portfolio credit limit");
             unlockedCollateral[user][collateralList[i]] = newUnlockedCollateralAmount;
             collateralData.lockedAmount                 -= collateralChange[i];
         }
-
-        require(isWithinCreditLimit(user, rateMult), "LMCV/Exceeded portfolio credit limit");
 
         // Remove collateral from locked list if fully repaid.
         bytes32[] storage lockedCollats = lockedCollateralList[user];
@@ -548,16 +544,18 @@ contract LMCV {
         return false;
     }
 
-    function getMaxDPrimeDebt(address user) public view returns (uint256 maxDPrime) { // [rad]
-        bytes32[] storage lockedList = lockedCollateralList[user];
-        for(uint256 i = 0; i < lockedList.length; i++){
-            Collateral storage collateralType = CollateralData[lockedList[i]];
-            if(lockedCollateral[user][lockedList[i]] > collateralType.dustLevel){
-                uint256 value = lockedCollateral[user][lockedList[i]] * collateralType.spotPrice; // wad*ray -> rad
-                maxDPrime += _rmul(value, collateralType.creditRatio); // rmul(rad, ray) -> rad
-            }
+    function isWithinCreditLimitLEVERAGECHANGES(address user, uint256 rate) private view returns (bool) {
+        uint256 creditLimit;
+        for (uint256 i = 0; i < lockedCollateralList[user].length; i++) {
+            Collateral memory collateralData = CollateralData[lockedCollateralList[user][i]];
+            uint256 collateralValue = lockedCollateral[user][lockedCollateralList[user][i]] * collateralData.spotPrice;
+            creditLimit += _rmul(collateralValue, collateralData.creditRatio);
         }
-        return maxDPrime;
+
+        if (creditLimit > normalizedDebt[user] * rate) {
+            return true;
+        }
+        return false;
     }
 
     function getPortfolioValue(address user) public view returns (uint256 value){ // [rad]
@@ -575,16 +573,6 @@ contract LMCV {
             }
         }
         return nlVal > 0 ? _rmul(nlVal, RAY + lVal * RAY / nlVal) : lVal;
-    }
-
-    function getUnlockedCollateralValue(address user, bytes32[] memory collateralList) external view returns (uint256 unlockedValue) {
-        for(uint256 i = 0; i < collateralList.length; i++){
-            Collateral storage collateralData = CollateralData[collateralList[i]];
-            if(unlockedCollateral[user][collateralList[i]] > collateralData.dustLevel){
-                unlockedValue += (unlockedCollateral[user][collateralList[i]] * collateralData.spotPrice); // wad*ray -> rad
-            }
-        }
-        return unlockedValue;
     }
 
     function either(bool x, bool y) internal pure returns (bool z) {
