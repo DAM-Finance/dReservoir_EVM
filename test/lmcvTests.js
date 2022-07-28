@@ -85,7 +85,7 @@ describe("Testing LMCV", function () {
 
         debtCeiling = frad("50000");
         await lmcv.setProtocolDebtCeiling(debtCeiling);
-        await lmcv.setLiquidationMult(fray(".60"));
+        await lmcv.setLiquidationMultiple(fray(".60"));
         
         await setupUser(addr1, ["555", "666", "777"]);
         await setupUser(addr2, ["1000", "1000", "1000"]);
@@ -111,16 +111,16 @@ describe("Testing LMCV", function () {
             userLMCV = await lmcv.connect(addr1);
         });
 
-        it("Should break if collateral change > unlockedCollateral amount", async function () {
+        it("Cannot lock more collateral than available unlocked balance", async function () {
             await expect(
                 userLMCV.loan(collateralBytesList, [fwad("600"), fwad("600"), fwad("600")], fwad("100"), addr1.address)
             ).to.be.reverted;
         });
 
-        it("Should break if collateral list has different size than collateralChange size", async function () {
+        it("Loan must be called with the collaterlList and collateralChange parameters of equal list length", async function () {
             await expect(
                 userLMCV.loan(collateralBytesList, [], fwad("10"), addr1.address)
-            ).to.be.revertedWith("LMCV/Need amount for each collateral");
+            ).to.be.revertedWith("LMCV/Missing collateral type or collateral amount");
         });
 
         it("Should break if user doesn't consent", async function () {
@@ -132,29 +132,29 @@ describe("Testing LMCV", function () {
         it("Should break for unrecognized collateral type", async function () {
             await expect(
                 userLMCV.loan(collateralBytesList.concat([ethers.utils.formatBytes32String("NOTIMPL")]), inconsequentialAmounts.concat([fwad("50")]), fwad("10"), addr1.address)
-            ).to.be.revertedWith("LMCV/collateral type not initialized");
+            ).to.be.revertedWith("LMCV/Collateral data not initialized");
         });
 
-        it("Should break if user doesn't consent", async function () {
-            await lmcv.collatDebtFloor(mockToken3Bytes, fwad("51"));
+        it("Locked collateral amounts must be higher than dust level", async function () {
+            await lmcv.editDustLevel(mockToken3Bytes, fwad("51"));
             await expect(
                 userLMCV.loan(collateralBytesList, inconsequentialAmounts, fwad("10"), addr1.address)
-            ).to.be.revertedWith("LMCV/Collateral must be higher than dust level");
-            await lmcv.collatDebtFloor(mockToken3Bytes, fwad("1"));
+            ).to.be.revertedWith("LMCV/Locked collateral amount must be higher than dust level");
+            await lmcv.editDustLevel(mockToken3Bytes, fwad("1"));
         });
 
-        it("Should break if collateral's debt ceiling is exceeded", async function () {
-            await lmcv.collatDebtCeiling(mockToken3Bytes, fwad("49"));
+        it("Should break if collateral's locked amount limit is exceeded", async function () {
+            await lmcv.editLockedAmountLimit(mockToken3Bytes, fwad("49"));
             await expect(
                 userLMCV.loan(collateralBytesList, inconsequentialAmounts, fwad("10"), addr1.address)
-            ).to.be.revertedWith("LMCV/Collateral debt ceiling exceeded");
-            await lmcv.collatDebtCeiling(mockToken3Bytes, fwad("1000"));
+            ).to.be.revertedWith("LMCV/Maximum protocol collateral amount exceeded");
+            await lmcv.editLockedAmountLimit(mockToken3Bytes, fwad("1000"));
         });
 
-        it("Should break if minting more dPrime than allowed from collateral", async function () {
+        it("Should break if minting more dPrime exceeds the maximum credit limit", async function () {
             await expect(
                 userLMCV.loan(collateralBytesList, inconsequentialAmounts, fwad("100000"), addr1.address)
-            ).to.be.revertedWith("LMCV/Minting more dPrime than allowed");
+            ).to.be.revertedWith("LMCV/Exceeded portfolio credit limit");
         });
 
         it("Should break if minting more dPrime than protocol debt ceiling", async function () {
@@ -170,9 +170,11 @@ describe("Testing LMCV", function () {
             //Total loanable amount: $3000
             await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr1.address);
 
-            expect(await userLMCV.lockedCollateralList(addr1.address, 0)).to.equal(mockTokenBytes);
-            expect(await userLMCV.lockedCollateralList(addr1.address, 1)).to.equal(mockToken2Bytes);
-            expect(await userLMCV.lockedCollateralList(addr1.address, 2)).to.equal(mockToken3Bytes);
+            let vault = await userLMCV.vaults(addr1.address);
+            console.log(vault);
+            expect(vault['lockedCollateralList'][0]).to.equal(mockTokenBytes);
+            expect(vault['lockedCollateralList'][1]).to.equal(mockToken2Bytes);
+            expect(vault['lockedCollateralList'][2]).to.equal(mockToken3Bytes);
 
             expect(await userLMCV.unlockedCollateral(addr1.address, mockTokenBytes)).to.equal(fwad("505"));
             expect(await userLMCV.unlockedCollateral(addr1.address, mockToken2Bytes)).to.equal(fwad("566"));

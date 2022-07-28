@@ -87,7 +87,7 @@ describe("Testing Setup for functions", function () {
         debtCeiling = "50000000000000000000000000000000000000000000000000";  // [rad] $50000
         await lmcv.setProtocolDebtCeiling(debtCeiling);
 
-        await lmcv.setLiquidationMult(fray(".60"));
+        await lmcv.setLiquidationMultiple(fray(".60"));
 
         await setupUser(addr1, ["555", "666", "777"]);
     });

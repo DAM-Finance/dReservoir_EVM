@@ -85,7 +85,7 @@ describe("Testing LMCV", function () {
 
         debtCeiling = frad("50000");
         await lmcv.setProtocolDebtCeiling(debtCeiling);
-        await lmcv.setLiquidationMult(fray(".60"));
+        await lmcv.setLiquidationMultiple(fray(".60"));
         
         await setupUser(addr1, ["555", "666", "777"]);
         await setupUser(addr2, ["1000", "1000", "1000"]);
