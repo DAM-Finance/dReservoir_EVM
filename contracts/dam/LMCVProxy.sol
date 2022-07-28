@@ -22,8 +22,7 @@ interface dPrimeJoinLike {
 }
 
 interface LMCVLike {
-    function pushDPrime(address src, uint256 rad) external;
-    function pullDPrime(address src, uint256 rad) external;
+    function dPrime(address user) external returns (uint256);
     function loan(
         bytes32[] memory collats,           
         uint256[] memory collateralChange,  // [wad]
@@ -44,6 +43,7 @@ contract LMCVProxy {
     mapping (bytes32 => address)        public collateralContracts;
     mapping (bytes32 => address)        public collateralJoins;
 
+    uint256 constant RAY = 10 ** 27;
     address public lmcv;
     address public dPrimeJoin;
     address public dPrime;
@@ -117,7 +117,7 @@ contract LMCVProxy {
             CollateralJoinLike(collateralJoins[collaterals[i]]).join(msg.sender, amounts[i]);
         }
         LMCVLike(lmcv).loan(collaterals, amounts, wad, msg.sender);
-        dPrimeJoinLike(dPrimeJoin).proxyExit(msg.sender, wad);
+        dPrimeJoinLike(dPrimeJoin).proxyExit(msg.sender, (LMCVLike(lmcv).dPrime(msg.sender) / RAY));
     }
 
     function repayLoan(bytes32[] memory collaterals, uint256[] memory amounts, uint256 wad) external alive {

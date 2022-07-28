@@ -34,7 +34,7 @@ describe("Connections between contracts so far", function () {
         lmcvProxy = await lmcvProxyFactory.deploy(lmcv.address);
 
         dPrimeJoinFactory = await ethers.getContractFactory("dPrimeJoin");
-        dPrimeJoin = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address, lmcvProxy.address, owner.address, formatRay("0.03"));
+        dPrimeJoin = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address, lmcvProxy.address);
 
         tokenFactory = await ethers.getContractFactory("MockTokenTwo");
         mockToken = await tokenFactory.deploy("TSTR");

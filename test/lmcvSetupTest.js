@@ -66,7 +66,7 @@ describe("Testing Setup for functions", function () {
         lmcvProxy = await lmcvProxyFactory.deploy(lmcv.address);
 
         dPrimeJoinFactory = await ethers.getContractFactory("dPrimeJoin");
-        dPrimeJoin = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address, lmcvProxy.address, owner.address, fray("0.01"));
+        dPrimeJoin = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address, lmcvProxy.address);
 
         tokenFactory = await ethers.getContractFactory("MockTokenTwo");
         mockToken = await tokenFactory.deploy("TSTR");
@@ -87,7 +87,7 @@ describe("Testing Setup for functions", function () {
         debtCeiling = "50000000000000000000000000000000000000000000000000";  // [rad] $50000
         await lmcv.setProtocolDebtCeiling(debtCeiling);
 
-        await lmcv.setLiquidationMult(fray(".60"));
+        await lmcv.setLiquidationMultiple(fray(".60"));
 
         await setupUser(addr1, ["555", "666", "777"]);
     });
@@ -117,34 +117,34 @@ describe("Testing Setup for functions", function () {
     });
 
     it("should set up collateralType mapping", async function () {
-        await lmcv.editAcceptedCollateralType(mockTokenBytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"));
-        let collateralType = await lmcv.CollateralTypes(mockTokenBytes);
+        await lmcv.editAcceptedCollateralType(mockTokenBytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), false);
+        let collateralType = await lmcv.CollateralData(mockTokenBytes);
         // console.log(collateralType);
         expect(collateralType['spotPrice']).to.equal(0);
-        expect(collateralType['totalDebt']).to.equal(0);
-        expect(collateralType['debtCeiling']).to.equal("1000000000000000000000");
-        expect(collateralType['debtFloor']).to.equal("1000000000000000000");
-        expect(collateralType['debtMult']).to.equal("500000000000000000000000000");
+        expect(collateralType['lockedAmount']).to.equal(0);
+        expect(collateralType['lockedAmountLimit']).to.equal("1000000000000000000000");
+        expect(collateralType['dustLevel']).to.equal("1000000000000000000");
+        expect(collateralType['creditRatio']).to.equal("500000000000000000000000000");
         expect(collateralType['liqBonusMult']).to.equal("80000000000000000000000000");
 
-        await lmcv.editAcceptedCollateralType(mockToken2Bytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"));
-        let collateralType2 = await lmcv.CollateralTypes(mockToken2Bytes);
+        await lmcv.editAcceptedCollateralType(mockToken2Bytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), false);
+        let collateralType2 = await lmcv.CollateralData(mockToken2Bytes);
         // console.log(collateralType);
         expect(collateralType2['spotPrice']).to.equal(0);
-        expect(collateralType2['totalDebt']).to.equal(0);
-        expect(collateralType2['debtCeiling']).to.equal("1000000000000000000000");
-        expect(collateralType2['debtFloor']).to.equal("1000000000000000000");
-        expect(collateralType2['debtMult']).to.equal("500000000000000000000000000");
+        expect(collateralType2['lockedAmount']).to.equal(0);
+        expect(collateralType2['lockedAmountLimit']).to.equal("1000000000000000000000");
+        expect(collateralType2['dustLevel']).to.equal("1000000000000000000");
+        expect(collateralType2['creditRatio']).to.equal("500000000000000000000000000");
         expect(collateralType2['liqBonusMult']).to.equal("80000000000000000000000000");
 
-        await lmcv.editAcceptedCollateralType(mockToken3Bytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"));
-        let collateralType3 = await lmcv.CollateralTypes(mockToken3Bytes);
+        await lmcv.editAcceptedCollateralType(mockToken3Bytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), false);
+        let collateralType3 = await lmcv.CollateralData(mockToken3Bytes);
         // console.log(collateralType);
         expect(collateralType3['spotPrice']).to.equal(0);
-        expect(collateralType3['totalDebt']).to.equal(0);
-        expect(collateralType3['debtCeiling']).to.equal("1000000000000000000000");
-        expect(collateralType3['debtFloor']).to.equal("1000000000000000000");
-        expect(collateralType3['debtMult']).to.equal("500000000000000000000000000");
+        expect(collateralType3['lockedAmount']).to.equal(0);
+        expect(collateralType3['lockedAmountLimit']).to.equal("1000000000000000000000");
+        expect(collateralType3['dustLevel']).to.equal("1000000000000000000");
+        expect(collateralType3['creditRatio']).to.equal("500000000000000000000000000");
         expect(collateralType3['liqBonusMult']).to.equal("80000000000000000000000000");
     });
 
@@ -153,15 +153,13 @@ describe("Testing Setup for functions", function () {
         await lmcv.updateSpotPrice(mockToken2Bytes, fray("20"));
         await lmcv.updateSpotPrice(mockToken3Bytes, fray("10"));
 
-        let collateralType = await lmcv.CollateralTypes(mockTokenBytes);
+        let collateralType = await lmcv.CollateralData(mockTokenBytes);
         expect(collateralType['spotPrice']).to.equal("40000000000000000000000000000");
 
-        let collateralType2 = await lmcv.CollateralTypes(mockToken2Bytes);
+        let collateralType2 = await lmcv.CollateralData(mockToken2Bytes);
         expect(collateralType2['spotPrice']).to.equal("20000000000000000000000000000");
 
-        let collateralType3 = await lmcv.CollateralTypes(mockToken3Bytes);
+        let collateralType3 = await lmcv.CollateralData(mockToken3Bytes);
         expect(collateralType3['spotPrice']).to.equal("10000000000000000000000000000");
-        let value = await lmcv.getUnlockedCollateralValue(addr1.address, collateralBytesList);
-        expect(value).to.equal("43290000000000000000000000000000000000000000000000"); // $43290 in RAD value
     });
 });

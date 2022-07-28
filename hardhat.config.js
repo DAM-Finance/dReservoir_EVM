@@ -1,5 +1,5 @@
 require("@nomiclabs/hardhat-waffle");
-const {privateKey, privateKeyTwo} = require('./secrets.json');
+// const {privateKey, privateKeyTwo} = require('./secrets.json');
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
@@ -8,11 +8,11 @@ const {privateKey, privateKeyTwo} = require('./secrets.json');
   networks: {
     hardhat: {
     },
-    moonbase: {
-      url: 'https://rpc.api.moonbase.moonbeam.network',
-      chainId: 1287,
-      accounts: [privateKey, privateKeyTwo]
-    },
+    // moonbase: {
+    //   url: 'https://rpc.api.moonbase.moonbeam.network',
+    //   chainId: 1287,
+    //   accounts: [privateKey, privateKeyTwo]
+    // },
   },
   solidity: {
     version: "0.8.7",
