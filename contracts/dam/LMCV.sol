@@ -227,7 +227,7 @@ contract LMCV {
         CollateralData[collateral].liqBonusMult = ray;
         // Emit event?
     }
-    //TODO: RENAME THIS
+
     function editLeverageStatus(bytes32 collateral, bool _leveraged) external auth {
         CollateralData[collateral].leveraged = _leveraged;
     }
@@ -342,7 +342,6 @@ contract LMCV {
             collateralData.lockedAmount += collateralChange[i];
             require(collateralData.lockedAmountLimit > collateralData.lockedAmount, "LMCV/Maximum protocol collateral amount exceeded");
 
-            //TODO: Check this - Roger forgot to update the struct
             CollateralData[collateralList[i]] = collateralData;
             // Set new collateral numbers.
             lockedCollateral[user][collateralList[i]]   = newLockedCollateralAmount;
@@ -539,18 +538,12 @@ contract LMCV {
             }
         }
 
-//        console.log("Credit limit:      %s", creditLimit);
-//        console.log("noLeverageTotal:   %s", noLeverageTotal);
-//        console.log("leverageTotal:     %s\n", leverageTotal);
-
         //Get value of levered portfolio or if no nonlevered tokens, set to leveredToken value
         uint256 portfolioValueLeveraged = noLeverageTotal > 0 ? _rmul(noLeverageTotal, RAY + leverageTotal * RAY / noLeverageTotal) : leverageTotal;
         //TODO: Test this >= or normalizedDebt == 0 better?
         if (creditLimit >= normalizedDebt[user] * rate && portfolioValueLeveraged >= _rmul(creditLimit, liquidationMultiple)) {
-//            console.log("Passed\n");
             return true;
         }
-//        console.log("Failed case\n");
         return false;
     }
 
