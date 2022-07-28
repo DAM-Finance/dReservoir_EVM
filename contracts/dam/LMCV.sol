@@ -29,7 +29,7 @@ contract LMCV {
         uint256 lockedAmount;           // [wad] - amount of collateral locked.
         uint256 lockedAmountLimit;      // [wad] - Protocol Level limit for amount of locked collateral.
         uint256 dustLevel;              // [wad] - Minimum amount of collateral allowed per vault.
-        uint256 creditLimit;            // [ray] - ie. max 70% loaned out as dPrime.
+        uint256 creditRatio;            // [ray] - ie. max 70% loaned out as dPrime.
         uint256 liqBonusMult;           // [ray] - ie. 5% for bluechip, 15% for junk
         bool    leveraged;
     }
@@ -77,7 +77,7 @@ contract LMCV {
     //
 
     // --- Events ---
-    event EditAcceptedCollateralType(bytes32 indexed collateralName, uint256 _debtCeiling, uint256 _debtFloor, uint256 _debtMult, uint256 _liqBonusMult, bool _leveraged);
+    event EditAcceptedCollateralType(bytes32 indexed collateralName, uint256 _debtCeiling, uint256 _debtFloor, uint256 _creditRatio, uint256 _liqBonusMult, bool _leveraged);
     event Liquidation(address indexed liquidated, address indexed liquidator, uint256 normalDebtChange, bytes32[] collats, uint256[] collateralChange);
     event LoanRepayment(uint256 indexed dPrimeChange, address indexed user, bytes32[] collats, uint256[] amounts);
     event CreateLiquidationDebt(address indexed debtReceiver, address indexed dPrimeReceiver, uint256 rad);
@@ -219,7 +219,7 @@ contract LMCV {
     }
 
     function editCreditLimit(bytes32 collateral, uint256 ray) external auth {
-        CollateralData[collateral].creditLimit = ray;
+        CollateralData[collateral].creditRatio = ray;
         // Emit event?
     }
 
@@ -256,7 +256,7 @@ contract LMCV {
         Collateral memory collateralData    = CollateralData[collateralName];
         collateralData.lockedAmountLimit    = _lockedAmountLimit;
         collateralData.dustLevel            = _dustLevel;
-        collateralData.creditLimit          = _creditLimit;
+        collateralData.creditRatio = _creditLimit;
         collateralData.liqBonusMult         = _liqBonusMult;
         collateralData.leveraged = _leveraged;
 
@@ -323,7 +323,7 @@ contract LMCV {
         // 1. Update collateral amounts.
         for (uint256 i = 0; i < collateralList.length; i++) {
             Collateral memory collateralData = CollateralData[collateralList[i]];
-            require(collateralData.lockedAmountLimit > 0 && collateralData.creditLimit > 0, "LMCV/Collateral data not initialized");
+            require(collateralData.lockedAmountLimit > 0 && collateralData.creditRatio > 0, "LMCV/Collateral data not initialized");
 
             // The user's vault does not contain this type of collateral yet. So register it.
             if (lockedCollateral[user][collateralList[i]] == 0) {
@@ -362,7 +362,7 @@ contract LMCV {
         normalizedDebt[user]    += normalizedDebtChange;
         totalNormalizedDebt     += normalizedDebtChange;
         //TODO: Change to accept rate difference and PSM addresses
-        require(isWithinCreditLimit(user), "LMCV/Exceeded portfolio credit limit");
+        require(isWithinCreditLimit(user, rateMult), "LMCV/Exceeded portfolio credit limit");
 
         // console.log("case1:         %s", _rmul(getPortfolioValue(user), liquidationMult));
         // console.log("case2:         %s", getMaxDPrimeDebt(user));
@@ -415,7 +415,7 @@ contract LMCV {
 
         // 2. Update collateral balances and check limits.
         for(uint256 i = 0; i < collateralList.length; i++){
-            CollateralData storage collateralData = CollateralData[collateralList[i]];
+            Collateral storage collateralData = CollateralData[collateralList[i]];
 
             // Debit locked collateral amount and credit unlocked collateral amount.
             uint256 newLockedCollateralAmount   = lockedCollateral[user][collateralList[i]]     -= collateralChange[i];
@@ -433,7 +433,7 @@ contract LMCV {
             collateralData.lockedAmount                 -= collateralChange[i];
         }
 
-        require(isWithinCreditLimit(user), "LMCV/Exceeded portfolio credit limit");
+        require(isWithinCreditLimit(user, rateMult), "LMCV/Exceeded portfolio credit limit");
 
         // Remove collateral from locked list if fully repaid.
         bytes32[] storage lockedCollats = lockedCollateralList[user];
@@ -533,16 +533,16 @@ contract LMCV {
      * This function checks that the present value of a vault's debt (normalised debt multiplied
      * by stability rate) is less than than the credit limit.
      */
-    function isWithinCreditLimit(address user) private view returns (bool) {
+    function isWithinCreditLimit(address user, uint256 rate) private view returns (bool) {
         uint256 creditLimit;
 
         for (uint256 i = 0; i < lockedCollateralList[user].length; i++) {
             Collateral memory collateralData = CollateralData[lockedCollateralList[user][i]];
             uint256 collateralValue = lockedCollateral[user][lockedCollateralList[user][i]] * collateralData.spotPrice;
-            creditLimit += _rmul(collateralValue, collateralData.creditLimit);
+            creditLimit += _rmul(collateralValue, collateralData.creditRatio);
         }
 
-        if (creditLimit > normalizedDebt[user] * StabilityRate) {
+        if (creditLimit > normalizedDebt[user] * rate) {
             return true;
         }
         return false;
@@ -551,10 +551,10 @@ contract LMCV {
     function getMaxDPrimeDebt(address user) public view returns (uint256 maxDPrime) { // [rad]
         bytes32[] storage lockedList = lockedCollateralList[user];
         for(uint256 i = 0; i < lockedList.length; i++){
-            CollateralData storage collateralType = CollateralTypes[lockedList[i]];
-            if(lockedCollateral[user][lockedList[i]] > collateralType.debtFloor){
+            Collateral storage collateralType = CollateralData[lockedList[i]];
+            if(lockedCollateral[user][lockedList[i]] > collateralType.dustLevel){
                 uint256 value = lockedCollateral[user][lockedList[i]] * collateralType.spotPrice; // wad*ray -> rad
-                maxDPrime += _rmul(value, collateralType.debtMult); // rmul(rad, ray) -> rad
+                maxDPrime += _rmul(value, collateralType.creditRatio); // rmul(rad, ray) -> rad
             }
         }
         return maxDPrime;
@@ -565,8 +565,8 @@ contract LMCV {
         uint256 nlVal;
         uint256 lVal;
         for(uint256 i = 0; i < lockedList.length; i++){
-            CollateralType storage collateralType = CollateralTypes[lockedList[i]];
-            if(lockedCollateral[user][lockedList[i]] > collateralType.debtFloor){
+            Collateral storage collateralType = CollateralData[lockedList[i]];
+            if(lockedCollateral[user][lockedList[i]] > collateralType.dustLevel){
                 if(!collateralType.leveraged){
                     nlVal += lockedCollateral[user][lockedList[i]] * collateralType.spotPrice; // wad*ray -> rad
                 } else {
