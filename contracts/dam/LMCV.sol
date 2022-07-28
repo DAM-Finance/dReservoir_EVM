@@ -362,17 +362,6 @@ contract LMCV {
         totalNormalizedDebt     += normalizedDebtChange;
         require(isWithinCreditLimit(user, rateMult), "LMCV/Exceeded portfolio credit limit");
 
-        // console.log("case1:         %s", _rmul(getPortfolioValue(user), liquidationMult));
-        // console.log("case2:         %s", getMaxDPrimeDebt(user));
-        // console.log("dPrime:        %s", normalDebt[user] * rateMult);
-
-        //CHange this when Roger impl per coin liquidation ratio to remove PSMAddresses
-        //TODO: This is old - just modify isWithinCreditLimit to get correct check
-        require((PSMAddresses[user] || _rmul(getPortfolioValue(user), liquidationMultiple) >= normalizedDebt[user] * rateMult)
-            && getMaxDPrimeDebt(user) >= normalizedDebt[user] * rateMult,
-            "LMCV/Minting more dPrime than allowed"
-        );
-
         // 3. Update the dPRIME ledger and handle minting fees.
         // NormalisedDebt is a present value seen from the perspective of "day 1" and therefore must
         // be multiplied by the total accrued interest to date, to obtain the current value. This
@@ -530,29 +519,30 @@ contract LMCV {
      * by stability rate) is less than than the credit limit.
      */
     function isWithinCreditLimit(address user, uint256 rate) private view returns (bool) {
+        bytes32[] storage lockedList = lockedCollateralList[user];
         uint256 creditLimit;
+        uint256 noLeverageTotal; // [rad]
+        uint256 leverageTotal;   // [rad]
+        for (uint256 i = 0; i < lockedList.length; i++) {
+            Collateral memory collateralData = CollateralData[lockedList[i]];
 
-        for (uint256 i = 0; i < lockedCollateralList[user].length; i++) {
-            Collateral memory collateralData = CollateralData[lockedCollateralList[user][i]];
-            uint256 collateralValue = lockedCollateral[user][lockedCollateralList[user][i]] * collateralData.spotPrice;
-            creditLimit += _rmul(collateralValue, collateralData.creditRatio);
+            if(lockedCollateral[user][lockedList[i]] > collateralData.dustLevel){
+                uint256 collateralValue = lockedCollateral[user][lockedList[i]] * collateralData.spotPrice; // wad*ray -> rad
+
+                if(!collateralData.leveraged){
+                    creditLimit += _rmul(collateralValue, collateralData.creditRatio);
+                    noLeverageTotal += collateralValue; // [rad]
+                } else {
+                    leverageTotal += collateralValue;
+                    creditLimit += _rmul(collateralValue, collateralData.creditRatio);
+                }
+            }
         }
 
-        if (creditLimit > normalizedDebt[user] * rate) {
-            return true;
-        }
-        return false;
-    }
-
-    function isWithinCreditLimitLEVERAGECHANGES(address user, uint256 rate) private view returns (bool) {
-        uint256 creditLimit;
-        for (uint256 i = 0; i < lockedCollateralList[user].length; i++) {
-            Collateral memory collateralData = CollateralData[lockedCollateralList[user][i]];
-            uint256 collateralValue = lockedCollateral[user][lockedCollateralList[user][i]] * collateralData.spotPrice;
-            creditLimit += _rmul(collateralValue, collateralData.creditRatio);
-        }
-
-        if (creditLimit > normalizedDebt[user] * rate) {
+        //Get value of levered portfolio or if no nonlevered tokens, set to leveredToken value
+        uint256 portfolioValueLeveraged = noLeverageTotal > 0 ? _rmul(noLeverageTotal, RAY + leverageTotal * RAY / noLeverageTotal) : leverageTotal;
+        //TODO: Test this
+        if (creditLimit > normalizedDebt[user] * rate && portfolioValueLeveraged > _rmul(creditLimit, liquidationMultiple)) {
             return true;
         }
         return false;
