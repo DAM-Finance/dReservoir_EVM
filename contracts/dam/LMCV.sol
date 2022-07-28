@@ -228,8 +228,8 @@ contract LMCV {
         // Emit event?
     }
     //TODO: RENAME THIS
-    function collatLeveraged(bytes32 collateral, bool _leveraged) external auth {
-        CollateralTypes[collateral].leveraged = _leveraged;
+    function editLeverageStatus(bytes32 collateral, bool _leveraged) external auth {
+        CollateralData[collateral].leveraged = _leveraged;
     }
 
     function updateSpotPrice(bytes32 collateral, uint256 ray) external auth {
@@ -250,7 +250,7 @@ contract LMCV {
         uint256 _lockedAmountLimit,     // [wad] - Protocol Level
         uint256 _dustLevel,             // [wad] - Account level
         uint256 _creditLimit,           // [ray] - ie. max 70% loaned out as dPrime
-        uint256 _liqBonusMult           // [ray] - ie. 5% for bluechip, 15% for junk
+        uint256 _liqBonusMult,           // [ray] - ie. 5% for bluechip, 15% for junk
         bool    _leveraged
     ) external auth {
         Collateral memory collateralData    = CollateralData[collateralName];
@@ -258,7 +258,7 @@ contract LMCV {
         collateralData.dustLevel            = _dustLevel;
         collateralData.creditLimit          = _creditLimit;
         collateralData.liqBonusMult         = _liqBonusMult;
-        collateralType.leveraged = _leveraged;
+        collateralData.leveraged = _leveraged;
 
         CollateralData[collateralName] = collateralData;
         emit EditAcceptedCollateralType(collateralName, _lockedAmountLimit, _dustLevel, _creditLimit, _liqBonusMult,  _leveraged);
@@ -352,49 +352,38 @@ contract LMCV {
 
 //TODO: Noah's setup
         uint256 rateMult = StabilityRate;
-        uint256 mintingFee = _rmul(normalDebtChange * rateMult, MintFee);
+        uint256 mintingFee = _rmul(normalizedDebtChange * rateMult, MintFee); //TODO: RMUL this
         if(PSMAddresses[user]){
             rateMult = RAY;
             mintingFee = 0;
         }
 
-        normalDebt[user] += normalDebtChange;
-        totalNormalizedDebt += normalDebtChange;
+        // 2. Update vault debt value, total debt value and then check credit limit not exceeded.
+        normalizedDebt[user]    += normalizedDebtChange;
+        totalNormalizedDebt     += normalizedDebtChange;
+        //TODO: Change to accept rate difference and PSM addresses
+        require(isWithinCreditLimit(user), "LMCV/Exceeded portfolio credit limit");
 
         // console.log("case1:         %s", _rmul(getPortfolioValue(user), liquidationMult));
         // console.log("case2:         %s", getMaxDPrimeDebt(user));
         // console.log("dPrime:        %s", normalDebt[user] * rateMult);
 
         //CHange this when Roger impl per coin liquidation ratio to remove PSMAddresses
-        require((PSMAddresses[user] || _rmul(getPortfolioValue(user), liquidationMult) >= normalDebt[user] * rateMult)
-            && getMaxDPrimeDebt(user) >= normalDebt[user] * rateMult,
+        //TODO: This is old - just modify isWithinCreditLimit to get correct check
+        require((PSMAddresses[user] || _rmul(getPortfolioValue(user), liquidationMultiple) >= normalizedDebt[user] * rateMult)
+            && getMaxDPrimeDebt(user) >= normalizedDebt[user] * rateMult,
             "LMCV/Minting more dPrime than allowed"
         );
-
-        dPrimeTotalDebt += normalDebtChange * rateMult;
-        require(dPrimeTotalDebt < ProtocolDebtCeiling, "LMCV/Cannot extend past protocol debt ceiling");
-
-        //Last thing that happens is actual ability to mint dPrime
-        dPrime[Treasury] += mintingFee;
-        dPrime[user] += normalizedDebtChange * rateMult - mintingFee;
-        emit Loan(normalizedDebt[user], user, collateralList, collateralChange);
-
-//TODO: ROGERS SETUP - Combine to update for leverage changes and name changes
-        // 2. Update vault debt value, total debt value and then check credit limit not exceeded.
-        totalNormalizedDebt     += normalizedDebtChange;
-        normalizedDebt[user]    += normalizedDebtChange;
-        require(isWithinCreditLimit(user), "LMCV/Exceeded portfolio credit limit");
 
         // 3. Update the dPRIME ledger and handle minting fees.
         // NormalisedDebt is a present value seen from the perspective of "day 1" and therefore must
         // be multiplied by the total accrued interest to date, to obtain the current value. This
         // value is equal to the amount of dPRIME issued because vaults accrue interest over time.
-        uint256 mintingFee  = normalizedDebtChange * StabilityRate / RAY * MintFee;
-        totalDPrime         += normalizedDebtChange * StabilityRate;
+        totalDPrime += normalizedDebtChange * rateMult;
         require(totalDPrime < ProtocolDebtCeiling, "LMCV/Cannot extend past protocol debt ceiling");
 
-        dPrime[Treasury]    += mintingFee;
-        dPrime[user]        += normalizedDebtChange * StabilityRate - mintingFee; //Test
+        dPrime[Treasury] += mintingFee;
+        dPrime[user] += normalizedDebtChange * rateMult - mintingFee;
         emit Loan(normalizedDebt[user], user, collateralList, collateralChange);
     }
 
@@ -420,13 +409,13 @@ contract LMCV {
 
         // 1. Update debt balances.
         dPrime[user]            -= normalizedDebtChange * rateMult;
-        dPrimeTotalDebt         -= normalizedDebtChange * rateMult;
+        totalDPrime             -= normalizedDebtChange * rateMult;
         normalizedDebt[user]    -= normalizedDebtChange;
         totalNormalizedDebt     -= normalizedDebtChange;
 
         // 2. Update collateral balances and check limits.
-        for(uint256 i = 0; i < collats.length; i++){
-            CollateralType storage collateralType = CollateralTypes[collats[i]];
+        for(uint256 i = 0; i < collateralList.length; i++){
+            CollateralData storage collateralData = CollateralData[collateralList[i]];
 
             // Debit locked collateral amount and credit unlocked collateral amount.
             uint256 newLockedCollateralAmount   = lockedCollateral[user][collateralList[i]]     -= collateralChange[i];
@@ -438,14 +427,10 @@ contract LMCV {
             // Update collateral amounts.
             lockedCollateral[user][collateralList[i]]   = newLockedCollateralAmount;
             //TODO: Reconcile this check with Roger's
-            require(getMaxDPrimeDebt(user) >= normalDebt[user] * rateMult, "LMCV/More dPrime left than allowed");
+            require(getMaxDPrimeDebt(user) >= normalizedDebt[user] * rateMult, "LMCV/More dPrime left than allowed");
 
             unlockedCollateral[user][collateralList[i]] = newUnlockedCollateralAmount;
             collateralData.lockedAmount                 -= collateralChange[i];
-
-            //Give user their unlocked collateral
-            collateralType.totalDebt -= collateralChange[i];
-            unlockedCollateral[user][collats[i]] = newUnlockedCollat;
         }
 
         require(isWithinCreditLimit(user), "LMCV/Exceeded portfolio credit limit");
@@ -566,7 +551,7 @@ contract LMCV {
     function getMaxDPrimeDebt(address user) public view returns (uint256 maxDPrime) { // [rad]
         bytes32[] storage lockedList = lockedCollateralList[user];
         for(uint256 i = 0; i < lockedList.length; i++){
-            CollateralType storage collateralType = CollateralTypes[lockedList[i]];
+            CollateralData storage collateralType = CollateralTypes[lockedList[i]];
             if(lockedCollateral[user][lockedList[i]] > collateralType.debtFloor){
                 uint256 value = lockedCollateral[user][lockedList[i]] * collateralType.spotPrice; // wad*ray -> rad
                 maxDPrime += _rmul(value, collateralType.debtMult); // rmul(rad, ray) -> rad
