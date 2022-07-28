@@ -218,7 +218,7 @@ contract LMCV {
         // Emit event?
     }
 
-    function editCreditLimit(bytes32 collateral, uint256 ray) external auth {
+    function editCreditRatio(bytes32 collateral, uint256 ray) external auth {
         CollateralData[collateral].creditRatio = ray;
         // Emit event?
     }
@@ -249,19 +249,19 @@ contract LMCV {
         bytes32 collateralName,
         uint256 _lockedAmountLimit,     // [wad] - Protocol Level
         uint256 _dustLevel,             // [wad] - Account level
-        uint256 _creditLimit,           // [ray] - ie. max 70% loaned out as dPrime
+        uint256 _creditRatio,           // [ray] - ie. max 70% loaned out as dPrime
         uint256 _liqBonusMult,           // [ray] - ie. 5% for bluechip, 15% for junk
         bool    _leveraged
     ) external auth {
         Collateral memory collateralData    = CollateralData[collateralName];
         collateralData.lockedAmountLimit    = _lockedAmountLimit;
         collateralData.dustLevel            = _dustLevel;
-        collateralData.creditRatio = _creditLimit;
+        collateralData.creditRatio          = _creditRatio;
         collateralData.liqBonusMult         = _liqBonusMult;
         collateralData.leveraged = _leveraged;
 
         CollateralData[collateralName] = collateralData;
-        emit EditAcceptedCollateralType(collateralName, _lockedAmountLimit, _dustLevel, _creditLimit, _liqBonusMult,  _leveraged);
+        emit EditAcceptedCollateralType(collateralName, _lockedAmountLimit, _dustLevel, _creditRatio, _liqBonusMult,  _leveraged);
     }
 
     //
@@ -539,12 +539,18 @@ contract LMCV {
             }
         }
 
+//        console.log("Credit limit:      %s", creditLimit);
+//        console.log("noLeverageTotal:   %s", noLeverageTotal);
+//        console.log("leverageTotal:     %s\n", leverageTotal);
+
         //Get value of levered portfolio or if no nonlevered tokens, set to leveredToken value
         uint256 portfolioValueLeveraged = noLeverageTotal > 0 ? _rmul(noLeverageTotal, RAY + leverageTotal * RAY / noLeverageTotal) : leverageTotal;
-        //TODO: Test this
-        if (creditLimit > normalizedDebt[user] * rate && portfolioValueLeveraged > _rmul(creditLimit, liquidationMultiple)) {
+        //TODO: Test this >= or normalizedDebt == 0 better?
+        if (creditLimit >= normalizedDebt[user] * rate && portfolioValueLeveraged >= _rmul(creditLimit, liquidationMultiple)) {
+//            console.log("Passed\n");
             return true;
         }
+//        console.log("Failed case\n");
         return false;
     }
 
