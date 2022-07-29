@@ -71,13 +71,13 @@ describe("Testing LMCV", function () {
 
         mockToken = await tokenFactory.deploy("TSTR");
 
-        collateralJoin = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, mockTokenBytes, mockToken.address, 18);
+        collateralJoin = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, mockTokenBytes, mockToken.address);
 
         tokenTwo = await tokenFactory.deploy("TST2");
         tokenThree = await tokenFactory.deploy("TST3");
 
-        collatJoinTwo = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, mockToken2Bytes, tokenTwo.address, 18);
-        collatJoinThree = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, mockToken3Bytes, tokenThree.address, 18);
+        collatJoinTwo = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, mockToken2Bytes, tokenTwo.address);
+        collatJoinThree = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, mockToken3Bytes, tokenThree.address);
 
         await lmcv.administrate(collateralJoin.address, 1);
         await lmcv.administrate(collatJoinTwo.address, 1);
@@ -85,8 +85,7 @@ describe("Testing LMCV", function () {
 
         debtCeiling = frad("50000");
         await lmcv.setProtocolDebtCeiling(debtCeiling);
-        await lmcv.setLiquidationMultiple(fray(".60"));
-        
+
         await setupUser(addr1, ["555", "666", "777"]);
         await setupUser(addr2, ["1000", "1000", "1000"]);
         await setupUser(addr3, ["0", "0", "0"]);

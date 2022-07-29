@@ -51,7 +51,7 @@ describe("dPrimeJoin Testing", function () {
         mockToken = await tokenFactory.deploy("TSTR");
 
         collateralJoinFactory = await ethers.getContractFactory("CollateralJoin");
-        collateralJoin = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, mockTokenBytes, mockToken.address, 18);
+        collateralJoin = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, mockTokenBytes, mockToken.address);
 
         await lmcv.administrate(collateralJoin.address, 1);
         await lmcv.administrate(dPrimeJoin.address, 1);
@@ -67,7 +67,6 @@ describe("dPrimeJoin Testing", function () {
         debtCeiling = frad("50000");
         await lmcv.setProtocolDebtCeiling(debtCeiling);
 
-        await lmcv.setLiquidationMultiple(fray(".60"));
         await lmcv.updateSpotPrice(mockTokenBytes, fray("10"));
 
         await dPrime.rely(dPrimeJoin.address);

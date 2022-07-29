@@ -40,7 +40,7 @@ describe("Connections between contracts so far", function () {
         mockToken = await tokenFactory.deploy("TSTR");
 
         collateralJoinFactory = await ethers.getContractFactory("CollateralJoin");
-        collateralJoin = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, mockTokenBytes, mockToken.address, 18);
+        collateralJoin = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, mockTokenBytes, mockToken.address);
     });
 
     describe("Deployment", function () {

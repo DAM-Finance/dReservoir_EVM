@@ -50,7 +50,6 @@ contract CollateralJoin {
     LMCVLike public immutable lmcv; 
     bytes32 public immutable collateralName; 
     CollateralLike public immutable collateralContract;
-    uint256 public immutable dec;
     address public immutable lmcvProxy;
 
     // --- Events ---
@@ -70,14 +69,13 @@ contract CollateralJoin {
         _;
     }
 
-    constructor(address lmcv_, address _lmcvProxy, bytes32 collateralName_, address collateralContract_, uint256 decimals_) {
+    constructor(address lmcv_, address _lmcvProxy, bytes32 collateralName_, address collateralContract_) {
         wards[msg.sender] = 1;
         live = 1;
         lmcv = LMCVLike(lmcv_);
         lmcvProxy = _lmcvProxy;
         collateralName = collateralName_;
         collateralContract = CollateralLike(collateralContract_);
-        dec = decimals_;
         emit Rely(msg.sender);
     }
 
