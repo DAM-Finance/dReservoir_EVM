@@ -86,12 +86,11 @@ contract PSM {
         collateralName = collateralJoin__.collateralName();
         treasury = treasury_;
         to18ConversionFactor = 10 ** (18 - collateralJoin__.dec());
-        dPrime__.approve(dPrimeJoin_, 2**256 - 1);
+        require(dPrime__.approve(dPrimeJoin_, 2**256 - 1), "PSM/dPrime approval failed");
         lmcv__.approve(dPrimeJoin_);
     }
 
     // --- Math ---
-    uint256 constant WAD = 10 ** 18;
     uint256 constant RAY = 10 ** 27;
     function _rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         z = x * y;
@@ -120,13 +119,6 @@ contract PSM {
         uint256 fee = _rmul(collatAmount18, mintFee); // rmul(wad, ray) = wad
         uint256 dPrimeAmt = collatAmount18 - fee;
 
-        // console.log("collatAmount:      %s", collatAmount[0]);
-        // console.log("collatAmount18:    %s", collatAmount18);
-        // console.log("fee:               %s", fee);
-        // console.log("dPrimeAmt:         %s", dPrimeAmt);
-
-        // console.log("balance            %s", dPrime.balanceOf(usr));
-
         collateralJoin.join(address(this), collatAmount[0], msg.sender);
 
         collatAmount[0] = collatAmount18;
@@ -142,13 +134,6 @@ contract PSM {
         uint256 collatAmount18 = collatAmount[0] * to18ConversionFactor;
         uint256 fee = _rmul(collatAmount18, repayFee); // rmul(wad, ray) = wad
         uint256 dPrimeAmt = collatAmount18 + fee;
-
-        // console.log("collatAmount:      %s", collatAmount[0]);
-        // console.log("collatAmount18:    %s", collatAmount18);
-        // console.log("fee:               %s", fee);
-        // console.log("dPrimeAmt:         %s", dPrimeAmt);
-
-        // console.log("balance            %s", dPrime.balanceOf(usr));
 
         require(dPrime.transferFrom(msg.sender, address(this), dPrimeAmt), "PSM/dPrime failed transfer");
         dPrimeJoin.join(address(this), dPrimeAmt);
