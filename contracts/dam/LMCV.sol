@@ -464,13 +464,12 @@ contract LMCV {
         // auction, any increase to `liquidationDebt` will be reversed. An auction which raises less
         // than the required dPRIME amount will result in some amount of `liquidationDebt` persisting
         // over time. This means that, on aggregate, dPRIME will be less collateralised than it 
-        // previously was. However, this should only become a problem if the collateral to debt ratio 
-        // approaches 1:1, which is given the risk management controls we have in place.
-        totalLiquidationDebt                    += dPrimeChange;
-        liquidationDebt[liquidationContract]    += dPrimeChange;
+        // previously was.
+        totalProtocoldeficit                    += dPrimeChange;
+        protocoldeficit[liquidationContract]    += dPrimeChange;
 
         // Here, we reduce the amount of outstanding debt for the liquidated user and the protocol
-        // as a whole because we accounted for it above in 1liquidationDebt`. This operation and the one
+        // as a whole because we accounted for it above in `liquidationDebt`. This operation and the one
         // above has the effect of moving the debt to where it will be handled by the liquidation contract.
         // Above, we increase `liquidationDebt` by the dPRIME amount which also takes into account
         // accrued interat interest to date.
@@ -500,28 +499,40 @@ contract LMCV {
     }
 
     /*
-     * Only the liquidation contract can settle bad debts. This function reduces the amount of `liquidationDebt`
-     * by the amount of dPRIME which was raised via auction. The amount of dPRIME raised is burnt and therefore, 
-     * upon settlement of the auction, when this function is called, the total amount of dPRIME issued is reduced 
-     * by the amount of dPRIME raised through the auction.
+     * Only the liquidation contract can settle protocol deficit. In the interests of prudence, every time a vault 
+     * is liquidated, the LMCV registers a temporary protocol deficit for the amount being liquidated, with the 
+     * intention that the protocol deficit is reversed by the amount of dPRIME raised when the auction concludes.
+     * The amount of dPRIME raised via the auction is burnt when this function is called. As such, the total 
+     * amount of dPRIME issued and protocol deficit is reduced by the same amount.
      */
-    function repayLiquidationDebt(uint256 rad) external {
+    function reduceProtocoldeficit(uint256 rad) external {
         address u = msg.sender;
-        liquidationDebt[u]      -= rad;
-        totalLiquidationDebt    -= rad;
+        protocoldeficit[u]      -= rad;
+        totalProtocoldeficit    -= rad;
         dPrime[u]               -= rad;
         totalDPrime             -= rad;
 
-        emit RepayLiquidationDebt(msg.sender, rad);
+        emit ReduceProtocoldeficit(msg.sender, rad);
     }
 
-    function createLiquidationDebt(address debtReceiver, address dPrimeReceiver, uint256 rad) external auth {
-        liquidationDebt[debtReceiver]   += rad;
+    /*
+     * Debt Receiver is always the protocol's deficit address. The dPRIME receiver can be any address. In effect,
+     * this method can be used to issue dPRIME without calling the `loan` function and so the dPRIME created via
+     * this function does not increase the `normalisedDebt` balance. Any dPRIME created through this function
+     * increases the aggregate LTV of the protocol and so is intended that any resulting increase in protocol
+     * deficit be balanced be netted off by an increase in protocol surplus.
+
+     * For example, if we were to pay interest on dPRIME deposits in V2 of the protocol then we would pay the 
+     * interest via increasing protocol deficit. This deficit would be offset by the surplus dPRIME received
+     * as users pay stability fees on their vaults.
+     */
+    function increaseProtocoldeficit(address debtReceiver, address dPrimeReceiver, uint256 rad) external auth {
+        protocoldeficit[debtReceiver]   += rad;
+        totalProtocoldeficit            += rad;
         dPrime[dPrimeReceiver]          += rad;
-        totalLiquidationDebt            += rad;
         totalDPrime                     += rad;
 
-        emit CreateLiquidationDebt(debtReceiver, dPrimeReceiver, rad);
+        emit IncreaseProtocoldeficit(debtReceiver, dPrimeReceiver, rad);
     }
 
     //
