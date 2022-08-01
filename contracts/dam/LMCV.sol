@@ -1,15 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-/// LMCV.sol -- dPrime CDP database
-
 // - `wad`: fixed point decimal with 18 decimals (for basic quantities, e.g. balances)
 // - `ray`: fixed point decimal with 27 decimals (for precise quantites, e.g. ratios)
 // - `rad`: fixed point decimal with 45 decimals (result of integer multiplication with a `wad` and a `ray`)
 
 pragma solidity 0.8.7;
 
-import "hardhat/console.sol";
+/*
 
+    LMCV.sol -- dPrime CDP database. Handles accounting for the protocol.
+    Keeps track of collateral, debt and dPRIME balances. This should not
+    require regular updates. All other anxillary contracts are permissioned
+    to call functinos on this contract.
+
+*/
 contract LMCV {
 
     //
@@ -68,8 +72,8 @@ contract LMCV {
     // Liquidation.
     //
 
-    mapping (address => uint256)                        public liquidationDebt;         // [rad]
-    uint256 public totalLiquidationDebt;                                                // [rad]
+    mapping (address => uint256)                        public protocoldeficit;         // [rad]
+    uint256                                             public totalProtocoldeficit;    // [rad]
 
     //
     // Events
@@ -78,7 +82,7 @@ contract LMCV {
     event EditAcceptedCollateralType(bytes32 indexed collateralName, uint256 _debtCeiling, uint256 _debtFloor, uint256 _creditRatio, uint256 _liqBonusMult, bool _leveraged);
     event Liquidation(address indexed liquidated, address indexed liquidator, uint256 normalDebtChange, bytes32[] collats, uint256[] collateralChange);
     event LoanRepayment(uint256 indexed dPrimeChange, address indexed user, bytes32[] collats, uint256[] amounts);
-    event CreateLiquidationDebt(address indexed debtReceiver, address indexed dPrimeReceiver, uint256 rad);
+    event Inflate(address indexed debtReceiver, address indexed dPrimeReceiver, uint256 rad);
     event Loan(uint256 indexed dPrimeChange, address indexed user, bytes32[] collats, uint256[] amounts);
     event MoveCollateral(bytes32 indexed collat, address indexed src, address indexed dst, uint256 wad);
     event PushCollateral(bytes32 indexed collat, address indexed src, uint256 wad);
@@ -88,7 +92,7 @@ contract LMCV {
     event PushLiquidationDPrime(address indexed src, uint256 rad);
     event PullLiquidationDPrime(address indexed src, uint256 rad);
     event SpotUpdate(bytes32 indexed collateral, uint256 spot);
-    event RepayLiquidationDebt(address indexed u, uint256 rad);
+    event Deflate(address indexed u, uint256 rad);
     event AddLoanedDPrime(address indexed user, uint256 rad);
     event EnterDPrime(address indexed src, uint256 rad);
     event ExitDPrime(address indexed src, uint256 rad);
@@ -342,6 +346,7 @@ contract LMCV {
             unlockedCollateral[user][collateralList[i]] = newUnlockedCollateralAmount;
         }
 
+        // If the PSM calls this function then we set fees and interest rate to zero.
         uint256 rateMult = StabilityRate;
         uint256 mintingFee = _rmul(normalizedDebtChange * rateMult, MintFee);
         if(PSMAddresses[user]){
@@ -385,6 +390,7 @@ contract LMCV {
         require(collateralList.length == collateralChange.length, "LMCV/Missing collateral type or collateral amount");
         require(approval(user, msg.sender), "LMCV/Owner must consent");
 
+        // If the PSM calls this function then we set fees and interest rate to zero.
         uint256 rateMult = StabilityRate;
         if(PSMAddresses[user]){
             rateMult = RAY;
@@ -487,10 +493,10 @@ contract LMCV {
 
         // Remove collateral from the list of locked collateral indicies if all of it is confiscated
         // by the liquidator. This may happen if the vault in question is small (well below the lot size).
-        bytes32[] storage lockedCollats = lockedCollateralList[user];
+        bytes32[] storage lockedCollats = lockedCollateralList[liquidated];
         for (uint j = lockedCollats.length; j > 0; j--) {
             uint256 iter = j - 1;
-            if (lockedCollateral[user][lockedCollats[iter]] == 0) {
+            if (lockedCollateral[liquidated][lockedCollats[iter]] == 0) {
                 deleteElement(lockedCollats, iter);
             }
         }
@@ -505,14 +511,14 @@ contract LMCV {
      * The amount of dPRIME raised via the auction is burnt when this function is called. As such, the total 
      * amount of dPRIME issued and protocol deficit is reduced by the same amount.
      */
-    function reduceProtocoldeficit(uint256 rad) external {
+    function deflate(uint256 rad) external {
         address u = msg.sender;
         protocoldeficit[u]      -= rad;
         totalProtocoldeficit    -= rad;
         dPrime[u]               -= rad;
         totalDPrime             -= rad;
 
-        emit ReduceProtocoldeficit(msg.sender, rad);
+        emit Deflate(msg.sender, rad);
     }
 
     /*
@@ -526,13 +532,13 @@ contract LMCV {
      * interest via increasing protocol deficit. This deficit would be offset by the surplus dPRIME received
      * as users pay stability fees on their vaults.
      */
-    function increaseProtocoldeficit(address debtReceiver, address dPrimeReceiver, uint256 rad) external auth {
+    function inflate(address debtReceiver, address dPrimeReceiver, uint256 rad) external auth {
         protocoldeficit[debtReceiver]   += rad;
         totalProtocoldeficit            += rad;
         dPrime[dPrimeReceiver]          += rad;
         totalDPrime                     += rad;
 
-        emit IncreaseProtocoldeficit(debtReceiver, dPrimeReceiver, rad);
+        emit Inflate(debtReceiver, dPrimeReceiver, rad);
     }
 
     //
@@ -541,7 +547,6 @@ contract LMCV {
 
     function updateRate(int256 rateIncrease) external auth loanAlive {
         StabilityRate       = _add(StabilityRate, rateIncrease);
-        //TODO: Test this works with PSM stuff
         int256 rad          = _int256(totalNormalizedDebt - totalPSMDebt) * rateIncrease;
         dPrime[Treasury]    = _add(dPrime[Treasury], rad);
         totalDPrime         = _add(totalDPrime, rad);
@@ -550,7 +555,7 @@ contract LMCV {
     }
 
     //
-    // Helpers
+    // Vault health checking
     //
 
     /*
@@ -599,6 +604,10 @@ contract LMCV {
         return false;
     }
 
+    //
+    // Helpers
+    //
+
     function either(bool x, bool y) internal pure returns (bool z) {
         assembly{ z := or(x, y)}
     }
@@ -610,7 +619,10 @@ contract LMCV {
         array.pop();
     }
 
-    //TODO: Only for testing
+    //
+    // Testing
+    //
+
     function bytes32ToString(bytes32 _bytes32) public pure returns (string memory) {
         uint8 i = 0;
         while(i < 32 && _bytes32[i] != 0) {

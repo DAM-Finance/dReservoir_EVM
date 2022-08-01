@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-/// CollateralJoin.sol -- Basic token adapter
-
 pragma solidity 0.8.7;
 
 interface CollateralLike {
@@ -16,14 +14,14 @@ interface LMCVLike {
 }
 
 /*
+    CollateralJoin.sol -- Basic token adapter
+
     Here we provide *adapters* to connect the LMCV to arbitrary external
-    token implementations, creating a bounded context for the LMCV. The
-    adapters here are provided as working examples:
+    token implementations, creating a bounded context for the LMCV. Some
+    adapters are provided as working examples:
 
       - `CollateralJoin`: For well behaved ERC20 tokens, with simple transfer
                    semantics.
-
-      - `ETHJoin`: For native Ether.
 
       - `dPrimeJoin`: For connecting internal Dai balances to an external
                    `DSToken` implementation.
@@ -38,26 +36,47 @@ interface LMCVLike {
       - `exit`: remove collateral from the system
 
 */
-
-import "hardhat/console.sol";
-
 contract CollateralJoin {
-    // --- Data ---
+    
+    // 
+    // --- Auth ---
+    //
+
     mapping(address => uint256) public wards;
 
-    uint256 public live;  // Active Flag
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
+    }
 
-    LMCVLike public immutable lmcv; 
-    bytes32 public immutable collateralName; 
-    CollateralLike public immutable collateralContract;
-    address public immutable lmcvProxy;
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+        emit Deny(usr);
+    }
 
+    //
+    // --- Interfaces and data ---
+    //
+
+    LMCVLike        public immutable    lmcv; 
+    CollateralLike  public immutable    collateralContract;
+    bytes32         public immutable    collateralName; 
+    address         public immutable    lmcvProxy;
+    uint256         public              live;
+
+    //
     // --- Events ---
+    //
+
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event Cage();
     event Join(address indexed usr, uint256 wad);
     event Exit(address indexed usr, uint256 wad);
+
+    //
+    // --- Modifiers ---
+    //
 
     modifier auth {
         require(wards[msg.sender] == 1, "CollateralJoin/not-authorized");
@@ -69,6 +88,19 @@ contract CollateralJoin {
         _;
     }
 
+    //
+    // --- Admin ---
+    //
+
+    function cage() external auth {
+        live = 0;
+        emit Cage();
+    }
+
+    //
+    // --- Init ---
+    //
+
     constructor(address lmcv_, address _lmcvProxy, bytes32 collateralName_, address collateralContract_) {
         wards[msg.sender] = 1;
         live = 1;
@@ -79,24 +111,10 @@ contract CollateralJoin {
         emit Rely(msg.sender);
     }
 
-    // --- Administration ---
-    function rely(address usr) external auth {
-        wards[usr] = 1;
-        emit Rely(usr);
-    }
-
-    function deny(address usr) external auth {
-        wards[usr] = 0;
-        emit Deny(usr);
-    }
-
-    function cage() external auth {
-        live = 0;
-        emit Cage();
-    }
-
+    //
     // --- User's functions ---
-    //TODO: Test
+    //
+
     function join(address usr, uint256 wad) external {
         require(live == 1, "CollateralJoin/not-live");
         require(collateralContract.transferFrom(msg.sender, address(this), wad), "CollateralJoin/failed-transfer");
@@ -104,7 +122,6 @@ contract CollateralJoin {
         emit Join(usr, wad);
     }
 
-    //TODO: Test
     function exit(address usr, uint256 wad) external {
         require(live == 1, "CollateralJoin/not-live");
         lmcv.pullCollateral(collateralName, msg.sender, wad);
@@ -112,7 +129,7 @@ contract CollateralJoin {
         emit Exit(usr, wad);
     }
 
-    function proxyExit(address usr, uint256 wad) external proxyContract{
+    function proxyExit(address usr, uint256 wad) external proxyContract {
         require(live == 1, "CollateralJoin/not-live");
         lmcv.pullCollateral(collateralName, usr, wad);
         require(collateralContract.transfer(usr, wad), "CollateralJoin/failed-transfer");

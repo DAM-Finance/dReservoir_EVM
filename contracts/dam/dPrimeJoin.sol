@@ -15,19 +15,35 @@ interface LMCVLike {
 }
 
 contract dPrimeJoin {
-    LMCVLike public immutable lmcv;         // CDP Engine
-    dPrimeLike public immutable dPrime;     // Stablecoin Token
-    uint256 constant RAY = 10 ** 27;
-    address lmcvProxy;
 
+    //
+    // --- Interfaces and data ---
+    //
+
+    LMCVLike    public immutable    lmcv;
+    dPrimeLike  public immutable    dPrime;
+    uint256     constant            RAY = 10 ** 27;
+    address                         lmcvProxy;
+
+    //
     // --- Events ---
+    //
+
     event Join(address indexed usr, uint256 wad);
     event Exit(address indexed usr, uint256 wad);
+
+    //
+    // --- Modifiers ---
+    //
 
     modifier auth {
         require(msg.sender == lmcvProxy, "dPrimeJoin/not-authorized");
         _;
     }
+
+    //
+    // --- Init ---
+    //
 
     constructor(address _lmcv, address _dPrime, address _lmcvProxy) {
         require(_lmcv != address(0x0)
@@ -40,7 +56,10 @@ contract dPrimeJoin {
         lmcvProxy = _lmcvProxy;
     }
 
+    //
     // --- User's functions ---
+    //
+
     function join(address usr, uint256 wad) external {
         lmcv.moveDPrime(address(this), usr, RAY * wad);
         dPrime.burn(msg.sender, wad);
