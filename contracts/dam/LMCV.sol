@@ -554,10 +554,10 @@ contract LMCV {
      */
     function isWithinCreditLimit(address user, uint256 rate) private view returns (bool) {
         bytes32[] storage lockedList = lockedCollateralList[user];
-        uint256 creditLimit;
-        uint256 leverTokenCreditLimit;
-        uint256 noLeverageTotal; // [wad]
-        uint256 leverageTotal;   // [rad]
+        uint256 creditLimit             = 0; // [rad]
+        uint256 leverTokenCreditLimit   = 0; // [rad]
+        uint256 noLeverageTotal         = 0; // [wad]
+        uint256 leverageTotal           = 0; // [rad]
         for (uint256 i = 0; i < lockedList.length; i++) {
             Collateral memory collateralData = CollateralData[lockedList[i]];
 
@@ -574,26 +574,15 @@ contract LMCV {
             }
         }
 
-//        console.log("Reg Credit Limit       %s", creditLimit);
-//        console.log("Lev Token Credit Limit %s", leverTokenCreditLimit);
-//        console.log("No Lev Total           %s", noLeverageTotal);
-//        console.log("Lev Total              %s", leverageTotal);
-
         // If only leverage tokens exist, just return their credit limit
         // Keep credit ratio low on levered tokens (60% or lower) to incentivize having non levered collateral in the vault
         if(noLeverageTotal == 0 && leverageTotal > 0 && leverTokenCreditLimit >= normalizedDebt[user] * rate){
-//            console.log("Top pass\n");
             return true;
         }
 
         uint256 leverageMultiple = noLeverageTotal == 0 && leverageTotal == 0 ? RAY : RAY + leverageTotal / noLeverageTotal;
-//        console.log("Lev Mult               %s", leverageMultiple);
-//
-//        console.log("First Check            %s", _rmul(creditLimit, leverageMultiple));
-//        console.log("Second check           %s", normalizedDebt[user] * rate);
 
         if (_rmul(creditLimit, leverageMultiple) >= (normalizedDebt[user] * rate)) {
-//            console.log("Bottom pass\n");
             return true;
         }
         return false;
