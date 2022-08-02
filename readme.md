@@ -21,7 +21,11 @@ Other key features:
 
 ## Documentation
 
-Take a look at this [high level flow diagram](docs/High-level%20protocol%20flows.png) for an idea of how the protocol operates at a high-level and the various stakeholers which are involved.
+Take a look at this [high level flow diagram](docs/High-level%20protocol%20flows.png) for an idea of how the protocol operates at a high-level and the various stakeholers which are involved. There is also a [function-call level diagram](docs/function%20level%20flow%20diagram.png) which shows how the contracts compose to form the entire protocol. In this diagram, it is worth noting that:
+
+1. Contracts marked with an asterisk are not yet completed but we have included them i nthe diagram.
+2. The staking contract has not yet been added to the diagram as we are still finalising the design.
+3. We have also left of the individual permissioning admin functions (e.g.`rely` `deny`) for each of the anxillary contracts.
 
 Contract specific documentation:
 
@@ -59,6 +63,11 @@ Contract specific documentation:
 * Calls join/exit and loan/repay directly on the collateral join contracts and the LMCV
 * Optional mint and burn fee can be set
 * dPRIME minted via the PSM counts as collateral towards the user's vault
+
+**[WGLMR.sol](contracts/dam/WGLMR.sol) - for wrapping the native token (Glimmer)**
+
+* Saves us from having a separate join contract for Glimmer.
+* Fairly standard design: deposit/withdraw/transfer/etc.
 
 ## Limitations / future features
 
