@@ -25,7 +25,7 @@ Take a look at this [high level flow diagram](docs/High-level%20protocol%20flows
 
 Contract specific documentation:
 
-**[LMCV.sol](contracts/dam/LMCV.sol - The main accounting system for the protocol**
+**[LMCV.sol](contracts/dam/LMCV.sol) - The main accounting system for the protocol**
 
 * Keeps track of how much collateral each user has deposited with the platform.
 * Keeps track of how much collateral each user has committed to a vault.
