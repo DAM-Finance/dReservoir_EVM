@@ -29,7 +29,7 @@ Take a look at this [high level flow diagram](docs/High-level%20protocol%20flows
 
 Contract specific documentation:
 
-**[LMCV.sol](contracts/dam/LMCV.sol) - The main accounting system for the protocol**
+**[LMCV.sol](contracts/LMCV.sol) - The main accounting system for the protocol**
 
 * Keeps track of how much collateral each user has deposited with the platform.
 * Keeps track of how much collateral each user has committed to a vault.
@@ -39,32 +39,32 @@ Contract specific documentation:
 * Provides an API for moving unlocked collateral or dPRIME between accounts.
 * Admin interface for editing collateral types or and collateral information.
 
-**[dPrime.sol](contracts/dam/dPrime.sol) - for minting, burning and moving tokenized dPRIME**
+**[dPrime.sol](contracts/dPrime.sol) - for minting, burning and moving tokenized dPRIME**
 
 * A Standard ERC20 contract based upon dai.sol.
 
-**[CollateralJoin.sol](contracts/dam/CollateralJoin.sol) - for depositing/withdrawing ERC20 tokens into the protocol**
+**[CollateralJoin.sol](contracts/CollateralJoin.sol) - for depositing/withdrawing ERC20 tokens into the protocol**
 
 * Based upon the join contracts from MakerDAO.
 * Allows users to deposit or withdraw unlocked collateral. 
 
-**[CollateralJoinDecimals.sol](contracts/dam/CollateralJoinDecimals.sol) - for depositing/withdrawing ERC20 tokens into the protocol**
+**[CollateralJoinDecimals.sol](contracts/CollateralJoinDecimals.sol) - for depositing/withdrawing ERC20 tokens into the protocol**
 
 * As above but for stablecoins with a fewer number of precision digits.
 
-**[dPrimeJoin.sol](contracts/dam/dPrimeJoin.sol) - for depositing/withdrawing dPRIME into the protocol**
+**[dPrimeJoin.sol](contracts/dPrimeJoin.sol) - for depositing/withdrawing dPRIME into the protocol**
 
 * Based upon the DAI join contract from MakerDAO.
 * Allows users to deposit or withdraw unlocked dPRIME from the protocol. 
 
-**[PSM.sol](contracts/dam/PSM.sol) - for minting/burning dPrime 1:1 via other accepted stablecoins**
+**[PSM.sol](contracts/PSM.sol) - for minting/burning dPrime 1:1 via other accepted stablecoins**
 
 * Allows users to directly mint dPRIME 1:1 with other accepted stablecoins
 * Calls join/exit and loan/repay directly on the collateral join contracts and the LMCV
 * Optional mint and burn fee can be set
 * dPRIME minted via the PSM counts as collateral towards the user's vault
 
-**[WGLMR.sol](contracts/dam/WGLMR.sol) - for wrapping the native token (Glimmer)**
+**[WGLMR.sol](contracts/WGLMR.sol) - for wrapping the native token (Glimmer)**
 
 * Saves us from having a separate join contract for Glimmer.
 * Fairly standard design: deposit/withdraw/transfer/etc.
