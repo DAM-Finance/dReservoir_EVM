@@ -71,9 +71,8 @@ Contract specific documentation:
 
 ## Limitations / future features
 
-1. Weighted average vault LTV does not change when token prices change. We felt that this was not necessary as whilst token prices changes will have an impact on weighted average LTV, the effect is not as great as the collateral make up of the vault.
-2. In V1 no interest is payable on dPRIME deposits.
-3. In V1 there is no governance token and therefore no decentralised governance or protocol enforced bail-ins/ bail-outs in the case of excessive protocol deficit.
+1. In V1 no interest is payable on dPRIME deposits.
+2. In V1 there is no governance token and therefore no decentralised governance or protocol enforced bail-ins/ bail-outs in the case of excessive protocol deficit.
 
 ## TODO
 
