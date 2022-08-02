@@ -43,39 +43,73 @@ interface CollateralJoinLike {
     function exit(address, uint256) external;
 }
 
-// Peg Stability Module
-// Allows anyone to go between dPrime and the Collateral by pooling the liquidity
-// An optional fee is charged for incoming and outgoing transfers
+/*
 
+    Peg Stability Module.sol -- For using stablecoins as collateral without
+    them being subject to the protocol level interest rate.
+
+    Allows anyone to go between dPrime and the Collateral by pooling stablecoins
+    in this contract.
+
+*/
 contract PSM {
 
+    //
     // --- Auth ---
-    mapping (address => uint256) public wards;
-    function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }
-    function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }
-    modifier auth { require(wards[msg.sender] == 1); _; }
+    //
 
-    LMCVLike immutable              public lmcv;
-    CollateralJoinLike immutable    public collateralJoin;
-    dPrimeLike immutable            public dPrime;
-    dPrimeJoinLike  immutable       public dPrimeJoin;
+    mapping(address => uint256) public wards;
+
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
+    }
+
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+        emit Deny(usr);
+    }
     
-    bytes32 immutable               public collateralName;
-    address immutable               public treasury;
+    //
+    // --- Interfaces and data ---
+    //
 
-    uint256 immutable internal to18ConversionFactor;
+    LMCVLike            immutable public    lmcv;
+    CollateralJoinLike  immutable public    collateralJoin;
+    dPrimeLike          immutable public    dPrime;
+    dPrimeJoinLike      immutable public    dPrimeJoin;
+    
+    bytes32             immutable public    collateralName;
+    address             immutable public    treasury;
 
-    uint256 mintFee;        //[ray]
-    uint256 repayFee;       //[ray]
+    uint256             immutable internal  to18ConversionFactor;
 
+    uint256                                 mintFee;        //[ray]
+    uint256                                 repayFee;       //[ray]
+
+    //
     // --- Events ---
+    //
+
     event Rely(address user);
     event Deny(address user);
     event File(bytes32 indexed what, uint256 data);
     event CreateDPrime(address indexed owner, uint256 value, uint256 fee);
     event RemoveDPrime(address indexed owner, uint256 value, uint256 fee);
 
+    //
+    // --- Modifiers
+    //
+
+    modifier auth { 
+        require(wards[msg.sender] == 1); 
+        _; 
+    }
+
+    //
     // --- Init ---
+    //
+
     constructor(address collateralJoin_, address dPrimeJoin_, address treasury_) {
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
@@ -90,7 +124,10 @@ contract PSM {
         lmcv__.approve(dPrimeJoin_);
     }
 
+    // 
     // --- Math ---
+    //
+
     uint256 constant RAY = 10 ** 27;
     function _rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         z = x * y;
@@ -98,7 +135,10 @@ contract PSM {
         z = z / RAY;
     }
 
+    //
     // --- Administration ---
+    //
+
     function setMintRepayFees(uint256 mintRay, uint256 repayRay) external auth {
         mintFee = mintRay;
         repayFee = repayRay;
@@ -112,7 +152,10 @@ contract PSM {
         lmcv.disapprove(usr);
     }
 
-    // --- Primary Functions ---
+    //
+    // --- User's functions ---
+    //
+
     function createDPrime(address usr, bytes32[] memory collateral, uint256[] memory collatAmount) external {
         require(collateral.length == 1 && collatAmount.length == 1 && collateral[0] == collateralName, "PSM/Incorrect setup");
         uint256 collatAmount18 = collatAmount[0] * to18ConversionFactor; // [wad]
