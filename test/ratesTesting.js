@@ -124,7 +124,7 @@ describe("Testing LMCV", function () {
             expect(await userLMCV.dPrime(addr1.address)).to.equal(frad("4000"));
 
             await lmcv.updateRate(fray(".1"));
-            expect(await lmcv.StabilityRate()).to.equal(fray("1.1"));
+            expect(await lmcv.AccumulatedRate()).to.equal(fray("1.1"));
 
             await userLMCV.repay(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr1.address);
             expect(await lmcv.dPrime(addr1.address)).to.equal(frad("1800"));
@@ -138,7 +138,7 @@ describe("Testing LMCV", function () {
             expect(await userLMCV.dPrime(addr1.address)).to.equal(frad("2000"));
 
             await lmcv.updateRate(fray(".1"));
-            expect(await lmcv.StabilityRate()).to.equal(fray("1.1"));
+            expect(await lmcv.AccumulatedRate()).to.equal(fray("1.1"));
 
             expect(await lmcv.dPrime(owner.address)).to.equal(frad("200"));
 
@@ -155,7 +155,7 @@ describe("Testing LMCV", function () {
             expect(await userLMCV.dPrime(addr1.address)).to.equal(frad("6400"));
 
             await lmcv.updateRate(fray(".1"));
-            expect(await lmcv.StabilityRate()).to.equal(fray("1.2"));
+            expect(await lmcv.AccumulatedRate()).to.equal(fray("1.2"));
 
             expect(await lmcv.dPrime(owner.address)).to.equal(frad("800"));
 

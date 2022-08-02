@@ -59,7 +59,7 @@ contract LMCV {
     uint256 public totalDPrime;         // [rad] - Total amount of dPRIME issued.
     uint256 public ProtocolDebtCeiling; // [rad] - Maximum amount of dPRIME issuable.
     uint256 public MintFee;             // [ray] - Minting fee as a percentage of a newly issued dPRIME amount.
-    uint256 public StabilityRate;       // [ray] - Rename this as this is a cumulative value, rather than the per second compounding rate.
+    uint256 public AccumulatedRate;     // [ray] - Rename this as this is a cumulative value, rather than the per second compounding rate.
 
     //
     // Admin.
@@ -72,7 +72,7 @@ contract LMCV {
     // Liquidation.
     //
 
-    mapping (address => uint256)                        public protocoldeficit;         // [rad]
+    mapping (address => uint256)                        public protocolDeficit;         // [rad]
     uint256                                             public totalProtocoldeficit;    // [rad]
 
     //
@@ -82,20 +82,24 @@ contract LMCV {
     event EditAcceptedCollateralType(bytes32 indexed collateralName, uint256 _debtCeiling, uint256 _debtFloor, uint256 _creditRatio, uint256 _liqBonusMult, bool _leveraged);
     event Liquidation(address indexed liquidated, address indexed liquidator, uint256 normalDebtChange, bytes32[] collats, uint256[] collateralChange);
     event LoanRepayment(uint256 indexed dPrimeChange, address indexed user, bytes32[] collats, uint256[] amounts);
-    event Inflate(address indexed debtReceiver, address indexed dPrimeReceiver, uint256 rad);
     event Loan(uint256 indexed dPrimeChange, address indexed user, bytes32[] collats, uint256[] amounts);
     event MoveCollateral(bytes32 indexed collat, address indexed src, address indexed dst, uint256 wad);
+    event Inflate(address indexed debtReceiver, address indexed dPrimeReceiver, uint256 rad);
     event PushCollateral(bytes32 indexed collat, address indexed src, uint256 wad);
     event PullCollateral(bytes32 indexed collat, address indexed src, uint256 wad);
     event MoveDPrime(address indexed src, address indexed dst, uint256 frad);
+    event LockedAmountLimit(bytes32 indexed collateral, uint256 wad);
+    event LiquidationBonus(bytes32 indexed collateral, uint256 ray);
     event MovePortfolio(address indexed src, address indexed dst);
     event PushLiquidationDPrime(address indexed src, uint256 rad);
     event PullLiquidationDPrime(address indexed src, uint256 rad);
     event SpotUpdate(bytes32 indexed collateral, uint256 spot);
-    event Deflate(address indexed u, uint256 rad);
+    event CreditRatio(bytes32 indexed collateral, uint256 ray);
     event AddLoanedDPrime(address indexed user, uint256 rad);
+    event DustLevel(bytes32 indexed collateral, uint256 wad);
     event EnterDPrime(address indexed src, uint256 rad);
     event ExitDPrime(address indexed src, uint256 rad);
+    event Deflate(address indexed u, uint256 rad);
     event UpdateRate(int256 rate);
 
     modifier auth() {
@@ -109,7 +113,7 @@ contract LMCV {
     }
 
     constructor() {
-        StabilityRate = RAY;
+        AccumulatedRate = RAY;
         loanLive = 1;
         admins[msg.sender] = 1;
         Treasury = msg.sender;
@@ -204,22 +208,22 @@ contract LMCV {
 
     function editLockedAmountLimit(bytes32 collateral, uint256 wad) external auth {
         CollateralData[collateral].lockedAmountLimit = wad;
-        // Emit event?
+        emit LockedAmountLimit(collateral, wad);
     }
 
     function editDustLevel(bytes32 collateral, uint256 wad) external auth {
         CollateralData[collateral].dustLevel = wad;
-        // Emit event?
+        emit DustLevel(collateral, wad);
     }
 
     function editCreditRatio(bytes32 collateral, uint256 ray) external auth {
         CollateralData[collateral].creditRatio = ray;
-        // Emit event?
+        emit CreditRatio(collateral, ray);
     }
 
     function editLiquidationBonus(bytes32 collateral, uint256 ray) external auth {
         CollateralData[collateral].liqBonusMult = ray;
-        // Emit event?
+        emit LiquidationBonus(collateral, ray);
     }
 
     function editLeverageStatus(bytes32 collateral, bool _leveraged) external auth {
@@ -347,7 +351,7 @@ contract LMCV {
         }
 
         // If the PSM calls this function then we set fees and interest rate to zero.
-        uint256 rateMult = StabilityRate;
+        uint256 rateMult   = AccumulatedRate;
         uint256 mintingFee = _rmul(normalizedDebtChange * rateMult, MintFee);
         if(PSMAddresses[user]){
             rateMult = RAY;
@@ -391,7 +395,7 @@ contract LMCV {
         require(approval(user, msg.sender), "LMCV/Owner must consent");
 
         // If the PSM calls this function then we set fees and interest rate to zero.
-        uint256 rateMult = StabilityRate;
+        uint256 rateMult = AccumulatedRate;
         if(PSMAddresses[user]){
             rateMult = RAY;
             totalPSMDebt        -= normalizedDebtChange;
@@ -463,21 +467,21 @@ contract LMCV {
         address liquidationContract         // Assigned the liquidation debt
     ) external auth {
         require(collateralList.length == collateralChange.length, "LMCV/Missing collateral type or collateral amount");
-        uint256 dPrimeChange = normalizedDebtChange * StabilityRate;
+        uint256 dPrimeChange = normalizedDebtChange * AccumulatedRate;
 
         // This debt represnts the amount of liquidated user's dPRIME which is still floating around. 
         // We need to burn the same amount of dPRIME raised via auction. Assuming a successful
-        // auction, any increase to `liquidationDebt` will be reversed. An auction which raises less
-        // than the required dPRIME amount will result in some amount of `liquidationDebt` persisting
+        // auction, any increase to `protocolDeficit` will be reversed. An auction which raises less
+        // than the required dPRIME amount will result in some amount of `protocolDeficit` persisting
         // over time. This means that, on aggregate, dPRIME will be less collateralised than it 
         // previously was.
         totalProtocoldeficit                    += dPrimeChange;
-        protocoldeficit[liquidationContract]    += dPrimeChange;
+        protocolDeficit[liquidationContract]    += dPrimeChange;
 
         // Here, we reduce the amount of outstanding debt for the liquidated user and the protocol
-        // as a whole because we accounted for it above in `liquidationDebt`. This operation and the one
+        // as a whole because we accounted for it above in `protocolDeficit`. This operation and the one
         // above has the effect of moving the debt to where it will be handled by the liquidation contract.
-        // Above, we increase `liquidationDebt` by the dPRIME amount which also takes into account
+        // Above, we increase `protocolDeficit` by the dPRIME amount which also takes into account
         // accrued interat interest to date.
         normalizedDebt[liquidated]  -= normalizedDebtChange;
         totalNormalizedDebt         -= normalizedDebtChange;
@@ -513,7 +517,7 @@ contract LMCV {
      */
     function deflate(uint256 rad) external {
         address u = msg.sender;
-        protocoldeficit[u]      -= rad;
+        protocolDeficit[u]      -= rad;
         totalProtocoldeficit    -= rad;
         dPrime[u]               -= rad;
         totalDPrime             -= rad;
@@ -533,7 +537,7 @@ contract LMCV {
      * as users pay stability fees on their vaults.
      */
     function inflate(address debtReceiver, address dPrimeReceiver, uint256 rad) external auth {
-        protocoldeficit[debtReceiver]   += rad;
+        protocolDeficit[debtReceiver]   += rad;
         totalProtocoldeficit            += rad;
         dPrime[dPrimeReceiver]          += rad;
         totalDPrime                     += rad;
@@ -546,7 +550,7 @@ contract LMCV {
     //
 
     function updateRate(int256 rateIncrease) external auth loanAlive {
-        StabilityRate       = _add(StabilityRate, rateIncrease);
+        AccumulatedRate     = _add(AccumulatedRate, rateIncrease);
         int256 rad          = _int256(totalNormalizedDebt - totalPSMDebt) * rateIncrease;
         dPrime[Treasury]    = _add(dPrime[Treasury], rad);
         totalDPrime         = _add(totalDPrime, rad);

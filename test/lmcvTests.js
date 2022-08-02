@@ -526,7 +526,7 @@ describe("Testing LMCV", function () {
             expect(await lmcv.dPrime(owner.address)).to.equal(frad("5"));
 
             await lmcv.updateRate(fray(".1"));
-            expect(await lmcv.StabilityRate()).to.equal(fray("1.1"));
+            expect(await lmcv.AccumulatedRate()).to.equal(fray("1.1"));
 
             expect(await lmcv.dPrime(owner.address)).to.equal(frad("205"));
 
@@ -544,7 +544,7 @@ describe("Testing LMCV", function () {
             expect(await userLMCV.dPrime(addr1.address)).to.equal(frad("6384"));
 
             await lmcv.updateRate(fray(".1"));
-            expect(await lmcv.StabilityRate()).to.equal(fray("1.2"));
+            expect(await lmcv.AccumulatedRate()).to.equal(fray("1.2"));
 
             expect(await lmcv.dPrime(owner.address)).to.equal(frad("816"));
 
@@ -576,21 +576,21 @@ describe("Testing LMCV", function () {
             // Debit the normalized debt by the amount being liquidated and credit the liquidation debt.
             expect(await userLMCV.normalizedDebt(addr1.address)).to.equal(fwad("335"));
             expect(await userLMCV.totalNormalizedDebt()).to.equal(fwad("335"));
-            expect(await lmcv.liquidationDebt(liquidator.address)).to.equal(frad("165"));
-            expect(await lmcv.totalLiquidationDebt()).to.equal(frad("165"));
+            expect(await lmcv.protocolDeficit(liquidator.address)).to.equal(frad("165"));
+            expect(await lmcv.totalProtocoldeficit()).to.equal(frad("165"));
             // Debit the users locked collateral and credit the liquidation contract unlocked collateral.
             expect(await userLMCV.lockedCollateral(addr1.address, mockTokenBytes)).to.equal(fwad("45.875"));
             expect(await userLMCV.unlockedCollateral(liquidator.address, mockTokenBytes)).to.equal(fwad("4.125"));
             // dPRIME balance should remain the same.
             expect(await userLMCV.dPrime(addr1.address)).to.equal(frad("500"));
             // We subsequently manage to raise the whole amount of dPRIME via auction....
-            await lmcv.createLiquidationDebt(liquidator.address, liquidator.address, frad("165"));
+            await lmcv.inflate(liquidator.address, liquidator.address, frad("165"));
             // We now have 330 of liquidation debt but only 165 of it pertains to this test.
-            expect(await lmcv.liquidationDebt(liquidator.address)).to.equal(frad("330"));
-            await liquidatorLMCV.repayLiquidationDebt(frad("165"));
+            expect(await lmcv.protocolDeficit(liquidator.address)).to.equal(frad("330"));
+            await liquidatorLMCV.deflate(frad("165"));
             // We created an additional 165 of liquidation debt when we "gave" dPRIME to the liquidation contract. So we should have 
             // 165 after calling repayLiquidationDebt. 
-            expect(await lmcv.liquidationDebt(liquidator.address)).to.equal(frad("165"));
+            expect(await lmcv.protocolDeficit(liquidator.address)).to.equal(frad("165"));
             // Repay liquidation debt burns the dPRIME we received via the auction.
             expect(await liquidatorLMCV.dPrime(liquidator.address)).to.equal(frad("0"));
         });
@@ -606,8 +606,8 @@ describe("Testing LMCV", function () {
             // Debit the normalized debt by the amount being liquidated and credit the liquidation debt.
             expect(await userLMCV.normalizedDebt(addr1.address)).to.equal(fwad("0"));
             expect(await userLMCV.totalNormalizedDebt()).to.equal(fwad("0"));
-            expect(await lmcv.liquidationDebt(liquidator.address)).to.equal(frad("1000"));
-            expect(await lmcv.totalLiquidationDebt()).to.equal(frad("1000"));
+            expect(await lmcv.protocolDeficit(liquidator.address)).to.equal(frad("1000"));
+            expect(await lmcv.totalProtocoldeficit()).to.equal(frad("1000"));
             // Debit the users locked collateral and credit the liquidation contract unlocked collateral.
             expect(await userLMCV.lockedCollateral(addr1.address, mockTokenBytes)).to.equal(fwad("0"));
             expect(await userLMCV.unlockedCollateral(liquidator.address, mockTokenBytes)).to.equal(fwad("50"));

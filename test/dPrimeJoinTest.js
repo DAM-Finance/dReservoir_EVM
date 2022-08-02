@@ -95,7 +95,7 @@ describe("dPrimeJoin Testing", function () {
         expect(await lmcv.dPrime(owner.address)).to.equal(frad("20"));
     });
 
-    it("Should not let user withdraw dPrime greater than specified in normalizedDebt * StabilityRate", async function () {
+    it("Should not let user withdraw dPrime greater than specified in normalizedDebt * AccumulatedRate", async function () {
         await userLMCV.loan([mockTokenBytes], [fwad("500")], fwad("2000"), addr1.address);
         expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
 
