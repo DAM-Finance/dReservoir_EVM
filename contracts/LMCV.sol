@@ -570,7 +570,7 @@ contract LMCV {
      * This function checks that the present value of a vault's debt (normalised debt multiplied
      * by stability rate) is less than than the credit limit.
      */
-    function isWithinCreditLimit(address user, uint256 rate) private view returns (bool) {
+    function isWithinCreditLimit(address user, uint256 rate) public view returns (bool) {
         bytes32[] storage lockedList = lockedCollateralList[user];
         uint256 creditLimit             = 0; // [rad]
         uint256 leverTokenCreditLimit   = 0; // [rad]
@@ -604,6 +604,21 @@ contract LMCV {
             return true;
         }
         return false;
+    }
+
+    function getCreditLimit(address user) public view returns (uint256 creditLimit, uint256 portfolioValue) {
+        bytes32[] storage lockedList = lockedCollateralList[user];
+        uint256 creditLimit             = 0; // [rad]
+        uint256 noLeverageTotal         = 0; // [wad]
+        for (uint256 i = 0; i < lockedList.length; i++) {
+            Collateral memory collateralData = CollateralData[lockedList[i]];
+            if(lockedCollateral[user][lockedList[i]] > collateralData.dustLevel){
+                uint256 collateralValue = lockedCollateral[user][lockedList[i]] * collateralData.spotPrice; // wad*ray -> rad
+                creditLimit += _rmul(collateralValue, collateralData.creditRatio);
+                noLeverageTotal += collateralValue;
+            }
+        }
+        return (creditLimit, noLeverageTotal);
     }
 
     //
