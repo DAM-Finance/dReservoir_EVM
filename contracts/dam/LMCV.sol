@@ -88,11 +88,15 @@ contract LMCV {
     event PushCollateral(bytes32 indexed collat, address indexed src, uint256 wad);
     event PullCollateral(bytes32 indexed collat, address indexed src, uint256 wad);
     event MoveDPrime(address indexed src, address indexed dst, uint256 frad);
+    event LockedAmountLimit(bytes32 indexed collateral, uint256 wad);
+    event LiquidationBonus(bytes32 indexed collateral, uint256 ray);
     event MovePortfolio(address indexed src, address indexed dst);
     event PushLiquidationDPrime(address indexed src, uint256 rad);
     event PullLiquidationDPrime(address indexed src, uint256 rad);
     event SpotUpdate(bytes32 indexed collateral, uint256 spot);
+    event CreditRatio(bytes32 indexed collateral, uint256 ray);
     event AddLoanedDPrime(address indexed user, uint256 rad);
+    event DustLevel(bytes32 indexed collateral, uint256 wad);
     event EnterDPrime(address indexed src, uint256 rad);
     event ExitDPrime(address indexed src, uint256 rad);
     event Deflate(address indexed u, uint256 rad);
@@ -204,22 +208,22 @@ contract LMCV {
 
     function editLockedAmountLimit(bytes32 collateral, uint256 wad) external auth {
         CollateralData[collateral].lockedAmountLimit = wad;
-        // Emit event?
+        emit LockedAmountLimit(collateral, wad);
     }
 
     function editDustLevel(bytes32 collateral, uint256 wad) external auth {
         CollateralData[collateral].dustLevel = wad;
-        // Emit event?
+        emit DustLevel(collateral, wad);
     }
 
     function editCreditRatio(bytes32 collateral, uint256 ray) external auth {
         CollateralData[collateral].creditRatio = ray;
-        // Emit event?
+        emit CreditRatio(collateral, ray);
     }
 
     function editLiquidationBonus(bytes32 collateral, uint256 ray) external auth {
         CollateralData[collateral].liqBonusMult = ray;
-        // Emit event?
+        emit LiquidationBonus(collateral, ray);
     }
 
     function editLeverageStatus(bytes32 collateral, bool _leveraged) external auth {

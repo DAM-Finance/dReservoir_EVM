@@ -91,11 +91,9 @@ contract PSM {
     // --- Events ---
     //
 
+    event MintRepayFee(uint256 MintRay, uint256 RepayRay);
     event Rely(address user);
     event Deny(address user);
-    event File(bytes32 indexed what, uint256 data);
-    event CreateDPrime(address indexed owner, uint256 value, uint256 fee);
-    event RemoveDPrime(address indexed owner, uint256 value, uint256 fee);
 
     //
     // --- Modifiers
@@ -142,6 +140,7 @@ contract PSM {
     function setMintRepayFees(uint256 mintRay, uint256 repayRay) external auth {
         mintFee = mintRay;
         repayFee = repayRay;
+        emit MintRepayFee(mintRay, repayRay);
     }
 
     function approve(address usr) external auth {
@@ -169,7 +168,6 @@ contract PSM {
         lmcv.moveDPrime(address(this), treasury, fee * RAY);
 
         dPrimeJoin.exit(usr, dPrimeAmt);
-        emit CreateDPrime(usr, collatAmount18, fee);
     }
 
     function getCollateral(address usr, bytes32[] memory collateral, uint256[] memory collatAmount) external {
@@ -187,7 +185,6 @@ contract PSM {
         collateralJoin.exit(usr, lowDecCollatAmount);
         
         lmcv.moveDPrime(address(this), treasury, fee * RAY);
-        emit RemoveDPrime(usr, collatAmount18, fee);
     }
 
 }
