@@ -5,6 +5,7 @@ node_modules/
 .env.test.local
 .env.production.local
 .env.local
+.DS_Store
 
 # yarn v2
 .yarn/cache
@@ -16,6 +17,5 @@ node_modules/
 /cache/
 /.idea/
 secrets.json
-package-lock.json
 
 slither.db.json
