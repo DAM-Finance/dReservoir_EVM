@@ -4,7 +4,7 @@
 
 DAM Finance is an over-collateralised stablecoin protocol which draws insipriation from MakerDAO. The codebase is based upon the MakerDAO codebase and we have made changes were necessary to facilitate our requirements. Keys changes we have made are:
 
-1. **Linked Multi-collateral vault** Allow users to pool all their collateral in a single vault instead of having a vault for each type of collateral. The impact of this is that users can take advantage of collateral which may not be suitable for minting an overc-collateralised stablecoin in isolation. This also means that each vault has a unique weighted average liquidation LTV based upon the LTV for each of the constituent tokens making up the vault collateral. 
+1. **Linked Multi-collateral vault** Allow users to pool all their collateral in a single vault instead of having a vault for each type of collateral. The impact of this is that users can take advantage of collateral which may not be suitable for minting an over-collateralised stablecoin in isolation. This also means that each vault has a unique weighted average liquidation LTV based upon the LTV for each of the constituent tokens making up the vault collateral. 
 2. **Leverage** Users can re-deposit dPRIME (or dPRIMEs) back into their vaults to mint more dPRIME. The protocol understands that this is a leveraged token and as such affects the way the weighted average LTV is calculated for the vault. Using a leveraged token as collateral allows the minting of more dPRIME but changes in value of the underlying collateral (i.e. not the dPRIMEs) have a greater impact on the portfolio value of the vault, due to its leveraged nature. There is a protocol-wide leverage cap set by the `lockedAmountLimit` for dPRIMEs in `LMCV.sol`. This value will occasionally need updating so that protocol-wide leverage is capped at 2x.
 3. **Minting fee** We have added the capability to chage a minting fee when dPRIME is minted.
 4. **Peg stability module** Users can deposit certain stablecoins in the peg stability module which allows them to mint dPRIME 1:1 or at a near 1:1 ratio. Clearly, if a user needs to re-collateralise their vault then depositing stablecoins is the most effective way to do that. Stablecoin liquidity on Moonbeam is somewhat fragmented, therefore we will look to incentivise users to consolidate liquidity by minting dPRIME from a range of existing stablecoins by not levying fees or interest.
@@ -12,7 +12,7 @@ DAM Finance is an over-collateralised stablecoin protocol which draws insipriati
 
 Other key features:
 
-1. **Stability rate** As with the MakerDAO protocol, we charge a variable interest rate, which compounds on a per second basis as a percentage of total borrowing. The existence of the interest rate -- which can be set to zero if necessary but cannot be negative -- is to manage the supply/demand curve for dPRIME and help with peg stability.
+1. **Accumulated rate** As with the MakerDAO protocol, we charge a variable interest rate, which compounds on a per second basis as a percentage of total borrowing. The existence of the interest rate -- which can be set to zero if necessary but cannot be negative -- is to manage the supply/demand curve for dPRIME and help with peg stability.
 2. **Liquidations and auctions** Unhealthy vaults will be liquidated and auctioned off to keepers. We are using an adapted version of the MakerDAO (cat.sol)[https://github.com/makerdao/dss/blob/master/src/cat.sol] for our auction process. To incentivise liquidation a liquidation discount will be offered.
 3. **Oracle price feeds** For delayed hourly updates to protfolio values.
 4. **Accepted collateral** We can update the accepted collateral list. Add new collateral, remove existing collateral or update propeties of existing collateral types.
@@ -81,5 +81,5 @@ Contract specific documentation:
 2. Auction contract
 3. Staking contract
 4. User facing proxy contract
-5. Interst rate contract
+5. Interest rate contract
 6. Oracle price feed contracts
