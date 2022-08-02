@@ -488,7 +488,7 @@ contract LMCV {
             bytes32 collateral = collateralList[i];
             CollateralData[collateral].lockedAmount -= collateralChange[i];     // Reduce total locked.
             lockedCollateral[liquidated][collateral] -= collateralChange[i];    // Reduce locked for user.
-            unlockedCollateral[liquidator][collateral] += collateralChange[i];  // Increase unlocked for user.
+            unlockedCollateral[liquidator][collateral] += collateralChange[i];  // Increase unlocked for liquidator.
         }
 
         // Remove collateral from the list of locked collateral indicies if all of it is confiscated
