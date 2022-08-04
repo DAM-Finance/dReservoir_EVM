@@ -54,6 +54,16 @@ async function setupUser(user, amounts) {
     await bazJoinConnect.join(user.address, fwad(amounts.at(2)));
 }
 
+const NumType = Object.freeze({
+    WAD: 18,
+    RAY: 27,
+    RAD: 45
+});
+
+let checkUint256Value = async (fun, val, units = NumType.WAD) => {
+    expect(ethers.utils.formatUnits(await fun(), units)).to.be.equal(val);
+}
+
 describe("Liquidation testing", function () {
 
     before(async function () {
@@ -92,16 +102,20 @@ describe("Liquidation testing", function () {
         await lmcv.administrate(barJoin.address, 1);
         await lmcv.administrate(bazJoin.address, 1);
 
+        // Allow the liquidator to call functinos on LMCV.
+        await lmcv.administrate(liquidator.address, 1);
+
         // Setup the LMCV.
         await lmcv.setProtocolDebtCeiling(DEBT_CEILING);
         //await lmcv.setMintFee();
         //await lmcv.setTreasury();
 
         // Token Name, locked amount limit, dust level, credit ratio, liquidation discount, leveraged?
-        await lmcv.editAcceptedCollateralType(fooBytes, fwad("1000"), fwad("1"), fray("0.7"), fray("0.08"), false);
-        await lmcv.editAcceptedCollateralType(barBytes, fwad("1000"), fwad("1"), fray("0.6"), fray("0.08"), false);
-        await lmcv.editAcceptedCollateralType(bazBytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), false);
+        await lmcv.editAcceptedCollateralType(fooBytes, fwad("1000"), fwad("1"), fray("0.7"), false);
+        await lmcv.editAcceptedCollateralType(barBytes, fwad("1000"), fwad("1"), fray("0.6"), false);
+        await lmcv.editAcceptedCollateralType(bazBytes, fwad("1000"), fwad("1"), fray("0.5"), false);
 
+        // Set the market prices.
         await lmcv.updateSpotPrice(fooBytes, fray("7.61"));
         await lmcv.updateSpotPrice(barBytes, fray("0.58"));
         await lmcv.updateSpotPrice(bazBytes, fray("3.94"));
@@ -111,8 +125,12 @@ describe("Liquidation testing", function () {
         await setupUser(userTwo, ["250", "500", "750"]);
     });
 
-    it("Example test", async function () {
+    it("Liquidation where vault size is less than lot size", async function () {
         let userOneLMCV = lmcv.connect(userOne);
+
+        // Set up liquidator.
+        await liquidator.setLotSize(fwad("1000"));
+        await liquidator.setLiquidationPenalty(fray("1.1"));
 
         // User one locks up all collateral and takes out a loan.
         //
@@ -129,35 +147,128 @@ describe("Liquidation testing", function () {
         //          current LTV = 40.37%
         //
         userOneLMCV.loan([fooBytes, barBytes, bazBytes], [fwad("50"), fwad("800"), fwad("100")], fwad("500"), userOne.address);
-        expect(await userOneLMCV.lockedCollateral(userOne.address, fooBytes)).to.equal(fwad("50"));
-        expect(await userOneLMCV.lockedCollateral(userOne.address, barBytes)).to.equal(fwad("800"));
-        expect(await userOneLMCV.lockedCollateral(userOne.address, bazBytes)).to.equal(fwad("100"));
-        expect(await userOneLMCV.dPrime(userOne.address)).to.equal(frad("500"));
+        await checkUint256Value(() => userOneLMCV.lockedCollateral(userOne.address, fooBytes),  "50.0",     NumType.WAD);
+        await checkUint256Value(() => userOneLMCV.lockedCollateral(userOne.address, barBytes),  "800.0",    NumType.WAD);
+        await checkUint256Value(() => userOneLMCV.lockedCollateral(userOne.address, bazBytes),  "100.0",    NumType.WAD);
+        await checkUint256Value(() => userOneLMCV.dPrime(userOne.address),                      "500.0",    NumType.RAD);
 
         // shouldn't be able to liquidate this vault yet.
         await expect(liquidator.liquidate(userOne.address)).to.be.revertedWith("Liquidator/Vault within credit limit");
 
-        // Price of BAR goes to Zero in an instant!
+        // Price of BAR goes to 0.2 in an instant!
         //
         // FOO 50 x 7.61 x 0.7  = 266.35
-        // BAR 800 x 0 x 0.6    = 0
+        // BAR 800 x 0.2 x 0.6  = 32
         // BAZ 100 x 3.94 x 0.5 = 197
-        //         credit limit = 463.35
+        //         credit limit = 495.35
         //     withdrawn dPRIME = 500
-
-        //      portfolio value = 741.75
-        //              max LTV = 59.88% (credit limit / portfolio value)
-        //          current LTV = 64.57% (withdrawn dPRIME / portfolio value)
+        //      portfolio value = 934.5
+        //              max LTV = 53%   (credit limit / portfolio value)
+        //          current LTV = 53.5% (withdrawn dPRIME / portfolio value)
         //
-        await lmcv.updateSpotPrice(barBytes, fray("0.0"));
+        await lmcv.updateSpotPrice(barBytes, fray("0.05"));
 
-        console.log(await lmcv.CollateralData(barBytes));
+        // Now we can liquidate the vault.
+        await liquidator.liquidate(userOne.address);
 
-        expect(await liquidator.liquidate(userOne.address));
+        // The user's remaining debt and collateral balances after liquidate is called.
+        await checkUint256Value(() => userOneLMCV.normalizedDebt(userOne.address),              "0.0",      NumType.WAD);
+        await checkUint256Value(() => userOneLMCV.lockedCollateral(userOne.address, fooBytes),  "0.0",      NumType.WAD);
+        await checkUint256Value(() => userOneLMCV.lockedCollateral(userOne.address, barBytes),  "0.0",      NumType.WAD);
+        await checkUint256Value(() => userOneLMCV.lockedCollateral(userOne.address, bazBytes),  "0.0",      NumType.WAD);
+
+        // The debt up for auction is recorded as a protocol deficit.
+        await checkUint256Value(() => lmcv.protocolDeficit(liquidator.address),                 "500.0",    NumType.RAD);
+        await checkUint256Value(() => lmcv.totalProtocolDeficit(),                              "500.0",    NumType.RAD);
+        await checkUint256Value(() => lmcv.normalizedDebt(liquidator.address),                  "0.0",      NumType.WAD);
+        await checkUint256Value(() => lmcv.totalNormalizedDebt(),                               "0.0",      NumType.WAD);
+    });
+
+    it("Liquidation where vault size is greater than lot size", async function () {
+        let userOneLMCV = lmcv.connect(userOne);
+
+        // Set up liquidator.
+        await liquidator.setLotSize(fwad("300"));
+        await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // User one locks up all collateral and takes out a loan.
+        //
+        // FOO 50 x 7.61 x 0.7  = 266.35
+        // BAR 800 x 0.58 x 0.6 = 278.4
+        // BAZ 100 x 3.94 x 0.5 = 197
+        //         credit limit = 741.75
+        //
+        //      portfolio value = 1,238.5
+        //              max LTV = 59.89%
+        // 
+        // Withdrawing 500 dPRIME ...
+        //
+        //          current LTV = 40.37%
+        //
+        userOneLMCV.loan([fooBytes, barBytes, bazBytes], [fwad("50"), fwad("800"), fwad("100")], fwad("500"), userOne.address);
+        await checkUint256Value(() => userOneLMCV.lockedCollateral(userOne.address, fooBytes),  "50.0",     NumType.WAD);
+        await checkUint256Value(() => userOneLMCV.lockedCollateral(userOne.address, barBytes),  "800.0",    NumType.WAD);
+        await checkUint256Value(() => userOneLMCV.lockedCollateral(userOne.address, bazBytes),  "100.0",    NumType.WAD);
+        await checkUint256Value(() => userOneLMCV.dPrime(userOne.address),                      "500.0",    NumType.RAD);
+
+        // shouldn't be able to liquidate this vault yet.
+        await expect(liquidator.liquidate(userOne.address)).to.be.revertedWith("Liquidator/Vault within credit limit");
+
+        // Price of BAR goes to 0.2 in an instant!
+        //
+        // FOO 50 x 7.61 x 0.7   = 266.35
+        // BAR 800 x 0.05 x 0.6  = 24
+        // BAZ 100 x 3.94 x 0.5  = 197
+        //         credit limit  = 487.35
+        //     withdrawn dPRIME  = 500
+        //      portfolio value  = 814.5
+        //              max LTV  = 59.83%   (credit limit / portfolio value)
+        //          current LTV  = 61.38% (withdrawn dPRIME / portfolio value)
+        //
+        await lmcv.updateSpotPrice(barBytes, fray("0.05"));
+
+        // Now we can liquidate the vault.
+        await liquidator.liquidate(userOne.address);
+
+        // The user's remaining debt and collateral balances after liquidate is called.
+        await checkUint256Value(() => userOneLMCV.normalizedDebt(userOne.address),                "227.272727272727272728", NumType.WAD);
+        await checkUint256Value(() => userOneLMCV.lockedCollateral(userOne.address, fooBytes),    "22.727272727272727273",  NumType.WAD);
+        await checkUint256Value(() => userOneLMCV.lockedCollateral(userOne.address, barBytes),    "363.636363636363636365", NumType.WAD);
+        await checkUint256Value(() => userOneLMCV.lockedCollateral(userOne.address, bazBytes),    "45.454545454545454546",  NumType.WAD);
+
+        // The debt up for auction is recorded as a protocol deficit.
+        await checkUint256Value(() => lmcv.protocolDeficit(liquidator.address),                   "272.727272727272727272", NumType.RAD);
+        await checkUint256Value(() => lmcv.totalProtocolDeficit(),                                "272.727272727272727272", NumType.RAD);
+        await checkUint256Value(() => lmcv.normalizedDebt(userOne.address),                       "227.272727272727272728", NumType.WAD);
+        await checkUint256Value(() => lmcv.totalNormalizedDebt(),                                 "227.272727272727272728", NumType.WAD);
+
+        // The auction happens and no collateral is returned to the user. We can liquidate again...
+        //
+        // FOO 22.72 x 7.61 x 0.7  = 172.954
+        // BAR 363.63 x 0.05 x 0.6 = 18.18
+        // BAZ 45.45 x 3.94 x 0.5  = 179.09
+        //         credit limit    = 221.522 
+        //     withdrawn dPRIME    = 227.27
+        //      portfolio value    = 370.227
+        //              max LTV    = 59.83% (credit limit / portfolio value)
+        //          current LTV    = 61.38% (withdrawn dPRIME / portfolio value)
+        //
+        // The vault has the same LTV as before as no collateral was returned. The vault should be empty
+        // after calling liquidate again.
+        await liquidator.liquidate(userOne.address);
+        await checkUint256Value(() => userOneLMCV.normalizedDebt(userOne.address),                "0.0", NumType.WAD);
+        await checkUint256Value(() => userOneLMCV.lockedCollateral(userOne.address, fooBytes),    "0.0", NumType.WAD);
+        await checkUint256Value(() => userOneLMCV.lockedCollateral(userOne.address, barBytes),    "0.0", NumType.WAD);
+        await checkUint256Value(() => userOneLMCV.lockedCollateral(userOne.address, bazBytes),    "0.0", NumType.WAD);
+
+        // The debt up for auction is recorded as a protocol deficit.
+        checkUint256Value(() => lmcv.protocolDeficit(liquidator.address),                   "500.0", NumType.RAD);
+        checkUint256Value(() => lmcv.totalProtocolDeficit(),                                "500.0", NumType.RAD);
+        checkUint256Value(() => lmcv.normalizedDebt(liquidator.address),                    "0.0", NumType.WAD);
+        checkUint256Value(() => lmcv.totalNormalizedDebt(),                                 "0.0", NumType.WAD);
+
     });
 });
-
-// IN CASE THE CASES ARE HELPFUL FOR THE LIQUIDATION MODULE
 
 
 // describe("Liquidation function testing", function () {
