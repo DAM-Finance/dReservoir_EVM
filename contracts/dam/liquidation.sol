@@ -63,7 +63,7 @@ contract Liquidator {
     // --- Events ---
     //
 
-    event StartAuction();
+    event Liquidated();
     event Rely(address user);
     event Deny(address user);
 
@@ -90,6 +90,10 @@ contract Liquidator {
     //
     // --- Admin ---
     //
+
+    function cage() external auth {
+        live = 0;
+    }
 
     function setLiquidationPenalty(uint256 ray) external auth {
         liquidationPenalty = ray;
@@ -130,6 +134,7 @@ contract Liquidator {
      */
     function liquidate(address user) external {
         require(live == 1, "Liquidator/Not live");
+        require(liquidationPenalty != 0 && lotSize != 0, "Liquidator/Not set up");
         require(!lmcv.isWithinCreditLimit(user, lmcv.StabilityRate()), "Liquidator/Vault within credit limit");
 
         // Grab the initial data we need from LMCV.
@@ -141,7 +146,8 @@ contract Liquidator {
         // We take the minimum of the normalized debt balance or the lot size devided by the stability rate 
         // and liquidation penalty. For small vaults, this means that the whole debt balance will be liquidated.
         // For larger vaults it means that only a portion of the vault will be liquidated.
-        uint256 debtHaircut     = min(normalizedDebt, lotSize * RAY / stabilityRate * RAY / liquidationPenalty);    // wad * RAY / ray * RAY / ray -> wad                                           
+        uint256 debtHaircut = min(normalizedDebt, lotSize * RAY / stabilityRate * RAY / liquidationPenalty);    // wad * RAY / ray * RAY / ray -> wad          
+        require(debtHaircut > 0, "Liquidator/Debt haircut must be positive.");                                
 
         // Now we need to gather the information required to call liquidate on LMCV. Using the haircutPercentage
         // we can calculate how much of each collateral type to seize.
@@ -149,6 +155,7 @@ contract Liquidator {
         for(uint256 i = 0; i < collateralListLength; i++) {
             uint256 amount          = lmcv.lockedCollateral(user, collateralList[i]);
             collateralHaircuts[i]   = rmul(amount, debtHaircut * RAY / normalizedDebt); // wad * (wad * RAY / wad -> ray)
+            require(collateralHaircuts[i] > 0, "Liquidator/Collateral haircut must be positive.");
         }
 
         // Liquidate the debt and collateral.
@@ -159,21 +166,6 @@ contract Liquidator {
         uint256 askingAmount = rmul(debtHaircut * stabilityRate, liquidationPenalty) / RAY;
         auctionHouse.start(user, lmcv.Treasury(), askingAmount, collateralHaircuts, 0);
 
-        emit StartAuction();
-    }
-
-    function cage() external auth {
-        live = 0;
+        emit Liquidated();
     }
 }
-
-// console.log("Debt to auction        ", debtToAuction);
-// console.log("Collateral % to auction", collateralPercentToAuction);
-// console.log("Normalized debt:       ", normalizedDebt);
-// console.log("Stability Rate:        ", stabilityRate);
-// console.log("Lot size:              ", lotSize);
-// console.log("Liquidation penalty:   ", liquidationPenalty);         // [ray]
-
-// console.log("amount of collateral:  ", amount);
-// console.log("amount to take:        ", rmul(amount, collateralPercentToAuction)); // wad * ray -> rad
-// console.log("Auction amount:        ", tab);
