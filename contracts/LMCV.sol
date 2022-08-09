@@ -456,14 +456,15 @@ contract LMCV {
      * vault and the amount to liquidate is significantly larger than the auction lot size.
      */
     function liquidate(
-        bytes32[] memory collateralList,    // List of collateral identifiers.
-        uint256[] memory collateralChange,  // List of collateral amount changes.   [wad]
-        uint256 normalizedDebtChange,       // Debt change in t=0 terms.            [wad]
+        bytes32[] calldata collateralList,      // List of collateral types being liquidated.
+        uint256[] calldata collateralHaircuts,  // List of collateral amount changes.   [wad]
+        uint256 debtHaircut,                    // Debt change in t=0 terms.            [wad]
         address liquidated, 
-        address liquidator
+        address liquidator,
+        address treasury
     ) external auth {
-        require(collateralList.length == collateralChange.length, "LMCV/Missing collateral type or collateral amount");
-        uint256 dPrimeChange = normalizedDebtChange * AccumulatedRate;
+        require(collateralList.length == collateralHaircuts.length, "LMCV/Missing collateral type or collateral amount");
+        uint256 dPrimeChange = debtHaircut * StabilityRate;
 
         // This debt represnts the amount of liquidated user's dPRIME which is still floating around. 
         // We need to burn the same amount of dPRIME raised via auction. Assuming a successful
@@ -471,24 +472,24 @@ contract LMCV {
         // than the required dPRIME amount will result in some amount of `protocolDeficit` persisting
         // over time. This means that, on aggregate, dPRIME will be less collateralised than it 
         // previously was.
-        totalProtocolDeficit                    += dPrimeChange;
-        protocolDeficit[liquidator]             += dPrimeChange;
+        totalProtocolDeficit        += dPrimeChange;
+        protocolDeficit[treasury]   += dPrimeChange;
 
         // Here, we reduce the amount of outstanding debt for the liquidated user and the protocol
         // as a whole because we accounted for it above in `protocolDeficit`. This operation and the one
         // above has the effect of moving the debt to where it will be handled by the liquidation contract.
         // Above, we increase `protocolDeficit` by the dPRIME amount which also takes into account
         // accrued interat interest to date.
-        normalizedDebt[liquidated]  -= normalizedDebtChange;
-        totalNormalizedDebt         -= normalizedDebtChange;
+        normalizedDebt[liquidated]  -= debtHaircut;
+        totalNormalizedDebt         -= debtHaircut;
 
         // Move collateral from the liquidated user's address to liquidator's address. 
         // This might leave the vault in a dusty state.
         for (uint256 i = 0; i < collateralList.length; i++) {
             bytes32 collateral = collateralList[i];
-            CollateralData[collateral].lockedAmount -= collateralChange[i];     // Reduce total locked.
-            lockedCollateral[liquidated][collateral] -= collateralChange[i];    // Reduce locked for user.
-            unlockedCollateral[liquidator][collateral] += collateralChange[i];  // Increase unlocked for liquidator.
+            CollateralData[collateral].lockedAmount     -= collateralHaircuts[i];   // Reduce total locked.
+            lockedCollateral[liquidated][collateral]    -= collateralHaircuts[i];   // Reduce locked for user.
+            unlockedCollateral[liquidator][collateral]  += collateralHaircuts[i];   // Increase unlocked for liquidator.
         }
 
         // Remove collateral from the list of locked collateral indicies if all of it is confiscated
@@ -501,7 +502,7 @@ contract LMCV {
             }
         }
 
-        emit Liquidation(liquidated, liquidator, normalizedDebtChange, collateralList, collateralChange);
+        emit Liquidation(liquidated, liquidator, debtHaircut, collateralList, collateralHaircuts);
     }
 
     /*
@@ -637,20 +638,5 @@ contract LMCV {
             bytesArray[i] = _bytes32[i];
         }
         return string(bytesArray);
-    }
-
-    function getCreditLimit(address user) public view returns (uint256, uint256) {
-        bytes32[] storage lockedList = lockedCollateralList[user];
-        uint256 creditLimit             = 0; // [rad]
-        uint256 noLeverageTotal         = 0; // [wad]
-        for (uint256 i = 0; i < lockedList.length; i++) {
-            Collateral memory collateralData = CollateralData[lockedList[i]];
-            if(lockedCollateral[user][lockedList[i]] > collateralData.dustLevel){
-                uint256 collateralValue = lockedCollateral[user][lockedList[i]] * collateralData.spotPrice; // wad*ray -> rad
-                creditLimit += _rmul(collateralValue, collateralData.creditRatio);
-                noLeverageTotal += collateralValue;
-            }
-        }
-        return (creditLimit, noLeverageTotal);
     }
 }

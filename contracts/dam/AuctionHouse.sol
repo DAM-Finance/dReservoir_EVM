@@ -5,8 +5,9 @@ pragma solidity 0.8.7;
 import "hardhat/console.sol";
 
 interface LMCVLike {
-    function moveDPrime(bytes32 collat, address src, address dst, uint256 wad) external;
-    function moveCollateral(address src, address dst, uint256 rad) external;
+    function lockedCollateralListValues(address) external view returns (bytes32[] memory);
+    function moveDPrime(address src, address dst, uint256 rad) external;
+    function moveCollateral(bytes32 collateral, address src, address dst, uint256 wad) external;
 }
 
 contract AuctionHouse {
@@ -32,16 +33,18 @@ contract AuctionHouse {
     //
 
     struct Bid {
-        uint256 bid;    // Highest dPRIME paid              [rad]
-        uint256 tab;    // arget dPRIME amount              [rad]
-        uint256 lot;    // collateral amount up for auction [wad]           // TODO: Update to be collateralList.
-        address guy;    // highest bidder
-        uint48  tic;    // Bid expiry time                  [unix epoch time]
-        uint48  end;    // Auction expiry time              [unix epoch time]
-        address usr;    // Liquidated user
-        address gal;    // Treasury address
+        uint256     bid;    // Highest dPRIME paid              [rad]
+        uint256     tab;    // arget dPRIME amount              [rad]
+        uint256[]   lot;    // collateral amount up for auction [wad]
+        address     guy;    // highest bidder
+        uint48      tic;    // Bid expiry time                  [unix epoch time]
+        uint48      end;    // Auction expiry time              [unix epoch time]
+        address     usr;    // Liquidated user
+        address     gal;    // Treasury address
     }
+
     mapping (uint256 => Bid)    public              bids;
+
     LMCVLike                    public immutable    lmcv;                   // LMCV.
     uint256                     public              live;                   // Active flag.
     uint256                     public              beg         = 1.05E18;  // 5% minimum bid increase
@@ -84,27 +87,33 @@ contract AuctionHouse {
         live = 0;
     }
 
+    // TODO: Update params - beg, tau, ttl, etc.
+
     //
     // --- User functions ---
     //
 
-    function start(address user, address treasury, uint256 tab, uint256[] calldata collateralList, uint256 bid) external auth {
-        require(auctions < uint256(-1), "AuctionHouse/id overflow");
+    function start(address user, address treasury, uint256 tab, uint256[] calldata collateralList, uint256 bid) external auth returns (uint256 id) {
+        // Return the current ID and increment.
         id = ++auctions;
 
+        // Set up struct for this auction.
         bids[id].bid = bid;
-        bids[id].lot = collateralList;                     // TODO: Update to be collateral list.
+        bids[id].lot = collateralList;
         bids[id].guy = msg.sender;
-        bids[id].end = add(uint48(now), tau);
+        bids[id].end = uint48(block.timestamp) + tau;
         bids[id].usr = user;
         bids[id].gal = treasury;
         bids[id].tab = tab;
 
-        // For each collateral type.
-        // Move collateral to AuctionHouse's account.
-        vat.flux(ilk, msg.sender, address(this), lot);
-
-        emit StartAuction();
+        // For each collateral type, move collateral from liquidator to AuctionHouse.
+        bytes32[] memory lockedCollateralList = lmcv.lockedCollateralListValues(user);
+        uint256 lockedCollateralListLength = lockedCollateralList.length;
+        for(uint256 i = 0; i < lockedCollateralListLength; i++) {
+            lmcv.moveCollateral(lockedCollateralList[i], msg.sender, address(this), collateralList[i]);
+        }
+         
+        emit StartAuction();    // TODO: Update this.
     }
 
     function stageOneBid() external {
@@ -119,7 +128,7 @@ contract AuctionHouse {
         // TODO.
     }
 
-    function abortAuction() auth {
+    function abortAuction() external auth {
         // TODO.
     }
 }

@@ -90,9 +90,9 @@ describe("Testing LMCV", function () {
         await setupUser(addr2, ["1000", "1000", "1000"]);
         await setupUser(addr3, ["0", "0", "0"]);
 
-        await lmcv.editAcceptedCollateralType(mockTokenBytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), false);
-        await lmcv.editAcceptedCollateralType(mockToken2Bytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), false);
-        await lmcv.editAcceptedCollateralType(mockToken3Bytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), false);
+        await lmcv.editAcceptedCollateralType(mockTokenBytes, fwad("1000"), fwad("1"), fray("0.5"), false);
+        await lmcv.editAcceptedCollateralType(mockToken2Bytes, fwad("1000"), fwad("1"), fray("0.5"), false);
+        await lmcv.editAcceptedCollateralType(mockToken3Bytes, fwad("1000"), fwad("1"), fray("0.5"), false);
 
         await lmcv.updateSpotPrice(mockTokenBytes, fray("40"));
         await lmcv.updateSpotPrice(mockToken2Bytes, fray("20"));

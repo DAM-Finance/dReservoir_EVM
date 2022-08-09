@@ -5,22 +5,28 @@ pragma solidity 0.8.7;
 import "hardhat/console.sol";
 
 interface LMCVLike {
+    // Properties.
     function normalizedDebt(address) external view returns (uint256);
     function lockedCollateralListValues(address) external view returns (bytes32[] memory);
-    function lockedCollateralList(address, uint256) external view returns (uint256);
     function lockedCollateral(address, bytes32) external view returns (uint256);
-    function isWithinCreditLimit(address, uint256) external view returns (bool);
     function StabilityRate() external view returns (uint256);
     function Treasury() external view returns (address);
-        function liquidate(
-        uint256[] memory collateralChange,
-        uint256 normalizedDebtChange,       
+    // Methods.
+    function isWithinCreditLimit(address, uint256) external view returns (bool);
+    function liquidate(
+        bytes32[] calldata collateralList,
+        uint256[] calldata collateralHaircuts,
+        uint256 debtHaircut,       
         address liquidated, 
-        address liquidator) external;
+        address liquidator,
+        address treasury
+    ) external;
+    function approve(address) external;
+    function disapprove(address) external;
 }
 
 interface AuctionHouseLike {
-    function start(address user, address treasury, uint256 tab, uint256[] calldata collateralList, uint256 bid) external;
+    function start(address user, address treasury, uint256 tab, uint256[] calldata collateralList, uint256 bid) external returns (uint256);
 }
 
 /*
@@ -52,18 +58,23 @@ contract Liquidator {
     //
 
     LMCVLike            public immutable lmcv;          // CDP Engine
-    AuctionHouseLike    public immutable auctionHouse;  // Auction house
+    AuctionHouseLike    public auctionHouse;            // Auction house
 
-    uint256             public lotSize;                 // [wad] The max auction lost size in dPRIME. 
-    uint256             public liquidationPenalty;      // [wad] The max auction lost size in dPRIME. 
+    uint256             public lotSize;                 // [rad] The max auction lost size in dPRIME. 
+    uint256             public liquidationPenalty;      // [ray] The max auction lost size in dPRIME. 
     uint256             public live;                    // Active flag.
-    uint256             public outForAuction;           // Current amount of debt/collateral out for auction.
 
     //
     // --- Events ---
     //
 
-    event Liquidated();
+    event Liquidated(
+        bytes32[] collateralList, 
+        uint256[] collateralValues, 
+        address user, 
+        uint256 debt, 
+        uint256 tab,
+        uint256 id);
     event Rely(address user);
     event Deny(address user);
 
@@ -80,11 +91,10 @@ contract Liquidator {
     // --- Initialization ---
     //
 
-    constructor(address _lmcv, address _auctionHouse) {
+    constructor(address _lmcv) {
         live = 1;
         wards[msg.sender] = 1;
         lmcv = LMCVLike(_lmcv);
-        auctionHouse = AuctionHouseLike(_auctionHouse);
     }
 
     //
@@ -103,17 +113,18 @@ contract Liquidator {
         lotSize = rad;
     }
 
+    function setAuctionHouse(address addr) external auth {
+        lmcv.disapprove(address(auctionHouse));
+        auctionHouse = AuctionHouseLike(addr);
+        lmcv.approve(addr);  
+    }
+
     //
     // --- Maths ---
     //
 
     uint256 constant RAY = 10 ** 27;
     uint256 constant WAD = 10 ** 18;
-
-
-    function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require(y == 0 || (z = x * y) / y == x);
-    }
 
     function rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         z = x * y;
@@ -159,13 +170,13 @@ contract Liquidator {
         }
 
         // Liquidate the debt and collateral.
-        lmcv.liquidate(collateralHaircuts, debtHaircut, user, address(this));
+        lmcv.liquidate(collateralList, collateralHaircuts, debtHaircut, user, address(this), lmcv.Treasury());
 
         // Start the auction. The asking amount takes into account any accrued interest and
         // the liquidation penalty.
-        uint256 askingAmount = rmul(debtHaircut * stabilityRate, liquidationPenalty) / RAY;
-        auctionHouse.start(user, lmcv.Treasury(), askingAmount, collateralHaircuts, 0);
+        uint256 askingAmount = rmul(debtHaircut * stabilityRate, liquidationPenalty);
+        uint256 id = auctionHouse.start(user, lmcv.Treasury(), askingAmount, collateralHaircuts, 0);
 
-        emit Liquidated();
+        emit Liquidated(collateralList, collateralHaircuts, user, debtHaircut, askingAmount, id);
     }
 }
