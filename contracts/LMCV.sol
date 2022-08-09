@@ -79,7 +79,7 @@ contract LMCV {
     // Events
     //
 
-    event EditAcceptedCollateralType(bytes32 indexed collateralName, uint256 _debtCeiling, uint256 _debtFloor, uint256 _creditRatio, uint256 _liqBonusMult, bool _leveraged);
+    event EditAcceptedCollateralType(bytes32 indexed collateralName, uint256 _debtCeiling, uint256 _debtFloor, uint256 _creditRatio, bool _leveraged);
     event Liquidation(address indexed liquidated, address indexed liquidator, uint256 normalDebtChange, bytes32[] collats, uint256[] collateralChange);
     event LoanRepayment(uint256 indexed dPrimeChange, address indexed user, bytes32[] collats, uint256[] amounts);
     event Loan(uint256 indexed dPrimeChange, address indexed user, bytes32[] collats, uint256[] amounts);
@@ -248,18 +248,16 @@ contract LMCV {
         uint256 _lockedAmountLimit,     // [wad] - Protocol Level
         uint256 _dustLevel,             // [wad] - Account level
         uint256 _creditRatio,           // [ray] - ie. max 70% loaned out as dPrime
-        uint256 _liqBonusMult,           // [ray] - ie. 5% for bluechip, 15% for junk
         bool    _leveraged
     ) external auth {
         Collateral memory collateralData    = CollateralData[collateralName];
         collateralData.lockedAmountLimit    = _lockedAmountLimit;
         collateralData.dustLevel            = _dustLevel;
         collateralData.creditRatio          = _creditRatio;
-        collateralData.liqBonusMult         = _liqBonusMult;
         collateralData.leveraged = _leveraged;
 
         CollateralData[collateralName] = collateralData;
-        emit EditAcceptedCollateralType(collateralName, _lockedAmountLimit, _dustLevel, _creditRatio, _liqBonusMult,  _leveraged);
+        emit EditAcceptedCollateralType(collateralName, _lockedAmountLimit, _dustLevel, _creditRatio, _leveraged);
     }
 
     //
