@@ -31,14 +31,17 @@ contract AuctionHouse {
     // --- Interfaces and data ---
     //
 
+    // TODO: Rename some of these properties as currently they are confusing given the two stage nature of
+    // the auctions. E.g. "highestBidder" is actually the lowest bidder in the second stage!
     struct Bid {
         bytes32[]   lotList;            // Collateral types being liquidated
-        uint256[]   lotValues;          // collateral amount up for auction     [wad]
-        uint256     askingAmount;       // Target dPRIME amount                 [rad]
-        uint256     highestBid;         // Highest dPRIME paid                  [rad]
+        uint256[]   lotValues;          // collateral amount up for auction             [wad]
+        uint256     lotBid;             // Percentage of collateral in return for bid   [rad]
+        uint256     askingAmount;       // Target dPRIME amount                         [rad]
+        uint256     highestBid;         // Highest dPRIME paid                          [rad]
         address     highestBidder;      // Highest bidder
-        uint256     bidExpiry;          //                                      [unix epoch time]
-        uint256     auctionExpiry;      //                                      [unix epoch time]
+        uint256     bidExpiry;          //                                              [unix epoch time]
+        uint256     auctionExpiry;      //                                              [unix epoch time]
         address     liquidated;         // Liquidated user
         address     treasury;           // Treasury address
     }
@@ -86,6 +89,7 @@ contract AuctionHouse {
         live = 0;
     }
 
+    // TODO: Rename this as this is confusing for the second auction stage.
     function setMinimumBidIncrease(uint256 rad) external auth {
         minimumBidIncrease = rad;
     }
@@ -126,6 +130,7 @@ contract AuctionHouse {
         // Set up struct for this auction.
         auctions[id].lotList        = lotList;
         auctions[id].lotValues      = lotValues;
+        auctions[id].lotBid         = 1.0;              // 100% of the collateral.
         auctions[id].highestBid     = highestBid;
         auctions[id].highestBidder  = msg.sender;
         auctions[id].auctionExpiry  = uint256(block.timestamp) + auctionExpiry;
@@ -161,6 +166,12 @@ contract AuctionHouse {
         // Bid must increase by the minimum amount or be the asking amount.
         require(bid * WAD >= minimumBidIncrease * auctions[id].highestBid || bid == auctions[id].askingAmount, "AuctionHouse/Insufficient increase");
         
+        // TODO: Bid must be higher than minimum as a % of debt or collateral. Work out which.
+        // Using collateral means we have to do some maths to figure out what the lowest amount is.
+        // Do we actually need this feature fi we participate in auctions ourselves? At least if we 
+        // participate then the mininum bid is set by "the market" in some sense, so it's dynamic.
+        // Having a fixed bid floor might be problematic for certain types of vaults.
+        
         // Refund the previous highest bidder if there was one and move the increased amount to
         // the treasury. For the first bid, "highestBid" will be zero, so no DPrime is moved to the
         // liquidator contract and the whole bid amount is moved from the bidder to the treasury.
@@ -174,8 +185,53 @@ contract AuctionHouse {
         auctions[id].bidExpiry = uint256(block.timestamp) + bidExpiry;
     }
 
-    function stageTwoBid() external {
-        // TODO.
+    function stageTwoBid(uint256 id, uint256 lotBid) external {
+        // The liquidator contract is always the highest bidder for a new, valid auction.
+        require(auctions[id].highestBidder != address(0), "AuctionHouse/Highest bidder not set");
+        // No bids after bid expiry time, which by default is 3 hours after a bid is placed.
+        require(auctions[id].bidExpiry > block.timestamp || auctions[id].bidExpiry == 0, "AuctionHouse/Bid expiry reached");
+        // Bids can't be placed when the auction has ended.
+        require(auctions[id].auctionExpiry > block.timestamp, "AuctionHouse/Auction ended");
+        // New lot bids must be lower than the current lot bid.
+        require(lotBid < auctions[id].lotBid, "AuctionHouse/LotBid not lower");
+        // New lot bids must be lower than the minimum decrease.
+        require(minimumBidIncrease * lotBid <= auctions[id].lotBid * WAD, "AuctionHouse/Insufficient decrease");
+
+        // TODO: How do we tell if the first stage of the auction has ended?
+        //
+        // Maker only progress to stage two if the asking amount is reached. Do we want to allow partial amounts to
+        // go through to the second auction stage? What does this actually do for us? Does it actually help us?
+        //
+        // With the current setup, if there is only one bidder, they can get all the collateral very cheaply because 
+        // after the first low bid expires then the auction ends and all the collateral can be claimed. The auction 
+        // process doesn't even enter stage two. this is bad for the protocol and the user because protocol doesn't get
+        // the penalty and the user loses all their collateral because presumably the only bid is very low.
+        //
+        // If we allow stage two to begin with a bid less than asking amount, then it's more complicated to ascertain if
+        // stage one has finished and it's really the same outcome as what makerDAO currently does because if there is 
+        // only one bidder than that one bidder is not going to voluntarily accept less collateral in stage two. They will
+        // just claim the collateral when the bid expiry is reached. If there are ultipel bidders then the auction will
+        // likely go to stage two anyway and if it doesn't then the highest bid will be orders of magnitude higher than it 
+        // would have been with just a single bidder.
+
+        // This stage can only start once stage one has finished.
+        // require(lotBid == auctions[id].tab, "Flipper/tend-not-finished");
+
+        // The lowest bidder at this stage, if not the highest bidder in the first stage has to move the 
+        // amount of dPRIME decided in the first stage to the prior highest bidder.
+        if (msg.sender != auctions[id].highestBidder) {
+            lmcv.moveDPrime(msg.sender, auctions[id].highestBidder, auctions[id].highestBid);
+            auctions[id].highestBidder = msg.sender;
+        }
+
+        // TODO: Move some percentage of the collateral back to the user.
+        // This moves everything.
+        for(uint256 i = 0; i < auctions[id].lotList.length; i++) {
+            lmcv.moveCollateral( auctions[id].lotList[i], msg.sender, address(this), auctions[id].lotValues[i]);
+        }
+
+        auctions[id].lotBid = lotBid;
+        auctions[id].bidExpiry = uint256(block.timestamp) + bidExpiry;
     }
 
     /**
@@ -187,6 +243,7 @@ contract AuctionHouse {
         // The auction ends after the last bid and auction expiry is reached.
         require(auctions[id].bidExpiry != 0 && (auctions[id].bidExpiry < block.timestamp || auctions[id].auctionExpiry < block.timestamp), "AuctionHouse/Auction not finished");
         // The highest bidder gets whatever collateral is left over after stage two of the auction.
+        // TODO: Need to multiply lotValues by the % bid for.
         for(uint256 i = 0; i < auctions[id].lotList.length; i++) {
             lmcv.moveCollateral(auctions[id].lotList[i], address(this), auctions[id].highestBidder, auctions[id].lotValues[i]);
         }
