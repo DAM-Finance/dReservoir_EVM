@@ -77,11 +77,11 @@ contract Liquidator {
 
     event Liquidated(
         bytes32[] collateralList, 
-        uint256[] collateralValues, 
-        address user, 
-        uint256 debt, 
-        uint256 tab,
-        uint256 id);
+        uint256[] collateralHaircuts, 
+        address liquidated, 
+        uint256 debtHaircut, 
+        uint256 askingAmount,
+        uint256 auctionId);
     event Rely(address user);
     event Deny(address user);
 
