@@ -316,7 +316,7 @@ describe("Liquidation testing", function () {
         // At auction, people will only bid up the dPRIME value of the collateral. This means there will be a dPRIME shortfall for
         // this auction. The vault can be liquidated again to claim the whole amount. The user will not get any collateral back and
         // the protocol will not get the 
-        await checkUint256Value(() => lmcv.protocolDeficit(treasury.address),                 "227.272727272727272727",  NumType.RAD);
+        await checkUint256Value(() => lmcv.protocolDeficit(treasury.address),                   "227.272727272727272727",  NumType.RAD);
         await checkUint256Value(() => lmcv.normalizedDebt(userTwo.address),                     "272.727272727272727273",  NumType.WAD);
         await checkUint256Value(() => lmcv.dPrime(userTwo.address),                             "500.0",                   NumType.RAD);
         await checkUint256Value(() => lmcv.lockedCollateral(userTwo.address, fooBytes),         "54.545454545454545455",   NumType.WAD);
@@ -348,11 +348,11 @@ describe("Liquidation testing", function () {
         //
         // At auction, people will only bid up the dPRIME value of the collateral. This means there will be a dPRIME shortfall for
         // this auction. The user will not get any collateral back.
-        await checkUint256Value(() => lmcv.unlockedCollateral(liquidator.address, fooBytes), "100.0", NumType.WAD);
-        await checkUint256Value(() => lmcv.protocolDeficit(treasury.address),                "500.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.normalizedDebt(userTwo.address),                  "0.0",   NumType.WAD);
-        await checkUint256Value(() => lmcv.dPrime(userTwo.address),                          "500.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.lockedCollateral(userTwo.address, fooBytes),      "0.0",   NumType.WAD);
+        await checkUint256Value(() => lmcv.unlockedCollateral(auctionHouse.address, fooBytes),  "100.0", NumType.WAD);
+        await checkUint256Value(() => lmcv.protocolDeficit(treasury.address),                   "500.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.normalizedDebt(userTwo.address),                     "0.0",   NumType.WAD);
+        await checkUint256Value(() => lmcv.dPrime(userTwo.address),                             "500.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.lockedCollateral(userTwo.address, fooBytes),         "0.0",   NumType.WAD);
     });
 
     it("Full liquidation results in locked collateral list update.", async function () {

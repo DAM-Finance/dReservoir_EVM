@@ -1,5 +1,5 @@
 const {expect} = require("chai");
-const {ethers} = require("hardhat");
+const {ethers, network} = require("hardhat");
 
 //Format as wad, ray, rad
 function fwad(wad) { return ethers.utils.parseEther(wad) }
@@ -12,7 +12,7 @@ let barBytes = ethers.utils.formatBytes32String("BAR");
 let bazBytes = ethers.utils.formatBytes32String("BAZ");
 
 // Accounts.
-let userOne, userTwo;
+let userOne, userTwo, userThree, treasury;
 
 // Contracts and contract factories.
 let dPrimeFactory, dPrime;
@@ -74,7 +74,7 @@ describe("AuctionHouse testing", function () {
 
     beforeEach(async function () {
         // Get accounts for users.
-        [userOne, userTwo] = await ethers.getSigners();
+        [userOne, userTwo, userThree, treasury] = await ethers.getSigners();
 
         // Deploy token contracts.
         foo = await tokenFactory.deploy("FOO");
@@ -102,8 +102,7 @@ describe("AuctionHouse testing", function () {
 
         // Setup the LMCV.
         await lmcv.setProtocolDebtCeiling(DEBT_CEILING);
-        //await lmcv.setMintFee();
-        //await lmcv.setTreasury();
+        await lmcv.setTreasury(treasury.address);
 
         // Token Name, locked amount limit, dust level, credit ratio, liquidation discount, leveraged?
         await lmcv.editAcceptedCollateralType(fooBytes, fwad("1000"), fwad("1"), fray("0.7"), false);
@@ -126,7 +125,11 @@ describe("AuctionHouse testing", function () {
         await setupUser(userTwo, ["250", "500", "750"]);
     });
 
-    it("Happy path auction test", async function () {
+    //
+    // -- Start auction tests ---
+    //
+
+    it("Liqudation to auction in start state", async function () {
         let userOneLMCV = lmcv.connect(userOne);
         let userTwoLMCV = liquidator.connect(userTwo);
 
@@ -140,18 +143,497 @@ describe("AuctionHouse testing", function () {
         await userTwoLMCV.liquidate(userOne.address);
 
         // Check everything is as we expect.
-        expect(await auctionHouse.auctions()).to.equal(1);
-        let bidStruct = await auctionHouse.bids(1);
-        console.log(bidStruct);
-        console.log(bidStruct["lot"]);
-        expect(ethers.utils.formatUnits(bidStruct["bid"], NumType.RAD)).to.be.equal("0.0");
-        expect(ethers.utils.formatUnits(bidStruct["tab"], NumType.RAD)).to.be.equal("275.0");
-        expect(bidStruct["guy"]).to.equal(liquidator.address);
-        expect(bidStruct["usr"]).to.equal(userOne.address);
-        let threeDays = 60 * 60 * 24 * 2;
+        expect(await auctionHouse.auctionId()).to.equal(1);
+
+        // Lot list and values.
+        let [lotList, lotValues] = await auctionHouse.lot(1);
+        expect(lotList.length).to.equal(1);
+        expect(lotValues.length).to.equal(1);
+        expect(lotList[0]).to.equal(fooBytes);
+        expect(ethers.utils.formatUnits(lotValues[0], NumType.WAD)).to.equal("50.0");
+
+        // Bids and asking amount.
+        let auctionStruct = await auctionHouse.auctions(1);
+        expect(auctionStruct["highestBidder"]).to.equal(liquidator.address);
+        expect(ethers.utils.formatUnits(auctionStruct["highestBid"], NumType.RAD)).to.be.equal("0.0");
+        expect(ethers.utils.formatUnits(auctionStruct["askingAmount"], NumType.RAD)).to.be.equal("275.0");
+
+        // Liquidated user and treasury.
+        expect(auctionStruct["treasury"]).to.equal(treasury.address); 
+        expect(auctionStruct["liquidated"]).to.equal(userOne.address);
+
+        // bid and auction timeout.
+        let twoDays = 60 * 60 * 24 * 2;
         let blockTimestamp = (await ethers.provider.getBlock("latest")).timestamp;
-        expect(bidStruct["end"]).to.equal(blockTimestamp + threeDays);
-        expect(bidStruct["tic"]).to.be.equal(0);
-        // expect(bidStruct["gal"]).to.equal(frad(0));      VOW or surplus/deficit account.
+        expect(auctionStruct["auctionExpiry"]).to.equal(blockTimestamp + twoDays);
+        expect(auctionStruct["bidExpiry"]).to.be.equal(0);
     });
+
+    //
+    // -- Stage one bidding tests ---
+    //
+
+    it("Bid too high", async function () {
+        let userOneLMCV = lmcv.connect(userOne);
+        let userTwoLiquidator = liquidator.connect(userTwo);
+        let userTwoAuctionHouse = auctionHouse.connect(userTwo);
+
+        // Set up liquidator.
+        await liquidator.setLotSize(fwad("1000"));
+        await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Prices goes lower and user gets liquidated.
+        await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
+        await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
+        await userTwoLiquidator.liquidate(userOne.address);
+
+        // Asking amount is 275, so a bid of 300 should fail.
+        await expect(userTwoAuctionHouse.stageOneBid(1, frad("300.0"))).to.be.revertedWith("AuctionHouse/Bid higher than asking amount");
+    });
+
+    it("Insufficient dPRIME", async function () {
+        let userOneLMCV = lmcv.connect(userOne);
+        let userTwoLiquidator = liquidator.connect(userTwo);
+        let userTwoAuctionHouse = auctionHouse.connect(userTwo);
+
+        // Set up liquidator.
+        await liquidator.setLotSize(fwad("1000"));
+        await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Prices goes lower and user gets liquidated.
+        await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
+        await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
+        await userTwoLiquidator.liquidate(userOne.address);
+
+        // UserTwo doesn't have any dPRIME.
+        await expect(userTwoAuctionHouse.stageOneBid(1, frad("200.0"))).to.be.reverted;
+    });
+
+    it("Invalid auction id fails", async function () {
+        let userTwoAuctionHouse = auctionHouse.connect(userTwo);
+
+        // Auction 2 doesn't exist.
+        await expect(userTwoAuctionHouse.stageOneBid(2, frad("50.0"))).to.be.revertedWith("AuctionHouse/Highest bidder not set");
+    });
+
+    it("New bid must be higher than prior bid", async function () {
+        let userOneLMCV = lmcv.connect(userOne);
+        let userTwoLMCV = lmcv.connect(userTwo);
+        let userTwoLiquidator = liquidator.connect(userTwo);
+        let userTwoAuctionHouse = auctionHouse.connect(userTwo);
+
+        // Auction house must be given approval to move dPRIME from participant's account.
+        await userTwoLMCV.approve(auctionHouse.address);
+
+        // Generate some dPRIME for user two via inflation. This is OK for testing.
+        await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
+
+        // Set up liquidator.
+        await liquidator.setLotSize(fwad("1000"));
+        await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Prices goes lower and user gets liquidated.
+        await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
+        await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
+        await userTwoLiquidator.liquidate(userOne.address);
+
+        // Initial bid.
+        await userTwoAuctionHouse.stageOneBid(1, frad("100.0"));
+
+        // Fails as lower than initial bid.
+        await expect(userTwoAuctionHouse.stageOneBid(1, frad("50.0"))).to.be.revertedWith("AuctionHouse/Bid must be higher than current highest bid");
+    });
+
+    it("Bid equal to the asking amount succeeds", async function () {
+        let userOneLMCV = lmcv.connect(userOne);
+        let userTwoLMCV = lmcv.connect(userTwo);
+        let userTwoLiquidator = liquidator.connect(userTwo);
+        let userTwoAuctionHouse = auctionHouse.connect(userTwo);
+
+        // Auction house must be given approval to move dPRIME from participant's account.
+        await userTwoLMCV.approve(auctionHouse.address);
+
+        // Generate some dPRIME for user two via inflation. This is OK for testing.
+        await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
+
+        // Set up liquidator.
+        await liquidator.setLotSize(fwad("1000"));
+        await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Prices goes lower and user gets liquidated.
+        await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
+        await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
+        await userTwoLiquidator.liquidate(userOne.address);
+
+        // Bid equal to asking amount should succeed.
+        await userTwoAuctionHouse.stageOneBid(1, frad("275.0"));
+
+        checkUint256Value(() => lmcv.dPrime(userTwo.address), "225.0", NumType.RAD);
+        checkUint256Value(() => lmcv.dPrime(treasury.address), "275.0", NumType.RAD);
+    });
+
+    it("First bid can be any amount and should move dPRIME to treasury account", async function () {
+        let userOneLMCV = lmcv.connect(userOne);
+        let userTwoLMCV = lmcv.connect(userTwo);
+        let userTwoLiquidator = liquidator.connect(userTwo);
+        let userTwoAuctionHouse = auctionHouse.connect(userTwo);
+
+        // Auction house must be given approval to move dPRIME from participant's account.
+        await userTwoLMCV.approve(auctionHouse.address);
+
+        // Generate some dPRIME for user two via inflation. This is OK for testing.
+        await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
+
+        // Set up liquidator.
+        await liquidator.setLotSize(fwad("1000"));
+        await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Prices goes lower and user gets liquidated.
+        await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
+        await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
+        await userTwoLiquidator.liquidate(userOne.address);
+
+        // Any initial bid amount is valid.
+        await userTwoAuctionHouse.stageOneBid(1, frad("1.0"));
+
+        // 50 dPRIME should move from user two to the treasury.
+        checkUint256Value(() => lmcv.dPrime(userTwo.address), "499.0", NumType.RAD);
+        checkUint256Value(() => lmcv.dPrime(treasury.address), "1.0", NumType.RAD);
+
+        // Check auction values are updated as expected.
+        let auctionStruct = await auctionHouse.auctions(1);
+        expect(auctionStruct["highestBidder"]).to.equal(userTwo.address);
+        expect(ethers.utils.formatUnits(auctionStruct["highestBid"], NumType.RAD)).to.be.equal("1.0");
+        let threeHours = 60 * 60 * 3;
+        let blockTimestamp = (await ethers.provider.getBlock("latest")).timestamp;
+        expect(auctionStruct["bidExpiry"]).to.be.equal(blockTimestamp + threeHours);
+    });
+
+    it("New highest bidder refunds prior highest bidder if different", async function () {
+        let userOneLMCV = lmcv.connect(userOne);
+        let userTwoLMCV = lmcv.connect(userTwo);
+        let userThreeLMCV = lmcv.connect(userThree);
+        let userTwoLiquidator = liquidator.connect(userTwo);
+        let userTwoAuctionHouse = auctionHouse.connect(userTwo);
+        let userThreeAuctionHouse = auctionHouse.connect(userThree);
+
+        // Auction house must be given approval to move dPRIME from participant's account.
+        await userTwoLMCV.approve(auctionHouse.address);
+        await userThreeLMCV.approve(auctionHouse.address);
+
+        // Generate some dPRIME for user two and three via inflation. This is OK for testing.
+        await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
+        await lmcv.inflate(treasury.address, userThree.address, frad("500.0"));
+
+        // Set up liquidator.
+        await liquidator.setLotSize(fwad("1000"));
+        await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Prices goes lower and user gets liquidated.
+        await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
+        await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
+        await userTwoLiquidator.liquidate(userOne.address);
+
+        // Any initial bid amount is valid.
+        await userTwoAuctionHouse.stageOneBid(1, frad("50.0"));
+
+        // 50 dPRIME should move from user two to the treasury.
+        checkUint256Value(() => lmcv.dPrime(userTwo.address), "450.0", NumType.RAD);
+        checkUint256Value(() => lmcv.dPrime(treasury.address), "50.0", NumType.RAD);
+
+        // Second bid comes in. First bidder is refunded by second bidder.
+        await userThreeAuctionHouse.stageOneBid(1, frad("75.0"));
+
+        checkUint256Value(() => lmcv.dPrime(userTwo.address), "500.0", NumType.RAD);
+        checkUint256Value(() => lmcv.dPrime(treasury.address), "75.0", NumType.RAD);
+        checkUint256Value(() => lmcv.dPrime(userThree.address), "425.0", NumType.RAD);
+    });
+
+    it("If next highest bidder is the same then only send the incremental amount to treasury", async function () {
+        let userOneLMCV = lmcv.connect(userOne);
+        let userTwoLMCV = lmcv.connect(userTwo);
+        let userTwoLiquidator = liquidator.connect(userTwo);
+        let userTwoAuctionHouse = auctionHouse.connect(userTwo);
+
+        // Auction house must be given approval to move dPRIME from participant's account.
+        await userTwoLMCV.approve(auctionHouse.address);
+
+        // Generate some dPRIME for user two via inflation. This is OK for testing.
+        await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
+
+        // Set up liquidator.
+        await liquidator.setLotSize(fwad("1000"));
+        await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Prices goes lower and user gets liquidated.
+        await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
+        await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
+        await userTwoLiquidator.liquidate(userOne.address);
+
+        // Any initial bid amount is valid.
+        await userTwoAuctionHouse.stageOneBid(1, frad("10.0"));
+
+        // 50 dPRIME should move from user two to the treasury.
+        checkUint256Value(() => lmcv.dPrime(userTwo.address), "490.0", NumType.RAD);
+        checkUint256Value(() => lmcv.dPrime(treasury.address), "10.0", NumType.RAD);
+
+        // Any initial bid amount is valid.
+        await userTwoAuctionHouse.stageOneBid(1, frad("25.0"));
+
+        // 50 dPRIME should move from user two to the treasury.
+        checkUint256Value(() => lmcv.dPrime(userTwo.address), "475.0", NumType.RAD);
+        checkUint256Value(() => lmcv.dPrime(treasury.address), "25.0", NumType.RAD);
+    });
+
+    it("Can't place a bid after bid expiry", async function () {
+        let userOneLMCV = lmcv.connect(userOne);
+        let userTwoLMCV = lmcv.connect(userTwo);
+        let userTwoLiquidator = liquidator.connect(userTwo);
+        let userTwoAuctionHouse = auctionHouse.connect(userTwo);
+
+        // Auction house must be given approval to move dPRIME from participant's account.
+        await userTwoLMCV.approve(auctionHouse.address);
+
+        // Generate some dPRIME for user two via inflation. This is OK for testing.
+        await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
+
+        // Set up liquidator.
+        await liquidator.setLotSize(fwad("1000"));
+        await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Prices goes lower and user gets liquidated.
+        await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
+        await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
+        await userTwoLiquidator.liquidate(userOne.address);
+
+        // Initial bid.
+        await userTwoAuctionHouse.stageOneBid(1, frad("10.0"));
+
+        // 10 dPRIME should move from user two to the treasury.
+        checkUint256Value(() => lmcv.dPrime(userTwo.address), "490.0", NumType.RAD);
+        checkUint256Value(() => lmcv.dPrime(treasury.address), "10.0", NumType.RAD);
+
+        // Advancing time by three hours should enable us to 
+        // end the auction because the bid expiry time is reached.
+        await network.provider.send("evm_increaseTime", [60 * 60 * 3]);
+
+        // should fail as auction ended.
+        await expect(userTwoAuctionHouse.stageOneBid(1, frad("25.0"))).to.be.revertedWith("AuctionHouse/Bid expiry reached");
+    });
+
+    it("Can't re-use an old auction.", async function () {
+        let userOneLMCV = lmcv.connect(userOne);
+        let userTwoLMCV = lmcv.connect(userTwo);
+        let userTwoLiquidator = liquidator.connect(userTwo);
+        let userTwoAuctionHouse = auctionHouse.connect(userTwo);
+
+        // Auction house must be given approval to move dPRIME from participant's account.
+        await userTwoLMCV.approve(auctionHouse.address);
+
+        // Generate some dPRIME for user two via inflation. This is OK for testing.
+        await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
+
+        // Set up liquidator.
+        await liquidator.setLotSize(fwad("1000"));
+        await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Prices goes lower and user gets liquidated.
+        await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
+        await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
+        await userTwoLiquidator.liquidate(userOne.address);
+
+        // Initial bid.
+        await userTwoAuctionHouse.stageOneBid(1, frad("10.0"));
+
+        // Advancing time by four hours should enable us to 
+        // end the auction because the bid expiry time is reached.
+        await network.provider.send("evm_increaseTime", [60 * 60 * 4]);
+
+        // End the auction.
+        await userTwoAuctionHouse.end(1);
+
+        // Using the auction struct again should fail.
+        await expect(userTwoAuctionHouse.stageOneBid(1, frad("25.0"))).to.be.revertedWith("AuctionHouse/Highest bidder not set");
+    });
+
+    //
+    // --- Auction end tests ---
+    //
+
+    it("Auction can't conclude with no bids", async function () {
+        let userOneLMCV = lmcv.connect(userOne);
+        let userTwoLiquidator = liquidator.connect(userTwo);
+        let userTwoAuctionHouse = auctionHouse.connect(userTwo);
+
+        // Set up liquidator.
+        await liquidator.setLotSize(fwad("1000"));
+        await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Prices goes lower and user gets liquidated.
+        await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
+        await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
+        await userTwoLiquidator.liquidate(userOne.address);
+
+        // Any initial bid amount is valid.
+        await expect(userTwoAuctionHouse.end(1)).to.be.revertedWith("AuctionHouse/Auction not finished");
+    });
+
+    it("Auction can't conclude until bid expiry is reached (if before auction expiry).", async function () {
+        let userOneLMCV = lmcv.connect(userOne);
+        let userTwoLMCV = lmcv.connect(userTwo);
+        let userTwoLiquidator = liquidator.connect(userTwo);
+        let userTwoAuctionHouse = auctionHouse.connect(userTwo);
+
+        // Auction house must be given approval to move dPRIME from participant's account.
+        await userTwoLMCV.approve(auctionHouse.address);
+
+        // Generate some dPRIME for user two via inflation. This is OK for testing.
+        await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
+
+        // Set up liquidator.
+        await liquidator.setLotSize(fwad("1000"));
+        await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Prices goes lower and user gets liquidated.
+        await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
+        await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
+        await userTwoLiquidator.liquidate(userOne.address);
+
+        // Any initial bid amount is valid.
+        await userTwoAuctionHouse.stageOneBid(1, frad("1.0"));
+
+        // There is a bid but expiry times not reached yet.
+        await expect(userTwoAuctionHouse.end(1)).to.be.revertedWith("AuctionHouse/Auction not finished");
+
+        // Advancing time by three hours should enable us to 
+        // end the auction because the bid expiry time is reached.
+        await network.provider.send("evm_increaseTime", [60 * 60 * 3]);
+        await userTwoAuctionHouse.end(1);
+
+        // User two should now have the collateral. User one should have lost it.
+        // Treasury should have the 1.0 dPRIME paid for the collateral.
+        // UserTwo had 250 foo to begin with.
+        checkUint256Value(() => lmcv.unlockedCollateral(userTwo.address, fooBytes), "300.0", NumType.WAD);
+        checkUint256Value(() => lmcv.locked(userOne.address, fooBytes), "0.0", NumType.WAD);
+        checkUint256Value(() => lmcv.dPrime(userTwo.address), "499.0", NumType.RAD);
+        checkUint256Value(() => lmcv.dPrime(treasury.address), "1.0", NumType.RAD);
+
+        // Auction 1 has been removed now, everything has been zeroed etc.
+        // Gas cost of this???
+        let auctionOne = await auctionHouse.auctions(1);
+        expect(auctionOne["askingAmount"]).to.equal(0);
+    });
+
+    it("Auction can't conclude until auction expiry is reached (if before bid expiry).", async function () {
+        let userOneLMCV = lmcv.connect(userOne);
+        let userTwoLMCV = lmcv.connect(userTwo);
+        let userTwoLiquidator = liquidator.connect(userTwo);
+        let userTwoAuctionHouse = auctionHouse.connect(userTwo);
+
+        // Set bid expiry to some enormously long time so we hit auction expiry first.
+        await auctionHouse.setBidExpiry(10000);
+
+        // Auction house must be given approval to move dPRIME from participant's account.
+        await userTwoLMCV.approve(auctionHouse.address);
+
+        // Generate some dPRIME for user two via inflation. This is OK for testing.
+        await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
+
+        // Set up liquidator.
+        await liquidator.setLotSize(fwad("1000"));
+        await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Prices goes lower and user gets liquidated.
+        await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
+        await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
+        await userTwoLiquidator.liquidate(userOne.address);
+
+        // Any initial bid amount is valid.
+        await userTwoAuctionHouse.stageOneBid(1, frad("1.0"));
+
+        // There is a bid but expiry times not reached yet.
+        await expect(userTwoAuctionHouse.end(1)).to.be.revertedWith("AuctionHouse/Auction not finished");
+
+        // Advancing time by two days should enable us to end
+        // the auction because the auction expiry time is reached.
+        await network.provider.send("evm_increaseTime", [60 * 60 * 24 * 2]);
+        await userTwoAuctionHouse.end(1);
+
+        // User two should now have the collateral. User one should have lost it.
+        // Treasury should have the 1.0 dPRIME paid for the collateral.
+        // UserTwo had 250 foo to begin with.
+        checkUint256Value(() => lmcv.unlockedCollateral(userTwo.address, fooBytes), "300.0", NumType.WAD);
+        checkUint256Value(() => lmcv.locked(userOne.address, fooBytes), "0.0", NumType.WAD);
+        checkUint256Value(() => lmcv.dPrime(userTwo.address), "499.0", NumType.RAD);
+        checkUint256Value(() => lmcv.dPrime(treasury.address), "1.0", NumType.RAD);
+
+        // Auction 1 has been removed now, everything has been zeroed etc.
+        // Gas cost of this???
+        let auctionOne = await auctionHouse.auctions(1);
+        expect(auctionOne["askingAmount"]).to.equal(0);
+    });
+
+    //
+    // --- Auction restart tests ---
+    //
+
+    it("Auction can't be restarted before it has ended", async function () {
+        let userOneLMCV = lmcv.connect(userOne);
+        let userTwoLiquidator = liquidator.connect(userTwo);
+
+        // Set up liquidator.
+        await liquidator.setLotSize(fwad("1000"));
+        await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Prices goes lower and user gets liquidated.
+        await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
+        await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
+        await userTwoLiquidator.liquidate(userOne.address);
+
+        // Can't restart an auction which has not finished yet.
+        await expect(auctionHouse.restart(1)).to.be.revertedWith("AuctionHouse/Auction not finished");
+
+        // Advancing time by two days should enable us to restart
+        // the auction because the auction expiry time is reached.
+        await network.provider.send("evm_increaseTime", [60 * 60 * 24 * 2]);  
+
+        // We should be able to restart the auction now.
+        await auctionHouse.restart(1);
+    });
+
+    it("Auctions with bids cannot be restarted.", async function () {
+        let userOneLMCV = lmcv.connect(userOne);
+        let userTwoLMCV = lmcv.connect(userTwo);
+        let userTwoLiquidator = liquidator.connect(userTwo);
+        let userTwoAuctionHouse = auctionHouse.connect(userTwo);
+
+        // Set bid expiry to some enormously long time so we hit auction expiry first.
+        await auctionHouse.setBidExpiry(10000);
+
+        // Auction house must be given approval to move dPRIME from participant's account.
+        await userTwoLMCV.approve(auctionHouse.address);
+
+        // Generate some dPRIME for user two via inflation. This is OK for testing.
+        await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
+
+        // Set up liquidator.
+        await liquidator.setLotSize(fwad("1000"));
+        await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Prices goes lower and user gets liquidated.
+        await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
+        await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
+        await userTwoLiquidator.liquidate(userOne.address);
+
+        // Any initial bid amount is valid.
+        await userTwoAuctionHouse.stageOneBid(1, frad("1.0"));
+
+        // Advancing time by two days should enable us to restart
+        // the auction because the auction expiry time is reached.
+        await network.provider.send("evm_increaseTime", [60 * 60 * 24 * 2]);  
+
+        // Can't restart an auction which already has a bid
+        await expect(auctionHouse.restart(1)).to.be.revertedWith("AuctionHouse/Bid already placed");
+    });
+
 });

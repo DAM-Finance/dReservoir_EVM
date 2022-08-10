@@ -26,7 +26,14 @@ interface LMCVLike {
 }
 
 interface AuctionHouseLike {
-    function start(address user, address treasury, uint256 tab, uint256[] calldata collateralList, uint256 bid) external returns (uint256);
+    function start(
+        address user, 
+        address treasury, 
+        uint256 tab, 
+        bytes32[] calldata lotList,
+        uint256[] calldata lotValues,
+        uint256 bid
+    ) external returns (uint256);
 }
 
 /*
@@ -61,7 +68,7 @@ contract Liquidator {
     AuctionHouseLike    public auctionHouse;            // Auction house
 
     uint256             public lotSize;                 // [rad] The max auction lost size in dPRIME. 
-    uint256             public liquidationPenalty;      // [ray] The max auction lost size in dPRIME. 
+    uint256             public liquidationPenalty;      // [ray] Debt haircut "gross-up" percentage. 
     uint256             public live;                    // Active flag.
 
     //
@@ -175,7 +182,7 @@ contract Liquidator {
         // Start the auction. The asking amount takes into account any accrued interest and
         // the liquidation penalty.
         uint256 askingAmount = rmul(debtHaircut * stabilityRate, liquidationPenalty);
-        uint256 id = auctionHouse.start(user, lmcv.Treasury(), askingAmount, collateralHaircuts, 0);
+        uint256 id = auctionHouse.start(user, lmcv.Treasury(), askingAmount, collateralList, collateralHaircuts, 0);
 
         emit Liquidated(collateralList, collateralHaircuts, user, debtHaircut, askingAmount, id);
     }
