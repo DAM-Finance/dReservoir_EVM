@@ -203,6 +203,12 @@ contract StakingVault {
     function stake(uint256 wad, address user) external stakeAlive { // [wad]
         require(approval(user, msg.sender), "StakingVault/Owner must consent");
 
+        //1. Add locked tokens
+
+        //2. Set reward debts for each token based on current time
+
+        //3. 
+
 
 
         emit Stake(wad, user);
@@ -219,7 +225,14 @@ contract StakingVault {
 
     }
 
-    
+    function claimRewards(address user) public {
+        require(approval(user, msg.sender), "StakingVault/Owner must consent");
+        _claimRewards(user);
+    }
+
+    function _claimRewards(address user) internal {
+
+    }
 
     //
     // Helpers
