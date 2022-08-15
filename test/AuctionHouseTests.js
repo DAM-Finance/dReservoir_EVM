@@ -154,8 +154,8 @@ describe("AuctionHouse testing", function () {
 
         // Bids and asking amount.
         let auctionStruct = await auctionHouse.auctions(1);
-        expect(auctionStruct["highestBidder"]).to.equal(liquidator.address);
-        expect(ethers.utils.formatUnits(auctionStruct["highestBid"], NumType.RAD)).to.be.equal("0.0");
+        expect(auctionStruct["currentWinner"]).to.equal(liquidator.address);
+        expect(ethers.utils.formatUnits(auctionStruct["debtBid"], NumType.RAD)).to.be.equal("0.0");
         expect(ethers.utils.formatUnits(auctionStruct["askingAmount"], NumType.RAD)).to.be.equal("275.0");
 
         // Liquidated user and treasury.
@@ -302,8 +302,8 @@ describe("AuctionHouse testing", function () {
 
         // Check auction values are updated as expected.
         let auctionStruct = await auctionHouse.auctions(1);
-        expect(auctionStruct["highestBidder"]).to.equal(userTwo.address);
-        expect(ethers.utils.formatUnits(auctionStruct["highestBid"], NumType.RAD)).to.be.equal("1.0");
+        expect(auctionStruct["currentWinner"]).to.equal(userTwo.address);
+        expect(ethers.utils.formatUnits(auctionStruct["debtBid"], NumType.RAD)).to.be.equal("1.0");
         let threeHours = 60 * 60 * 3;
         let blockTimestamp = (await ethers.provider.getBlock("latest")).timestamp;
         expect(auctionStruct["bidExpiry"]).to.be.equal(blockTimestamp + threeHours);
@@ -801,7 +801,7 @@ describe("AuctionHouse testing", function () {
         // Start converge phase.
         await userTwoAuctionHouse.converge(1, fray("0.95"));
         // Not lower.
-        await expect(userTwoAuctionHouse.converge(1, fray("0.98"))).to.be.revertedWith("AuctionHouse/LotBid not lower");
+        await expect(userTwoAuctionHouse.converge(1, fray("0.98"))).to.be.revertedWith("AuctionHouse/collateralBid not lower");
     });
 
     it("Lot Bid must be more than 5% lower than prior.", async function () {
@@ -836,7 +836,74 @@ describe("AuctionHouse testing", function () {
         await userTwoAuctionHouse.converge(1, fray("0.9025"));
     });
 
-    // TODO: Check the correct amount of dPRIME is moved from new bidder to old bidder.
-    // TODO: Check the correct amount of collateral is moved.
-    // TODO: Check the correct amount of collateral is moved back when auction ends.
+    it("Correct dPRIME and collateral amounts are transferred.", async function () {
+        let userOneLMCV = lmcv.connect(userOne);
+        let userTwoLMCV = lmcv.connect(userTwo);
+        let userThreeLMCV = lmcv.connect(userThree);
+        let userTwoLiquidator = liquidator.connect(userTwo);
+        let userTwoAuctionHouse = auctionHouse.connect(userTwo);
+        let userThreeAuctionHouse = auctionHouse.connect(userThree);
+
+        // Auction house must be given approval to move dPRIME from participant's account.
+        await userTwoLMCV.approve(auctionHouse.address);
+        await userThreeLMCV.approve(auctionHouse.address);
+
+        // Generate some dPRIME for user two and three via inflation. This is OK for testing.
+        await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
+        await lmcv.inflate(treasury.address, userThree.address, frad("500.0"));
+
+        // Set up liquidator.
+        await liquidator.setLotSize(fwad("1000"));
+        await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Prices goes lower and user gets liquidated.
+        await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
+        await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
+        await userTwoLiquidator.liquidate(userOne.address);
+
+        // Bid full amount to progress to converge phase.
+        await userTwoAuctionHouse.raise(1, frad("10.0"));
+        await checkUint256Value(() => lmcv.dPrime(userTwo.address), "490.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.dPrime(userThree.address), "500.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.dPrime(treasury.address), "10.0", NumType.RAD);
+
+        await userThreeAuctionHouse.raise(1, frad("50.0"));
+        await checkUint256Value(() => lmcv.dPrime(userTwo.address), "500.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.dPrime(userThree.address), "450.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.dPrime(treasury.address), "50.0", NumType.RAD);
+
+        await userTwoAuctionHouse.raise(1, frad("100.0"));
+        await checkUint256Value(() => lmcv.dPrime(userTwo.address), "400.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.dPrime(userThree.address), "500.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.dPrime(treasury.address), "100.0", NumType.RAD);
+
+        await userThreeAuctionHouse.raise(1, frad("275.0"));
+        await checkUint256Value(() => lmcv.dPrime(userTwo.address), "500.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.dPrime(userThree.address), "225.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.dPrime(treasury.address), "275.0", NumType.RAD);
+        
+        // Submit converge bids.
+        await userTwoAuctionHouse.converge(1, fray("0.90"));
+        await checkUint256Value(() => lmcv.dPrime(userTwo.address), "225.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.dPrime(userThree.address), "500.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.dPrime(treasury.address), "275.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.unlockedCollateral(userOne.address, fooBytes), "5.0", NumType.WAD);
+
+        await userThreeAuctionHouse.converge(1, fray("0.85"));
+        await checkUint256Value(() => lmcv.dPrime(userTwo.address), "500.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.dPrime(userThree.address), "225.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.dPrime(treasury.address), "275.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.unlockedCollateral(userOne.address, fooBytes), "7.5", NumType.WAD);
+
+        // Advancing time by two days should enable us to end
+        // the auction because the auction expiry time is reached.
+        await network.provider.send("evm_increaseTime", [60 * 60 * 24 * 2]);
+
+        await userThreeAuctionHouse.end(1);
+        await checkUint256Value(() => lmcv.dPrime(userTwo.address), "500.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.dPrime(userThree.address), "225.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.dPrime(treasury.address), "275.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.unlockedCollateral(userOne.address, fooBytes), "7.5", NumType.WAD);
+        await checkUint256Value(() => lmcv.unlockedCollateral(userThree.address, fooBytes), "42.5", NumType.WAD);
+    })
 });
