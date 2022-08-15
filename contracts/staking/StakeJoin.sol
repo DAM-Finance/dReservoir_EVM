@@ -8,8 +8,8 @@ interface CollateralLike {
 }
 
 interface StakingVaultLike {
-    function pushStakingToken(bytes32, address, uint256) external;
-    function pullStakingToken(bytes32, address, uint256) external;
+    function pushStakingToken(address, uint256) external;
+    function pullStakingToken(address, uint256) external;
 }
 
 /*
@@ -87,16 +87,16 @@ contract StakeJoin {
     // --- User's functions ---
     //
 
-    function join(address usr, uint256 wad) external auth {
+    function join(address usr, uint256 wad) external {
         require(live == 1, "CollateralJoin/not-live");
         require(collateralContract.transferFrom(msg.sender, address(this), wad), "CollateralJoin/failed-transfer");
-        stakingVault.pushStakingToken(collateralName, usr, wad);
+        stakingVault.pushStakingToken(usr, wad);
         emit Join(usr, wad);
     }
 
     function exit(address usr, uint256 wad) external {
         require(live == 1, "CollateralJoin/not-live");
-        stakingVault.pullStakingToken(collateralName, msg.sender, wad);
+        stakingVault.pullStakingToken(msg.sender, wad);
         require(collateralContract.transfer(usr, wad), "CollateralJoin/failed-transfer");
         emit Exit(usr, wad);
     }

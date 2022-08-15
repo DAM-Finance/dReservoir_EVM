@@ -10,6 +10,7 @@ interface CollateralLike {
 interface StakingVaultLike {
     function pushRewards(bytes32, uint256) external;
     function pullRewards(bytes32, address, uint256) external;
+    function removeRewards(bytes32, uint256) external;
 }
 
 /*
@@ -49,7 +50,7 @@ contract RewardJoin {
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event Cage();
-    event Join(address indexed usr, uint256 wad);
+    event Join(uint256 wad);
     event Exit(address indexed usr, uint256 wad);
 
     //
@@ -87,17 +88,23 @@ contract RewardJoin {
     // --- User's functions ---
     //
 
-    function join(address usr, uint256 wad) external auth {
+    function join(uint256 wad) external {
         require(live == 1, "CollateralJoin/not-live");
-        require(collateralContract.transferFrom(msg.sender, address(this), wad), "CollateralJoin/failed-transfer");
+        require(collateralContract.transferFrom(msg.sender, address(this), wad), "RewardJoin/failed-transfer");
         stakingVault.pushRewards(collateralName, wad);
-        emit Join(usr, wad);
+        emit Join(wad);
     }
 
     function exit(address usr, uint256 wad) external {
         require(live == 1, "CollateralJoin/not-live");
         stakingVault.pullRewards(collateralName, msg.sender, wad);
-        require(collateralContract.transfer(usr, wad), "CollateralJoin/failed-transfer");
+        require(collateralContract.transfer(usr, wad), "RewardJoin/failed-transfer");
         emit Exit(usr, wad);
+    }
+
+    function remove(uint256 wad) external auth {
+        require(live == 1, "CollateralJoin/not-live");
+        stakingVault.removeRewards(collateralName, wad);
+        require(collateralContract.transfer(msg.sender, wad), "RewardJoin/failed-transfer");
     }
 }

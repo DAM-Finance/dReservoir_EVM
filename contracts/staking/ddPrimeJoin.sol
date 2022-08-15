@@ -13,7 +13,7 @@ interface StakingVaultLike {
     function moveDDPrime(address src, address dst, uint256 frad) external;
 }
 
-contract dPrimeJoin {
+contract ddPrimeJoin {
 
     //
     // --- Interfaces and data ---
