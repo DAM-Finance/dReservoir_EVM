@@ -59,7 +59,7 @@ describe("Testing RewardJoins", function () {
 
         ddPrime = await ddPrimeFactory.deploy();
         lmcv = await LMCVFactory.deploy();
-        stakingVault = await stakingVaultFactory.deploy(lmcv.address);
+        stakingVault = await stakingVaultFactory.deploy(bazBytes, ddPrime.address, lmcv.address);
         ddPrimeJoin = await ddPrimeJoinFactory.deploy(stakingVault.address, ddPrime.address);
 
         foo = await tokenFactory.deploy("FOO");
@@ -81,7 +81,7 @@ describe("Testing RewardJoins", function () {
         await setupUser(addr2, ["2000", "2000", "2000"]);
         await setupUser(addr3, ["0", "0", "0"]);
 
-        await stakingVault.editRewardsToken(fooBytes, true, fray("1"), 0);
+        await stakingVault.editRewardsTokenList(fooBytes, true, 0);
         await stakingVault.setStakedAmountLimit(fwad("5000"));
     });
 

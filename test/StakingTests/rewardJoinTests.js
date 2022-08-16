@@ -57,7 +57,7 @@ describe("Testing RewardJoins", function () {
 
         ddPrime = await ddPrimeFactory.deploy();
         lmcv = await LMCVFactory.deploy();
-        stakingVault = await stakingVaultFactory.deploy(lmcv.address);
+        stakingVault = await stakingVaultFactory.deploy(ethers.utils.formatBytes32String("DDPRIME"), ddPrime.address, lmcv.address);
         ddPrimeJoin = await ddPrimeJoinFactory.deploy(stakingVault.address, ddPrime.address);
 
         foo = await tokenFactory.deploy("FOO");
@@ -80,16 +80,14 @@ describe("Testing RewardJoins", function () {
         await setupUser(addr2, ["2000", "2000", "2000"]);
         await setupUser(addr3, ["0", "0", "0"]);
 
-        await stakingVault.editRewardsToken(fooBytes, true, fray("1"), 0);
-        await stakingVault.editRewardsToken(barBytes, true, fray("1"), 0);
+        await stakingVault.editRewardsTokenList(fooBytes, true, 0);
+        await stakingVault.editRewardsTokenList(barBytes, true, 0);
     });
 
     it("Rewards added by admin works properly", async function () {
         await fooJoin.join(fwad("1000"));
 
-        let RewardTokenData = await stakingVault.RewardTokenData(fooBytes);
-        expect(RewardTokenData['spotPrice']).to.equal(fray("1"));
-        expect(RewardTokenData['amount']).to.equal(fwad("1000"));
+        expect(await stakingVault.rewardAmounts(fooBytes)).to.equal(fwad("1000"));
         expect(await foo.balanceOf(owner.address)).to.equal(fwad("1000"));
     });
 
@@ -97,8 +95,7 @@ describe("Testing RewardJoins", function () {
         await fooJoin.join(fwad("1000"));
         await fooJoin.remove(fwad("500"));
 
-        let RewardTokenData = await stakingVault.RewardTokenData(fooBytes);
-        expect(RewardTokenData['amount']).to.equal(fwad("500"));
+        expect(await stakingVault.rewardAmounts(fooBytes)).to.equal(fwad("500"));
         expect(await foo.balanceOf(owner.address)).to.equal(fwad("1500"));
     });
 

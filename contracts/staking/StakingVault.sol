@@ -6,6 +6,14 @@
 
 pragma solidity 0.8.7;
 
+interface LMCVLike {
+    function lockedCollateral(address, bytes32) external view returns (uint256 amount);
+}
+
+interface ddPRIMELike{
+    function balanceOf(address) external view returns (uint256 amount);
+}
+
 contract StakingVault {
 
     //
@@ -15,17 +23,16 @@ contract StakingVault {
     mapping (address => uint256) public admins;
     mapping (address => mapping (address => uint256))    public proxyApprovals;
 
-
-    struct RewardToken {
-        uint256 spotPrice;              // [ray] - dPrime (I.e. USD) price
-        uint256 amount;                 // [wad] - current rewards in token amount
+    struct RewardTokenData {
+        uint256 totalRewardAmount;              // [wad] total amount of a specific reward token
+        uint256 accumulatedRewardPerStaked;     // [ray] amount of reward per staked token
     }
 
-    bytes32[] public RewardTokens;
-    mapping (bytes32 => RewardToken)                    public RewardTokenData;
 
+    bytes32[]                                           public RewardTokenList;         // list of rewards tokens
+    mapping (bytes32 => RewardTokenData)                public RewardData;
 
-    mapping (address => mapping (bytes32 => uint256))   public rewardDebt;              // [rad] - amount already should've been paid out from time 0
+    mapping (address => mapping (bytes32 => uint256))   public rewardDebt;              // [wad] - amount already should've been paid out from time 0
     mapping (address => mapping (bytes32 => uint256))   public withdrawableRewards;     // [wad] - user can withdraw these rewards after unstaking
 
     mapping (address => uint256)                        public lockedStakeable;         // [wad] - staked amount per user
@@ -35,7 +42,7 @@ contract StakingVault {
     uint256 public totalDDPrime;            // [rad] - Total amount of ddPRIME issued.
     uint256 public stakedAmount;            // [wad] - amount staked.
     uint256 public stakedAmountLimit;       // [wad] - max amount allowed to stake
-    uint256 public stakedSpotPrice;         // [ray] - ratio of staked tokens per ddPrime
+    uint256 public stakedMintRatio;         // [ray] - ratio of staked tokens per ddPrime
 
 
     event EditRewardsToken(bytes32 indexed rewardToken, bool accepted, uint256 spot, uint256 position);
@@ -43,6 +50,7 @@ contract StakingVault {
     event MoveDDPrime(address indexed src, address indexed dst, uint256 rad);
     event PushRewards(bytes32 indexed rewardToken, uint256 wad);
     event RemoveRewards(bytes32 indexed rewardToken, uint256 wad);
+    event UpdateRewards(bytes32 indexed rewardToken, uint256 ray);
     event PushStakingToken(address indexed user, uint256 amount);
     event PullStakingToken(address indexed user, uint256 amount);
     event Unstake(uint256 amount, address indexed user);
@@ -58,6 +66,8 @@ contract StakingVault {
 
     uint256 public stakeLive;
     address public lmcv;
+    bytes32 public ddPRIMEBytes;
+    address public ddPRIMEContract;
 
     modifier auth() {
         require(admins[msg.sender] == 1, "LMCV/Not Authorized");
@@ -70,10 +80,12 @@ contract StakingVault {
     }
 
 
-    constructor(address _lmcv) {
-        lmcv = _lmcv;
-        stakeLive = 1;
-        admins[msg.sender] = 1;
+    constructor(bytes32 _ddPRIMEBytes, address _ddPRIMEContract, address _lmcv) {
+        ddPRIMEBytes        = _ddPRIMEBytes;        // bytes32 of ddPRIME in LMCV for lookup in locked collateral list
+        ddPRIMEContract     = _ddPRIMEContract;     // Address of ddPRIME for balance lookup
+        lmcv                = _lmcv;
+        stakeLive           = 1;
+        admins[msg.sender]  = 1;
     }
 
     //
@@ -112,6 +124,18 @@ contract StakingVault {
         z = z / RAY;
     }
 
+    function _add(uint256 x, int256 y) internal pure returns (uint256 z) {
+        unchecked {
+            z = x + uint256(y);
+        }
+        require(y >= 0 || z <= x);
+        require(y <= 0 || z >= x);
+    }
+
+    function _int256(uint256 x) internal pure returns (int256 y) {
+        require((y = int256(x)) >= 0);
+    }
+
     //
     // Protocol Admin
     //
@@ -121,8 +145,8 @@ contract StakingVault {
         emit StakedAmountLimit(wad);
     }
 
-    function setStakedSpotPrice(uint256 ray) external auth {
-        stakedSpotPrice = ray;
+    function setStakedMintRatio(uint256 ray) external auth {
+        stakedMintRatio = ray;
         emit StakedSpotPrice(ray);
     }
 
@@ -131,33 +155,26 @@ contract StakingVault {
     // Rewards Admin
     //
 
-    function updatedRewardSpotPrice(bytes32 rewardToken, uint256 ray) external auth {
-        RewardTokenData[rewardToken].spotPrice = ray;
-        emit RewardSpotPrice(rewardToken, ray);
+    function pushRewards(bytes32 rewardToken, uint256 wad) external auth {
+        require(stakedAmount != 0, "StakingVault/Staked amount must be greater than 0 to put rewards in");
+
+        RewardTokenData storage tokenData = RewardData[rewardToken];
+        tokenData.totalRewardAmount             += wad;
+        tokenData.accumulatedRewardPerStaked    += wad * RAY / stakedAmount; // ray + wad * RAY / wad = ray
+
+        emit PushRewards(rewardToken, wad);
     }
 
-    //If deprecated, admin can remove rewards
-    function removeRewards(bytes32 rewardToken, uint256 wad) external auth {
-        RewardToken storage tokenData = RewardTokenData[rewardToken];
-        tokenData.amount -= wad;
-        emit RemoveRewards(rewardToken, wad);
-    }
-
-    function editRewardsToken(bytes32 rewardToken, bool accepted, uint256 ray, uint256 position) external auth {
-        RewardToken memory tokenData = RewardTokenData[rewardToken];
-        tokenData.spotPrice = ray;
-        RewardTokenData[rewardToken] = tokenData;
-
+    function editRewardsTokenList(bytes32 rewardToken, bool accepted, uint256 position) external auth {
         if(accepted){
-            RewardTokens.push(rewardToken);
+            RewardTokenList.push(rewardToken);
         }else{
-            tokenData.spotPrice = 0;
-            deleteElement(RewardTokens, position);
+            deleteElement(RewardTokenList, position);
         }
     }
 
     //
-    // Unlocked Stake Token Functionality
+    // Stake Token User Functionality
     //
 
     function pushStakingToken(address user, uint256 wad) external auth {
@@ -182,22 +199,13 @@ contract StakingVault {
     }
 
     //
-    // Rewards Functions
+    // Rewards User Functions
     //
-
-    //Admin pushes rewards to contract
-    function pushRewards(bytes32 rewardToken, uint256 wad) external auth {
-        RewardToken storage tokenData = RewardTokenData[rewardToken];
-        require(tokenData.spotPrice > 0, "StakingVault/Token must be initialized");
-        tokenData.amount += wad;
-        emit PushRewards(rewardToken, wad);
-    }
-
-    //Average user can pull their own rewards
+    
     function pullRewards(bytes32 rewardToken, address usr, uint256 wad) external auth {
-        RewardToken storage tokenData = RewardTokenData[rewardToken];
-        withdrawableRewards[usr][rewardToken] -= wad;
-        tokenData.amount -= wad;
+        RewardTokenData storage tokenData = RewardData[rewardToken];
+        withdrawableRewards[usr][rewardToken]   -= wad;
+        tokenData.totalRewardAmount             -= wad;
         emit PullRewards(rewardToken, usr, wad);
     }
 
@@ -208,28 +216,37 @@ contract StakingVault {
 
     function stake(uint256 wad, address user) external stakeAlive { // [wad]
         require(approval(user, msg.sender), "StakingVault/Owner must consent");
-
-        //0. Pay out accrued rewards
-
-
+        require(checkDDPrimeOwnership(user, lockedStakeable[user] * stakedMintRatio), "Need to own ddPRIME to cover locked amount otherwise reset");
+        
         //1. Add locked tokens
-        uint256 prevStakedAmount = lockedStakeable[user];
+        uint256 prevStakedAmount     = lockedStakeable[user]; //[wad]
         unlockedStakeable[user]     -= wad;
         lockedStakeable[user]       += wad;
-        stakedAmount                += wad;
-        require(stakedAmount <= stakedAmountLimit, "StakingVault/Cannot be over staked token limit");
 
         //2. Set reward debts for each token based on current time and staked amount
-        for (uint256 i = 0; i < RewardTokens.length; i++) {
-            RewardToken memory tokenData = RewardTokenData[RewardTokens[i]];
+        for (uint256 i = 0; i < RewardTokenList.length; i++) {
+            RewardTokenData storage tokenData = RewardData[RewardTokenList[i]];
 
+            //Save prev reward debt and set new reward debt
+            uint256 prevRewardDebt = rewardDebt[user][RewardTokenList[i]]; // [wad]
+            rewardDebt[user][RewardTokenList[i]] = _rmul(lockedStakeable[user], tokenData.accumulatedRewardPerStaked); // rmul(wad, ray) = wad;
 
+            //Pay out old rewards
+            if(prevStakedAmount > 0){
+                uint256 payout = _rmul(prevStakedAmount, tokenData.accumulatedRewardPerStaked) - prevRewardDebt; // rmul(wad,ray) - wad = wad;
+                if(payout > 0){
+                    withdrawableRewards[user][RewardTokenList[i]] += payout;
+                }
+            }
         }
 
-        //3. Set ddPrime
+        //3. Update total staked amounts
+        stakedAmount    += wad;
+        require(stakedAmount <= stakedAmountLimit, "StakingVault/Cannot be over staked token limit");
 
-
-
+        //4. Set ddPrime
+        totalDDPrime    += wad * stakedMintRatio;
+        ddPrime[user]   += wad * stakedMintRatio;
         emit Stake(wad, user);
     }
 
@@ -244,24 +261,19 @@ contract StakingVault {
 
     }
 
-    function claimRewards(address user) public {
-        require(approval(user, msg.sender), "StakingVault/Owner must consent");
-        _claimRewards(user);
-    }
-
-    function _claimRewards(address user) internal {
-        //Check they have locked up rewards and ddPrime is in their wallet or their LMCV locked balance
-        //If it isn't, break
-        for (uint256 i = 0; i < RewardTokens.length; i++) {
-            RewardToken memory tokenData = RewardTokenData[RewardTokens[i]];
-
-
-        }
-    }
-
     function forceRewardsReset(address user) external {
         require(approval(user, msg.sender), "StakingVault/Owner must consent");
         //For when user gets liquidated and cannot stake
+    }
+
+    //TODO: Make sure functions it relies on are view
+    function checkDDPrimeOwnership(address user, uint256 rad) public view returns (bool ownership) {
+
+        return LMCVLike(lmcv).lockedCollateral(user, ddPRIMEBytes) >= rad / RAY
+            || ddPRIMELike(ddPRIMEContract).balanceOf(user) >= rad / RAY
+            || ddPrime[user] >= rad
+            ?  true
+            :  false;
     }
 
     //
