@@ -1,9 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-// - `wad`: fixed point decimal with 18 decimals (for basic quantities, e.g. balances)
-// - `ray`: fixed point decimal with 27 decimals (for precise quantites, e.g. ratios)
-// - `rad`: fixed point decimal with 45 decimals (result of integer multiplication with a `wad` and a `ray`)
-
 pragma solidity 0.8.7;
 
 /*
@@ -100,6 +96,10 @@ contract LMCV {
     event ExitDPrime(address indexed src, uint256 rad);
     event Deflate(address indexed u, uint256 rad);
     event UpdateRate(int256 rate);
+
+    //
+    // --- Modifiers ---
+    //
 
     modifier auth() {
         require(admins[msg.sender] == 1, "LMCV/Not Authorized");
@@ -506,6 +506,11 @@ contract LMCV {
      * intention that the protocol deficit is reversed by the amount of dPRIME raised when the auction concludes.
      * The amount of dPRIME raised via the auction is burnt when this function is called. As such, the total 
      * amount of dPRIME issued and protocol deficit is reduced by the same amount.
+     * 
+     * This is a public external function, so can be called by anyone but only works if the caller has protocol 
+     * deficit assigned to them. I.e. the protocol treasury account. This functino will only work if there
+     * is currently a protocol deficit and if the specified parameter for this function is less than or equal to
+     * the protocol deficit and the caller has a deficit assigned to them.
      */
     function deflate(uint256 rad) external {
         address u = msg.sender;
@@ -600,13 +605,17 @@ contract LMCV {
         return false;
     }
 
+    //
+    // Helpers
+    //
+
+    /**
+     * Locked collateral list getts for the Liquidation contract.
+     */
     function lockedCollateralListValues(address user) public view returns(bytes32[] memory) {
         return lockedCollateralList[user];
     }
 
-    //
-    // Helpers
-    //
 
     function either(bool x, bool y) internal pure returns (bool z) {
         assembly{ z := or(x, y)}

@@ -47,15 +47,15 @@ contract AuctionHouse {
         address     treasury;           // Treasury address
     }
 
-    mapping (uint256 => Auction)    public          auctions;
+    mapping (uint256 => Auction)    public              auctions;
 
-    LMCVLike                    public immutable    lmcv;                           // LMCV.
-    uint256                     public              live;                           // Active flag
-    uint256                     public              minimumBidIncrease  = 1.05E18;  // 5% minimum debt bid increase
-    uint256                     public              minimumBidDecrease  = 0.95E27;  // 5% minimum collateral bid decrease
-    uint256                     public              bidExpiry           = 3 hours;  // 3 hours bid duration         [seconds]
-    uint256                     public              auctionExpiry       = 2 days;   // 2 days total auction length  [seconds]
-    uint256                     public              auctionId           = 0;        // Monotonic auction ID
+    LMCVLike                        public immutable    lmcv;                           // LMCV.
+    uint256                         public              live;                           // Active flag
+    uint256                         public              minimumBidIncrease  = 1.05E18;  // 5% minimum debt bid increase
+    uint256                         public              minimumBidDecrease  = 0.95E27;  // 5% minimum collateral bid decrease
+    uint256                         public              bidExpiry           = 3 hours;  // 3 hours bid duration         [seconds]
+    uint256                         public              auctionExpiry       = 2 days;   // 2 days total auction length  [seconds]
+    uint256                         public              auctionId           = 0;        // Monotonic auction ID
 
     //
     // --- Events ---
@@ -243,14 +243,15 @@ contract AuctionHouse {
             auctions[id].bidExpiry != 0 && (auctions[id].bidExpiry < block.timestamp || auctions[id].auctionExpiry < block.timestamp), 
             "AuctionHouse/Auction not finished"
         );
+
         // The highest bidder gets whatever collateral is left over after stage two of the auction.
-        // TODO: Need to multiply lotValues by the % bid for.
         for(uint256 i = 0; i < auctions[id].lotList.length; i++) {
             uint256 remainingCollateral = rmul(auctions[id].lotValues[i], auctions[id].collateralBid);
             lmcv.moveCollateral(auctions[id].lotList[i], address(this), auctions[id].currentWinner, remainingCollateral);
         }
         delete auctions[id];
     }
+
     /**
      * Allows an auction to be restarted if it has ended and there have been no bids.
      */
@@ -260,6 +261,10 @@ contract AuctionHouse {
         require(auctions[id].bidExpiry == 0, "AuctionHouse/Bid already placed");
         auctions[id].auctionExpiry = uint256(block.timestamp) + auctionExpiry;
     }
+
+    //
+    // -- Testing ---
+    //
 
     /**
      * Getter for the types and amounts of collateral up for auction.
