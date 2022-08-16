@@ -9,11 +9,11 @@ interface LMCVLike {
     function normalizedDebt(address) external view returns (uint256);
     function lockedCollateralListValues(address) external view returns (bytes32[] memory);
     function lockedCollateral(address, bytes32) external view returns (uint256);
-    function StabilityRate() external view returns (uint256);
+    function AccumulatedRate() external view returns (uint256);
     function Treasury() external view returns (address);
     // Methods.
     function isWithinCreditLimit(address, uint256) external view returns (bool);
-    function liquidate(
+    function seize(
         bytes32[] calldata collateralList,
         uint256[] calldata collateralHaircuts,
         uint256 debtHaircut,       
@@ -153,11 +153,11 @@ contract Liquidator {
     function liquidate(address user) external {
         require(live == 1, "Liquidator/Not live");
         require(liquidationPenalty != 0 && lotSize != 0, "Liquidator/Not set up");
-        require(!lmcv.isWithinCreditLimit(user, lmcv.StabilityRate()), "Liquidator/Vault within credit limit");
+        require(!lmcv.isWithinCreditLimit(user, lmcv.AccumulatedRate()), "Liquidator/Vault within credit limit");
 
         // Grab the initial data we need from LMCV.
         uint256 normalizedDebt          = lmcv.normalizedDebt(user);                // [wad]
-        uint256 stabilityRate           = lmcv.StabilityRate();                     // [ray]
+        uint256 stabilityRate           = lmcv.AccumulatedRate();                   // [ray]
         bytes32[] memory collateralList = lmcv.lockedCollateralListValues(user);
         uint256 collateralListLength    = collateralList.length;
 
@@ -177,7 +177,7 @@ contract Liquidator {
         }
 
         // Liquidate the debt and collateral.
-        lmcv.liquidate(collateralList, collateralHaircuts, debtHaircut, user, address(this), lmcv.Treasury());
+        lmcv.seize(collateralList, collateralHaircuts, debtHaircut, user, address(this), lmcv.Treasury());
 
         // Start the auction. The asking amount takes into account any accrued interest and
         // the liquidation penalty.

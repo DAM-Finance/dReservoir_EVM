@@ -131,7 +131,7 @@ describe("AuctionHouse testing", function () {
 
     it("Liqudation to auction in start state", async function () {
         let userOneLMCV = lmcv.connect(userOne);
-        let userTwoLMCV = liquidator.connect(userTwo);
+        let userTwoLiquidator = liquidator.connect(userTwo);
 
         // Set up liquidator.
         await liquidator.setLotSize(fwad("1000"));
@@ -140,7 +140,7 @@ describe("AuctionHouse testing", function () {
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
         await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
-        await userTwoLMCV.liquidate(userOne.address);
+        await userTwoLiquidator.liquidate(userOne.address);
 
         // Check everything is as we expect.
         expect(await auctionHouse.auctionId()).to.equal(1);

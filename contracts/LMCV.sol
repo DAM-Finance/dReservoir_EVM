@@ -220,11 +220,6 @@ contract LMCV {
         emit CreditRatio(collateral, ray);
     }
 
-    function editLiquidationBonus(bytes32 collateral, uint256 ray) external auth {
-        CollateralData[collateral].liqBonusMult = ray;
-        emit LiquidationBonus(collateral, ray);
-    }
-
     function editLeverageStatus(bytes32 collateral, bool _leveraged) external auth {
         CollateralData[collateral].leveraged = _leveraged;
     }
@@ -455,7 +450,7 @@ contract LMCV {
      * might be the case that the user's vault is still eligible for liquidation if it's a large
      * vault and the amount to liquidate is significantly larger than the auction lot size.
      */
-    function liquidate(
+    function seize(
         bytes32[] calldata collateralList,      // List of collateral types being liquidated.
         uint256[] calldata collateralHaircuts,  // List of collateral amount changes.   [wad]
         uint256 debtHaircut,                    // Debt change in t=0 terms.            [wad]
@@ -464,7 +459,7 @@ contract LMCV {
         address treasury
     ) external auth {
         require(collateralList.length == collateralHaircuts.length, "LMCV/Missing collateral type or collateral amount");
-        uint256 dPrimeChange = debtHaircut * StabilityRate;
+        uint256 dPrimeChange = debtHaircut * AccumulatedRate;
 
         // This debt represnts the amount of liquidated user's dPRIME which is still floating around. 
         // We need to burn the same amount of dPRIME raised via auction. Assuming a successful
