@@ -288,6 +288,9 @@ describe("AuctionHouse testing", function () {
         await liquidator.setLotSize(fwad("1000"));
         await liquidator.setLiquidationPenalty(fray("1.1"));
 
+        // Set up auction house.
+        await auctionHouse.setMinimumBidFactor(fray("0.0"));
+
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
         await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
@@ -329,6 +332,9 @@ describe("AuctionHouse testing", function () {
         await liquidator.setLotSize(fwad("1000"));
         await liquidator.setLiquidationPenalty(fray("1.1"));
 
+        // Set up auction house.
+        await auctionHouse.setMinimumBidFactor(fray("0.0"));
+
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
         await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
@@ -364,6 +370,9 @@ describe("AuctionHouse testing", function () {
         // Set up liquidator.
         await liquidator.setLotSize(fwad("1000"));
         await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Set up auction house.
+        await auctionHouse.setMinimumBidFactor(fray("0.0"));
 
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
@@ -401,6 +410,9 @@ describe("AuctionHouse testing", function () {
         await liquidator.setLotSize(fwad("1000"));
         await liquidator.setLiquidationPenalty(fray("1.1"));
 
+        // Set up auction house.
+        await auctionHouse.setMinimumBidFactor(fray("0.0"));
+
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
         await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
@@ -436,6 +448,9 @@ describe("AuctionHouse testing", function () {
         // Set up liquidator.
         await liquidator.setLotSize(fwad("1000"));
         await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Set up auction house.
+        await auctionHouse.setMinimumBidFactor(fray("0.0"));
 
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
@@ -494,6 +509,9 @@ describe("AuctionHouse testing", function () {
         await liquidator.setLotSize(fwad("1000"));
         await liquidator.setLiquidationPenalty(fray("1.1"));
 
+        // Set up auction house.
+        await auctionHouse.setMinimumBidFactor(fray("0.0"));
+
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
         await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
@@ -542,6 +560,9 @@ describe("AuctionHouse testing", function () {
         // Set up liquidator.
         await liquidator.setLotSize(fwad("1000"));
         await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Set up auction house.
+        await auctionHouse.setMinimumBidFactor(fray("0.0"));
 
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
@@ -620,6 +641,9 @@ describe("AuctionHouse testing", function () {
         await liquidator.setLotSize(fwad("1000"));
         await liquidator.setLiquidationPenalty(fray("1.1"));
 
+        // Set up auction house.
+        await auctionHouse.setMinimumBidFactor(fray("0.0"));
+
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
         await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
@@ -655,6 +679,9 @@ describe("AuctionHouse testing", function () {
         // Set up liquidator.
         await liquidator.setLotSize(fwad("1000"));
         await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Set up auction house.
+        await auctionHouse.setMinimumBidFactor(fray("0.0"));
 
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
@@ -856,6 +883,9 @@ describe("AuctionHouse testing", function () {
         await liquidator.setLotSize(fwad("1000"));
         await liquidator.setLiquidationPenalty(fray("1.1"));
 
+        // Set up auction house.
+        await auctionHouse.setMinimumBidFactor(fray("0.0"));
+
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
         await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
@@ -905,5 +935,98 @@ describe("AuctionHouse testing", function () {
         await checkUint256Value(() => lmcv.dPrime(treasury.address), "275.0", NumType.RAD);
         await checkUint256Value(() => lmcv.unlockedCollateral(userOne.address, fooBytes), "7.5", NumType.WAD);
         await checkUint256Value(() => lmcv.unlockedCollateral(userThree.address, fooBytes), "42.5", NumType.WAD);
-    })
+    });
+
+    it("Raise phase won't accept bids under the minumum bid amount", async function () {
+        let userOneLMCV = lmcv.connect(userOne);
+        let userTwoLMCV = lmcv.connect(userTwo);
+        let userTwoLiquidator = liquidator.connect(userTwo);
+        let userTwoAuctionHouse = auctionHouse.connect(userTwo);
+
+        // Auction house must be given approval to move dPRIME from participant's account.
+        await userTwoLMCV.approve(auctionHouse.address);
+
+        // Generate some dPRIME for user two via inflation. This is OK for testing.
+        await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
+
+        // Set up liquidator.
+        await liquidator.setLotSize(fwad("1000"));
+        await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Prices goes lower and user gets liquidated.
+        await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
+        await lmcv.updateSpotPrice(fooBytes, fray("7.14"));
+        await userTwoLiquidator.liquidate(userOne.address);
+
+        // Collateral value is 7.14 * 50    = 357 dPRIME
+        // Minimum bid is 357 / 2           = 178 dPRIME
+        // debtHaircut is 250 * 1.1         = 275 dPRIME
+        await expect(userTwoAuctionHouse.raise(1, frad("100.0"))).to.be.revertedWith("AuctionHouse/Bid lower than minimum bid");
+
+        // This is greater than the minimum bid.
+        await userTwoAuctionHouse.raise(1, frad("180.0"));
+    });
+
+    it("Can set minimum bid to zero", async function () {
+        let userOneLMCV = lmcv.connect(userOne);
+        let userTwoLMCV = lmcv.connect(userTwo);
+        let userTwoLiquidator = liquidator.connect(userTwo);
+        let userTwoAuctionHouse = auctionHouse.connect(userTwo);
+
+        // Auction house must be given approval to move dPRIME from participant's account.
+        await userTwoLMCV.approve(auctionHouse.address);
+
+        // Generate some dPRIME for user two via inflation. This is OK for testing.
+        await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
+
+        // Set up liquidator.
+        await liquidator.setLotSize(fwad("1000"));
+        await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Set up auction house.
+        await auctionHouse.setMinimumBidFactor(fray("0.0"));
+
+        // Prices goes lower and user gets liquidated.
+        await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
+        await lmcv.updateSpotPrice(fooBytes, fray("7.14"));
+        await userTwoLiquidator.liquidate(userOne.address);
+
+        // There should be no minimum bid.
+        await userTwoAuctionHouse.raise(1, frad("1.0"));
+    });
+
+    it("Minimum bid amount is calculated as expected", async function () {
+        let userOneLMCV = lmcv.connect(userOne);
+        let userTwoLMCV = lmcv.connect(userTwo);
+        let userTwoLiquidator = liquidator.connect(userTwo);
+        let userTwoAuctionHouse = auctionHouse.connect(userTwo);
+
+        // Auction house must be given approval to move dPRIME from participant's account.
+        await userTwoLMCV.approve(auctionHouse.address);
+
+        // Generate some dPRIME for user two via inflation. This is OK for testing.
+        await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
+
+        // Set up liquidator.
+        await liquidator.setLotSize(fwad("1000"));
+        await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Set up auction house.
+        await auctionHouse.setMinimumBidFactor(fray("0.25"));
+
+        // Prices goes lower and user gets liquidated.
+        await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
+        await lmcv.updateSpotPrice(fooBytes, fray("6.00"));
+        await userTwoLiquidator.liquidate(userOne.address);
+
+        // Collateral value is 6.0 * 50     = 300 dPRIME
+        // Minimum bid is 300 * 0.25        = 75 dPRIME
+        // debtHaircut is 250 * 1.1         = 275 dPRIME
+
+        // Let's bid 74.9999 dPRiME
+        await expect(userTwoAuctionHouse.raise(1, frad("74.9999"))).to.be.revertedWith("AuctionHouse/Bid lower than minimum bid");
+
+        // 75 dPRIME will work.
+        await userTwoAuctionHouse.raise(1, frad("75.0"));
+    });
 });

@@ -38,6 +38,7 @@ contract AuctionHouse {
 
         uint256     debtBid;            // Highest dPRIME paid                          [rad]
         uint256     collateralBid;      // Percentage of collateral in return for bid   [ray]
+        uint256     minBid;             // Debt bids must be above this minimum amount  [rad]
 
         uint256     bidExpiry;          //                                              [unix epoch time]
         uint256     auctionExpiry;      //     
@@ -56,6 +57,7 @@ contract AuctionHouse {
     uint256                         public              bidExpiry           = 3 hours;  // 3 hours bid duration         [seconds]
     uint256                         public              auctionExpiry       = 2 days;   // 2 days total auction length  [seconds]
     uint256                         public              auctionId           = 0;        // Monotonic auction ID
+    uint256                         public              minBidFactor        = 0.5E27;   // [rad] Minimum bid must be greater than this multiple of total lot value.
 
     //
     // --- Events ---
@@ -99,6 +101,10 @@ contract AuctionHouse {
         minimumBidDecrease = ray;
     }
 
+    function setMinimumBidFactor(uint256 ray) external auth {
+        minBidFactor = ray;
+    }
+
     function setBidExpiry(uint256 mins) external auth {
         bidExpiry = 60 * mins;
     }
@@ -134,7 +140,8 @@ contract AuctionHouse {
         uint256 askingAmount, 
         bytes32[] calldata lotList, 
         uint256[] calldata lotValues, 
-        uint256 debtBid
+        uint256 debtBid,
+        uint256 minBid
     ) external auth returns (uint256 id) {
         // Return the current ID and increment.
         id = ++auctionId;
@@ -149,6 +156,7 @@ contract AuctionHouse {
         auctions[id].liquidated     = user;
         auctions[id].treasury       = treasury;
         auctions[id].askingAmount   = askingAmount;
+        auctions[id].minBid         = minBid;
 
         // For each collateral type, move collateral from liquidator to AuctionHouse.
         for(uint256 i = 0; i < lotList.length; i++) {
@@ -177,8 +185,8 @@ contract AuctionHouse {
         require(bid > auctions[id].debtBid, "AuctionHouse/Bid must be higher than current highest bid");
         // Bid must increase by the minimum amount or be the asking amount.
         require(bid * WAD >= minimumBidIncrease * auctions[id].debtBid || bid == auctions[id].askingAmount, "AuctionHouse/Insufficient increase");
-        
-        // TODO: Add minimum raise functionality.
+        // Bid must be greater than the minimum bid.
+        require(bid >= auctions[id].minBid, "AuctionHouse/Bid lower than minimum bid");
         
         // Refund the previous highest bidder if there was one and move the increased amount to
         // the treasury. For the first bid, "debtBid" will be zero, so no DPrime is moved to the

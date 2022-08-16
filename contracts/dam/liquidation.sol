@@ -9,6 +9,14 @@ interface LMCVLike {
     function normalizedDebt(address) external view returns (uint256);
     function lockedCollateralListValues(address) external view returns (bytes32[] memory);
     function lockedCollateral(address, bytes32) external view returns (uint256);
+    function CollateralData(bytes32) external view returns (
+        uint256 spotPrice,
+        uint256 lockedAmount,
+        uint256 lockedAmountLimit,
+        uint256 dustLevel,
+        uint256 creditRatio,           
+        bool leveraged
+    );
     function AccumulatedRate() external view returns (uint256);
     function Treasury() external view returns (address);
     // Methods.
@@ -26,13 +34,15 @@ interface LMCVLike {
 }
 
 interface AuctionHouseLike {
+    function minBidFactor() external view returns (uint256);
     function start(
         address user, 
         address treasury, 
-        uint256 tab, 
+        uint256 debtHaircut, 
         bytes32[] calldata lotList,
-        uint256[] calldata lotValues,
-        uint256 bid
+        uint256[] calldata lotHaircuts,
+        uint256 bid,
+        uint256 minBid
     ) external returns (uint256);
 }
 
@@ -67,7 +77,7 @@ contract Liquidator {
     LMCVLike            public immutable lmcv;          // CDP Engine
     AuctionHouseLike    public auctionHouse;            // Auction house
 
-    uint256             public lotSize;                 // [rad] The max auction lost size in dPRIME. 
+    uint256             public lotSize;                 // [wad] The max auction lost size in dPRIME. 
     uint256             public liquidationPenalty;      // [ray] Debt haircut "gross-up" percentage. 
     uint256             public live;                    // Active flag.
 
@@ -81,7 +91,8 @@ contract Liquidator {
         address liquidated, 
         uint256 debtHaircut, 
         uint256 askingAmount,
-        uint256 auctionId);
+        uint256 auctionId
+    );
     event Rely(address user);
     event Deny(address user);
 
@@ -165,7 +176,16 @@ contract Liquidator {
         // and liquidation penalty. For small vaults, this means that the whole debt balance will be liquidated.
         // For larger vaults it means that only a portion of the vault will be liquidated.
         uint256 debtHaircut = min(normalizedDebt, lotSize * RAY / stabilityRate * RAY / liquidationPenalty);    // wad * RAY / ray * RAY / ray -> wad          
-        require(debtHaircut > 0, "Liquidator/Debt haircut must be positive.");                                
+        require(debtHaircut > 0, "Liquidator/Debt haircut must be positive.");                     
+
+        // We want to ensure that we never end up with an auction with a single bidder where they walk off with all the collateral
+        // having only submitted a token bid. To do this, we will encourage auction participants or participate ourselves. However,
+        // as a failsafe, we can set a minimum bid as a percentage of the collateral up for auction. E.g. if the debtHaircut is 200
+        // and the collateraHaircut is 280 in dPRIME terms, then with a 50% `minBidFactor`, we set the minimum bid to 140, meaning 
+        // that in order for the auctino to conclude, it must raise _at least_ 140 dPRIME. Whilst this still results in a loss to 
+        // the protocol, the loss is half of what it would have been if no minimum bid was set. Note that if the `minBidFactor` is
+        // set to zero, then the minimum bid is effectively zero, which is a valid value.
+        uint256 liquidatedCollateralValue = 0;    
 
         // Now we need to gather the information required to call liquidate on LMCV. Using the haircutPercentage
         // we can calculate how much of each collateral type to seize.
@@ -174,15 +194,26 @@ contract Liquidator {
             uint256 amount          = lmcv.lockedCollateral(user, collateralList[i]);
             collateralHaircuts[i]   = rmul(amount, debtHaircut * RAY / normalizedDebt); // wad * (wad * RAY / wad -> ray)
             require(collateralHaircuts[i] > 0, "Liquidator/Collateral haircut must be positive.");
+
+            // For calculating the minBid we must know the aggregate value of the collateral haircuts.
+            (uint256 spotPrice,,,,,) = lmcv.CollateralData(collateralList[i]);
+            liquidatedCollateralValue += rmul(collateralHaircuts[i], spotPrice);
         }
 
-        // Liquidate the debt and collateral.
+        // Seize the collateral and mark the outstanding debt as a potential protocol deficit.
         lmcv.seize(collateralList, collateralHaircuts, debtHaircut, user, address(this), lmcv.Treasury());
 
-        // Start the auction. The asking amount takes into account any accrued interest and
-        // the liquidation penalty.
+        // Start the auction. The asking amount takes into account any accrued interest and the liquidation penalty.
         uint256 askingAmount = rmul(debtHaircut * stabilityRate, liquidationPenalty);
-        uint256 id = auctionHouse.start(user, lmcv.Treasury(), askingAmount, collateralList, collateralHaircuts, 0);
+        uint256 id = auctionHouse.start(
+            user,                                                               // Liquidated user address
+            lmcv.Treasury(),                                                    // Treasury address
+            askingAmount,                                                       // dPRIME amount to raise including liquidation penalty
+            collateralList,                                                     // List of collateral types up for auction
+            collateralHaircuts,                                                 // List of collateral amounts up for auction - order matters
+            0,                                                                  // Initial bid is always zero
+            liquidatedCollateralValue * auctionHouse.minBidFactor()             // Minimum bid amount in dPRIME
+        );   
 
         emit Liquidated(collateralList, collateralHaircuts, user, debtHaircut, askingAmount, id);
     }
