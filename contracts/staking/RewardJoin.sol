@@ -101,10 +101,4 @@ contract RewardJoin {
         require(collateralContract.transfer(usr, wad), "RewardJoin/failed-transfer");
         emit Exit(usr, wad);
     }
-
-    function remove(uint256 wad) external auth {
-        require(live == 1, "CollateralJoin/not-live");
-        stakingVault.removeRewards(collateralName, wad);
-        require(collateralContract.transfer(msg.sender, wad), "RewardJoin/failed-transfer");
-    }
 }

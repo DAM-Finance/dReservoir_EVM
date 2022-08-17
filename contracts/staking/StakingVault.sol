@@ -1,4 +1,6 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
+
+//Inspiration from mSpell and DAM's own LMCV
 
 // - `wad`: fixed point decimal with 18 decimals (for basic quantities, e.g. balances)
 // - `ray`: fixed point decimal with 27 decimals (for precise quantites, e.g. ratios)
@@ -56,7 +58,7 @@ contract StakingVault {
     event Unstake(uint256 amount, address indexed user);
     event Stake(uint256 amount, address indexed user);
     event RewardSpotPrice(bytes32 indexed rewardToken, uint256 ray);
-    event StakedSpotPrice(uint256 ray);
+    event StakedMintRatio(uint256 ray);
     event StakedAmountLimit(uint256 wad);
     
 
@@ -147,7 +149,7 @@ contract StakingVault {
 
     function setStakedMintRatio(uint256 ray) external auth {
         stakedMintRatio = ray;
-        emit StakedSpotPrice(ray);
+        emit StakedMintRatio(ray);
     }
 
 
@@ -160,7 +162,7 @@ contract StakingVault {
 
         RewardTokenData storage tokenData = RewardData[rewardToken];
         tokenData.totalRewardAmount             += wad;
-        tokenData.accumulatedRewardPerStaked    += wad * RAY / stakedAmount; // ray + wad * RAY / wad = ray
+        tokenData.accumulatedRewardPerStaked    += wad * RAY / stakedAmount; // wad * RAY / wad = ray
 
         emit PushRewards(rewardToken, wad);
     }
