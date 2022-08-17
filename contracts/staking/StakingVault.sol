@@ -8,6 +8,8 @@
 
 pragma solidity 0.8.7;
 
+import "hardhat/console.sol";
+
 interface LMCVLike {
     function lockedCollateral(address, bytes32) external view returns (uint256 amount);
 }
@@ -169,6 +171,9 @@ contract StakingVault {
 
     function editRewardsTokenList(bytes32 rewardToken, bool accepted, uint256 position) external auth {
         if(accepted){
+            for (uint256 i = 0; i < RewardTokenList.length; i++) {
+                require(RewardTokenList[i] != rewardToken, "StakingVault/Can't add reward token more than once");
+            }
             RewardTokenList.push(rewardToken);
         }else{
             deleteElement(RewardTokenList, position);
@@ -205,7 +210,13 @@ contract StakingVault {
     //
     
     function pullRewards(bytes32 rewardToken, address usr, uint256 wad) external auth {
+        // console.log("RT:  %s", bytes32ToString(rewardToken));
+        // console.log("WAD: %s", wad);
+        
         RewardTokenData storage tokenData = RewardData[rewardToken];
+        // console.log("TRA: %s", tokenData.totalRewardAmount);
+        // console.log("WR:  %s\n", withdrawableRewards[usr][rewardToken]);
+        
         withdrawableRewards[usr][rewardToken]   -= wad;
         tokenData.totalRewardAmount             -= wad;
         emit PullRewards(rewardToken, usr, wad);
@@ -291,6 +302,22 @@ contract StakingVault {
         require(i < array.length, "Array out of bounds");
         array[i] = array[array.length-1];
         array.pop();
+    }
+
+    //
+    // Testing
+    //
+
+    function bytes32ToString(bytes32 _bytes32) public pure returns (string memory) {
+        uint8 i = 0;
+        while(i < 32 && _bytes32[i] != 0) {
+            i++;
+        }
+        bytes memory bytesArray = new bytes(i);
+        for (i = 0; i < 32 && _bytes32[i] != 0; i++) {
+            bytesArray[i] = _bytes32[i];
+        }
+        return string(bytesArray);
     }
 
 }

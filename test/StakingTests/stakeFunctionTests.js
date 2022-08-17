@@ -98,125 +98,175 @@ describe("Testing RewardJoins", function () {
         userSV3 = stakingVault.connect(addr3);
     });
 
-    it("Stake function should work properly with rewards", async function () {
+    describe("Stake Function", function () {
+        it("Stake function should work properly with rewards", async function () {
 
-        //User 1 adds 1000 stakeable coin with join contract, and stake only 800 of it
-        await userStakeJoin.join(addr1.address, fwad("1000"));
-        await userSV.stake(fwad("800"), addr1.address);
-
-        expect(await stakingVault.rewardDebt(addr1.address, fooBytes)).to.equal(0);
-        expect(await stakingVault.rewardDebt(addr1.address, barBytes)).to.equal(0);
-        expect(await stakingVault.withdrawableRewards(addr1.address, fooBytes)).to.equal(0);
-        expect(await stakingVault.withdrawableRewards(addr1.address, barBytes)).to.equal(0);
-        expect(await stakingVault.lockedStakeable(addr1.address)).to.equal(fwad("800"));
-        expect(await stakingVault.unlockedStakeable(addr1.address)).to.equal(fwad("200"));
-        expect(await stakingVault.ddPrime(addr1.address)).to.equal(frad("800"));
-
-        
-        //User 2 adds 1000 stakeable coin with join contract, and stake only 300 of it
-        await userStakeJoin2.join(addr2.address, fwad("1000"));
-        await userSV2.stake(fwad("300"), addr2.address);
-
-        expect(await stakingVault.rewardDebt(addr2.address, fooBytes)).to.equal(0);
-        expect(await stakingVault.rewardDebt(addr2.address, barBytes)).to.equal(0);
-        expect(await stakingVault.withdrawableRewards(addr2.address, fooBytes)).to.equal(0);
-        expect(await stakingVault.withdrawableRewards(addr2.address, barBytes)).to.equal(0);
-        expect(await stakingVault.lockedStakeable(addr2.address)).to.equal(fwad("300"));
-        expect(await stakingVault.unlockedStakeable(addr2.address)).to.equal(fwad("700"));
-        expect(await stakingVault.ddPrime(addr2.address)).to.equal(frad("300"));
-
-        expect(await stakingVault.totalDDPrime()).to.equal(frad("1100"));
-        expect(await stakingVault.stakedAmount()).to.equal(fwad("1100"));
-
-        // Foo Rewards get added
-        await fooJoin.join(fwad("20"));
-        
-        let rewardTokenData = await stakingVault.RewardData(fooBytes);
-        expect(rewardTokenData['totalRewardAmount']).to.equal(fwad("20"));
-        expect(rewardTokenData['accumulatedRewardPerStaked']).to.equal("18181818181818181818181818"); // ray of 0.018
-
-        //User 1 stakes 0 to claim rewards
-        await userSV.stake("0", addr1.address);
-
-        expect(await stakingVault.rewardDebt(addr1.address, fooBytes)).to.equal("14545454545454545454"); // wad 14.545
-        expect(await stakingVault.rewardDebt(addr1.address, barBytes)).to.equal(0);
-        expect(await stakingVault.withdrawableRewards(addr1.address, fooBytes)).to.equal("14545454545454545454");
-        expect(await stakingVault.withdrawableRewards(addr1.address, barBytes)).to.equal(0);
-        expect(await stakingVault.lockedStakeable(addr1.address)).to.equal(fwad("800"));
-        expect(await stakingVault.unlockedStakeable(addr1.address)).to.equal(fwad("200"));
-        expect(await stakingVault.ddPrime(addr1.address)).to.equal(frad("800"));
-
-        let userFooJoin = fooJoin.connect(addr1);
-        await userFooJoin.exit(addr1.address, "14545454545454545454");
-        
-        rewardTokenData = await stakingVault.RewardData(fooBytes);
-        expect(await foo.balanceOf(addr1.address)).to.equal("14545454545454545454");
-        expect(await stakingVault.withdrawableRewards(addr1.address, fooBytes)).to.equal("0");
-        expect(rewardTokenData['totalRewardAmount']).to.equal(fwad("5.454545454545454546"));
-
-        //Third user stakes 2000 - has reward debt but no withdrawable rewards
-        //This is how history is tracked
-        await userStakeJoin3.join(addr3.address, fwad("2000"));
-        await userSV3.stake(fwad("2000"), addr3.address);
-
-        expect(await stakingVault.rewardDebt(addr3.address, fooBytes)).to.equal("36363636363636363636");
-        expect(await stakingVault.rewardDebt(addr3.address, barBytes)).to.equal(0);
-        expect(await stakingVault.withdrawableRewards(addr3.address, fooBytes)).to.equal(0);
-        expect(await stakingVault.withdrawableRewards(addr3.address, barBytes)).to.equal(0);
-        expect(await stakingVault.lockedStakeable(addr3.address)).to.equal(fwad("2000"));
-        expect(await stakingVault.unlockedStakeable(addr3.address)).to.equal(0);
-        expect(await stakingVault.ddPrime(addr3.address)).to.equal(frad("2000"));
-
-        expect(await stakingVault.totalDDPrime()).to.equal(frad("3100"));
-        expect(await stakingVault.stakedAmount()).to.equal(fwad("3100"));
-
-        //More foo rewards are added and bar rewards are introduced
-        await fooJoin.join(fwad("5"));
-        await barJoin.join(fwad("100"));
-        
-        rewardTokenData = await stakingVault.RewardData(fooBytes);
-        expect(rewardTokenData['totalRewardAmount']).to.equal(fwad("10.454545454545454546"));
-        expect(rewardTokenData['accumulatedRewardPerStaked']).to.equal("19794721407624633431085043"); // ray of 0.019794
-
-        let rewardTokenData2 = await stakingVault.RewardData(barBytes);
-        expect(rewardTokenData2['totalRewardAmount']).to.equal(fwad("100"));
-        expect(rewardTokenData2['accumulatedRewardPerStaked']).to.equal("32258064516129032258064516"); // ray of 0.0322
-
-        // All users call stake again to get their rewards
-        // User 1
-        await userSV.stake("0", addr1.address);
-
-        expect(await stakingVault.rewardDebt(addr1.address, fooBytes)).to.equal("15835777126099706744"); // wad 15.8
-        expect(await stakingVault.rewardDebt(addr1.address, barBytes)).to.equal("25806451612903225806"); // wad 25.8
-        expect(await stakingVault.withdrawableRewards(addr1.address, fooBytes)).to.equal("1290322580645161290"); // wad 15.8-14.45 ~= 1.29
-        expect(await stakingVault.withdrawableRewards(addr1.address, barBytes)).to.equal("25806451612903225806");
-        expect(await stakingVault.lockedStakeable(addr1.address)).to.equal(fwad("800"));
-        expect(await stakingVault.unlockedStakeable(addr1.address)).to.equal(fwad("200"));
-        expect(await stakingVault.ddPrime(addr1.address)).to.equal(frad("800"));
-
-        //User 2
-        await userSV2.stake("0", addr2.address);
-
-        expect(await stakingVault.rewardDebt(addr2.address, fooBytes)).to.equal("5938416422287390029"); // wad 5.9
-        expect(await stakingVault.rewardDebt(addr2.address, barBytes)).to.equal("9677419354838709677"); // wad 9.67
-        expect(await stakingVault.withdrawableRewards(addr2.address, fooBytes)).to.equal("5938416422287390029");
-        expect(await stakingVault.withdrawableRewards(addr2.address, barBytes)).to.equal("9677419354838709677");
-        expect(await stakingVault.lockedStakeable(addr2.address)).to.equal(fwad("300"));
-        expect(await stakingVault.unlockedStakeable(addr2.address)).to.equal(fwad("700"));
-        expect(await stakingVault.ddPrime(addr2.address)).to.equal(frad("300"));
-
-        //User 3
-        await userSV3.stake("0", addr3.address);
-
-        expect(await stakingVault.rewardDebt(addr3.address, fooBytes)).to.equal("39589442815249266862"); // wad 39.59
-        expect(await stakingVault.rewardDebt(addr3.address, barBytes)).to.equal("64516129032258064516"); // wad 64.5
-        expect(await stakingVault.withdrawableRewards(addr3.address, fooBytes)).to.equal("3225806451612903226"); // wad 39.6-36.4 ~= 3.2
-        expect(await stakingVault.withdrawableRewards(addr3.address, barBytes)).to.equal("64516129032258064516");
-        expect(await stakingVault.lockedStakeable(addr3.address)).to.equal(fwad("2000"));
-        expect(await stakingVault.unlockedStakeable(addr3.address)).to.equal(0);
-        expect(await stakingVault.ddPrime(addr3.address)).to.equal(frad("2000"));
+            //User 1 adds 1000 stakeable coin with join contract, and stake only 800 of it
+            await userStakeJoin.join(addr1.address, fwad("1000"));
+            await userSV.stake(fwad("800"), addr1.address);
+    
+            expect(await stakingVault.rewardDebt(addr1.address, fooBytes)).to.equal(0);
+            expect(await stakingVault.rewardDebt(addr1.address, barBytes)).to.equal(0);
+            expect(await stakingVault.withdrawableRewards(addr1.address, fooBytes)).to.equal(0);
+            expect(await stakingVault.withdrawableRewards(addr1.address, barBytes)).to.equal(0);
+            expect(await stakingVault.lockedStakeable(addr1.address)).to.equal(fwad("800"));
+            expect(await stakingVault.unlockedStakeable(addr1.address)).to.equal(fwad("200"));
+            expect(await stakingVault.ddPrime(addr1.address)).to.equal(frad("800"));
+    
+            
+            //User 2 adds 1000 stakeable coin with join contract, and stake only 300 of it
+            await userStakeJoin2.join(addr2.address, fwad("1000"));
+            await userSV2.stake(fwad("300"), addr2.address);
+    
+            expect(await stakingVault.rewardDebt(addr2.address, fooBytes)).to.equal(0);
+            expect(await stakingVault.rewardDebt(addr2.address, barBytes)).to.equal(0);
+            expect(await stakingVault.withdrawableRewards(addr2.address, fooBytes)).to.equal(0);
+            expect(await stakingVault.withdrawableRewards(addr2.address, barBytes)).to.equal(0);
+            expect(await stakingVault.lockedStakeable(addr2.address)).to.equal(fwad("300"));
+            expect(await stakingVault.unlockedStakeable(addr2.address)).to.equal(fwad("700"));
+            expect(await stakingVault.ddPrime(addr2.address)).to.equal(frad("300"));
+    
+            expect(await stakingVault.totalDDPrime()).to.equal(frad("1100"));
+            expect(await stakingVault.stakedAmount()).to.equal(fwad("1100"));
+    
+            // Foo Rewards get added
+            await fooJoin.join(fwad("20"));
+            
+            let rewardTokenData = await stakingVault.RewardData(fooBytes);
+            expect(rewardTokenData['totalRewardAmount']).to.equal(fwad("20"));
+            expect(rewardTokenData['accumulatedRewardPerStaked']).to.equal("18181818181818181818181818"); // ray of 0.018
+    
+            //User 1 stakes 0 to claim rewards
+            await userSV.stake("0", addr1.address);
+    
+            expect(await stakingVault.rewardDebt(addr1.address, fooBytes)).to.equal("14545454545454545454"); // wad 14.545
+            expect(await stakingVault.rewardDebt(addr1.address, barBytes)).to.equal(0);
+            expect(await stakingVault.withdrawableRewards(addr1.address, fooBytes)).to.equal("14545454545454545454");
+            expect(await stakingVault.withdrawableRewards(addr1.address, barBytes)).to.equal(0);
+            expect(await stakingVault.lockedStakeable(addr1.address)).to.equal(fwad("800"));
+            expect(await stakingVault.unlockedStakeable(addr1.address)).to.equal(fwad("200"));
+            expect(await stakingVault.ddPrime(addr1.address)).to.equal(frad("800"));
+    
+            let userFooJoin1 = fooJoin.connect(addr1);
+            await userFooJoin1.exit(addr1.address, "14545454545454545454");
+            
+            rewardTokenData = await stakingVault.RewardData(fooBytes);
+            expect(await foo.balanceOf(addr1.address)).to.equal("14545454545454545454");
+            expect(await stakingVault.withdrawableRewards(addr1.address, fooBytes)).to.equal("0");
+            expect(rewardTokenData['totalRewardAmount']).to.equal(fwad("5.454545454545454546"));
+    
+            //Third user stakes 2000 - has reward debt but no withdrawable rewards
+            //This is how history is tracked
+            await userStakeJoin3.join(addr3.address, fwad("2000"));
+            await userSV3.stake(fwad("2000"), addr3.address);
+    
+            expect(await stakingVault.rewardDebt(addr3.address, fooBytes)).to.equal("36363636363636363636");
+            expect(await stakingVault.rewardDebt(addr3.address, barBytes)).to.equal(0);
+            expect(await stakingVault.withdrawableRewards(addr3.address, fooBytes)).to.equal(0);
+            expect(await stakingVault.withdrawableRewards(addr3.address, barBytes)).to.equal(0);
+            expect(await stakingVault.lockedStakeable(addr3.address)).to.equal(fwad("2000"));
+            expect(await stakingVault.unlockedStakeable(addr3.address)).to.equal(0);
+            expect(await stakingVault.ddPrime(addr3.address)).to.equal(frad("2000"));
+    
+            expect(await stakingVault.totalDDPrime()).to.equal(frad("3100"));
+            expect(await stakingVault.stakedAmount()).to.equal(fwad("3100"));
+    
+            //More foo rewards are added and bar rewards are introduced
+            await fooJoin.join(fwad("5"));
+            await barJoin.join(fwad("100"));
+            
+            rewardTokenData = await stakingVault.RewardData(fooBytes);
+            expect(rewardTokenData['totalRewardAmount']).to.equal(fwad("10.454545454545454546"));
+            expect(rewardTokenData['accumulatedRewardPerStaked']).to.equal("19794721407624633431085043"); // ray of 0.019794
+    
+            let rewardTokenData2 = await stakingVault.RewardData(barBytes);
+            expect(rewardTokenData2['totalRewardAmount']).to.equal(fwad("100"));
+            expect(rewardTokenData2['accumulatedRewardPerStaked']).to.equal("32258064516129032258064516"); // ray of 0.0322
+    
+            // All users call stake again to get their rewards
+            // User 1
+            await userSV.stake("0", addr1.address);
+    
+            expect(await stakingVault.rewardDebt(addr1.address, fooBytes)).to.equal("15835777126099706744"); // wad 15.8
+            expect(await stakingVault.rewardDebt(addr1.address, barBytes)).to.equal("25806451612903225806"); // wad 25.8
+            expect(await stakingVault.withdrawableRewards(addr1.address, fooBytes)).to.equal("1290322580645161290"); // wad 15.8-14.45 ~= 1.29
+            expect(await stakingVault.withdrawableRewards(addr1.address, barBytes)).to.equal("25806451612903225806");
+            expect(await stakingVault.lockedStakeable(addr1.address)).to.equal(fwad("800"));
+            expect(await stakingVault.unlockedStakeable(addr1.address)).to.equal(fwad("200"));
+            expect(await stakingVault.ddPrime(addr1.address)).to.equal(frad("800"));
+    
+            //User 2
+            await userSV2.stake("0", addr2.address);
+    
+            expect(await stakingVault.rewardDebt(addr2.address, fooBytes)).to.equal("5938416422287390029"); // wad 5.9
+            expect(await stakingVault.rewardDebt(addr2.address, barBytes)).to.equal("9677419354838709677"); // wad 9.67
+            expect(await stakingVault.withdrawableRewards(addr2.address, fooBytes)).to.equal("5938416422287390029");
+            expect(await stakingVault.withdrawableRewards(addr2.address, barBytes)).to.equal("9677419354838709677");
+            expect(await stakingVault.lockedStakeable(addr2.address)).to.equal(fwad("300"));
+            expect(await stakingVault.unlockedStakeable(addr2.address)).to.equal(fwad("700"));
+            expect(await stakingVault.ddPrime(addr2.address)).to.equal(frad("300"));
+    
+            //User 3
+            await userSV3.stake("0", addr3.address);
+    
+            expect(await stakingVault.rewardDebt(addr3.address, fooBytes)).to.equal("39589442815249266862"); // wad 39.59
+            expect(await stakingVault.rewardDebt(addr3.address, barBytes)).to.equal("64516129032258064516"); // wad 64.5
+            expect(await stakingVault.withdrawableRewards(addr3.address, fooBytes)).to.equal("3225806451612903226"); // wad 39.6-36.4 ~= 3.2
+            expect(await stakingVault.withdrawableRewards(addr3.address, barBytes)).to.equal("64516129032258064516");
+            expect(await stakingVault.lockedStakeable(addr3.address)).to.equal(fwad("2000"));
+            expect(await stakingVault.unlockedStakeable(addr3.address)).to.equal(0);
+            expect(await stakingVault.ddPrime(addr3.address)).to.equal(frad("2000"));
+    
+            //All users withdraw all of their rewards
+            let userFooJoin2 = fooJoin.connect(addr2);
+            let userFooJoin3 = fooJoin.connect(addr3);
+            await userFooJoin1.exit(addr1.address, "1290322580645161290");
+            await userFooJoin2.exit(addr2.address, "5938416422287390029");
+            await userFooJoin3.exit(addr3.address, "3225806451612903226");
+    
+            let userBarJoin1 = barJoin.connect(addr1);
+            let userBarJoin2 = barJoin.connect(addr2);
+            let userBarJoin3 = barJoin.connect(addr3);
+    
+            await userBarJoin1.exit(addr1.address, "25806451612903225806");
+            await userBarJoin2.exit(addr2.address, "9677419354838709677");
+            await userBarJoin3.exit(addr3.address, "64516129032258064516");
+    
+            expect(await stakingVault.withdrawableRewards(addr1.address, fooBytes)).to.equal("0");
+            expect(await stakingVault.withdrawableRewards(addr1.address, barBytes)).to.equal("0");
+    
+            expect(await stakingVault.withdrawableRewards(addr2.address, fooBytes)).to.equal("0");
+            expect(await stakingVault.withdrawableRewards(addr2.address, barBytes)).to.equal("0");
+    
+            expect(await stakingVault.withdrawableRewards(addr3.address, fooBytes)).to.equal("0");
+            expect(await stakingVault.withdrawableRewards(addr3.address, barBytes)).to.equal("0");
+    
+            rewardTokenData = await stakingVault.RewardData(fooBytes);
+            rewardTokenData2 = await stakingVault.RewardData(barBytes);
+            expect(rewardTokenData['totalRewardAmount']).to.equal("1"); // Not wad 1, just 1 from integer cutoff, less than billionths of a cent
+            expect(rewardTokenData2['totalRewardAmount']).to.equal("1");
+    
+            expect(await foo.balanceOf(fooJoin.address)).to.equal("1");
+            expect(await bar.balanceOf(barJoin.address)).to.equal("1");
+        });
     });
 
+    describe("RewardJoin Push Function", function () {
+        it("Rewards added by admin works properly", async function () {
+            //Needs stake amount to put rewards in, otherwise reward per share is infinite
+            await userStakeJoin.join(addr1.address, fwad("1000"));
+            await userSV.stake(fwad("1000"), addr1.address);
     
-
+            //admin puts rewards in
+            await fooJoin.join(fwad("100"));
+    
+            let rewardTokenData = await stakingVault.RewardData(fooBytes);
+            expect(rewardTokenData['totalRewardAmount']).to.equal(fwad("100"));
+            expect(rewardTokenData['accumulatedRewardPerStaked']).to.equal(fray("0.1"));
+        });
+    
+        it("More added than user has fails", async function () {
+            await expect(fooJoin.join(fwad("2001"))).to.be.revertedWith("token-insufficient-balance")
+        });
+    });
 });
