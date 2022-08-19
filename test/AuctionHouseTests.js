@@ -289,8 +289,8 @@ describe("AuctionHouse testing", function () {
         await liquidator.setLiquidationPenalty(fray("1.1"));
 
         // Set up auction house.
-        await auctionHouse.setMinimumBidFactor(fray("0.0"));
-
+        await liquidator.setMinimumAskingPriceVariables(fray("0.0"), fray("0.0"), fray("0.0"));
+        
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
         await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
@@ -333,7 +333,7 @@ describe("AuctionHouse testing", function () {
         await liquidator.setLiquidationPenalty(fray("1.1"));
 
         // Set up auction house.
-        await auctionHouse.setMinimumBidFactor(fray("0.0"));
+        await liquidator.setMinimumAskingPriceVariables(fray("0.0"), fray("0.0"), fray("0.0"));
 
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
@@ -372,7 +372,7 @@ describe("AuctionHouse testing", function () {
         await liquidator.setLiquidationPenalty(fray("1.1"));
 
         // Set up auction house.
-        await auctionHouse.setMinimumBidFactor(fray("0.0"));
+        await liquidator.setMinimumAskingPriceVariables(fray("0.0"), fray("0.0"), fray("0.0"));
 
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
@@ -411,7 +411,7 @@ describe("AuctionHouse testing", function () {
         await liquidator.setLiquidationPenalty(fray("1.1"));
 
         // Set up auction house.
-        await auctionHouse.setMinimumBidFactor(fray("0.0"));
+        await liquidator.setMinimumAskingPriceVariables(fray("0.0"), fray("0.0"), fray("0.0"));
 
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
@@ -450,7 +450,7 @@ describe("AuctionHouse testing", function () {
         await liquidator.setLiquidationPenalty(fray("1.1"));
 
         // Set up auction house.
-        await auctionHouse.setMinimumBidFactor(fray("0.0"));
+        await liquidator.setMinimumAskingPriceVariables(fray("0.0"), fray("0.0"), fray("0.0"));
 
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
@@ -510,7 +510,7 @@ describe("AuctionHouse testing", function () {
         await liquidator.setLiquidationPenalty(fray("1.1"));
 
         // Set up auction house.
-        await auctionHouse.setMinimumBidFactor(fray("0.0"));
+        await liquidator.setMinimumAskingPriceVariables(fray("0.0"), fray("0.0"), fray("0.0"));
 
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
@@ -562,7 +562,7 @@ describe("AuctionHouse testing", function () {
         await liquidator.setLiquidationPenalty(fray("1.1"));
 
         // Set up auction house.
-        await auctionHouse.setMinimumBidFactor(fray("0.0"));
+        await liquidator.setMinimumAskingPriceVariables(fray("0.0"), fray("0.0"), fray("0.0"));
 
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
@@ -642,7 +642,7 @@ describe("AuctionHouse testing", function () {
         await liquidator.setLiquidationPenalty(fray("1.1"));
 
         // Set up auction house.
-        await auctionHouse.setMinimumBidFactor(fray("0.0"));
+        await liquidator.setMinimumAskingPriceVariables(fray("0.0"), fray("0.0"), fray("0.0"));
 
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
@@ -681,7 +681,7 @@ describe("AuctionHouse testing", function () {
         await liquidator.setLiquidationPenalty(fray("1.1"));
 
         // Set up auction house.
-        await auctionHouse.setMinimumBidFactor(fray("0.0"));
+        await liquidator.setMinimumAskingPriceVariables(fray("0.0"), fray("0.0"), fray("0.0"));
 
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
@@ -884,7 +884,7 @@ describe("AuctionHouse testing", function () {
         await liquidator.setLiquidationPenalty(fray("1.1"));
 
         // Set up auction house.
-        await auctionHouse.setMinimumBidFactor(fray("0.0"));
+        await liquidator.setMinimumAskingPriceVariables(fray("0.0"), fray("0.0"), fray("0.0"));
 
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
@@ -953,18 +953,21 @@ describe("AuctionHouse testing", function () {
         await liquidator.setLotSize(fwad("1000"));
         await liquidator.setLiquidationPenalty(fray("1.1"));
 
+        await liquidator.setMinimumAskingPriceVariables(fray("0.25"), fray("0.8"), fray("1.1"));
+
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
         await lmcv.updateSpotPrice(fooBytes, fray("7.14"));
         await userTwoLiquidator.liquidate(userOne.address);
 
         // Collateral value is 7.14 * 50    = 357 dPRIME
-        // Minimum bid is 357 / 2           = 178 dPRIME
         // debtHaircut is 250 * 1.1         = 275 dPRIME
-        await expect(userTwoAuctionHouse.raise(1, frad("100.0"))).to.be.revertedWith("AuctionHouse/Bid lower than minimum bid");
+        // Minimum bid is 257 * 0.8         = 178 dPRIME
+
+        await expect(userTwoAuctionHouse.raise(1, frad("204.0"))).to.be.revertedWith("AuctionHouse/Bid lower than minimum bid");
 
         // This is greater than the minimum bid.
-        await userTwoAuctionHouse.raise(1, frad("180.0"));
+        await userTwoAuctionHouse.raise(1, frad("220.0"));
     });
 
     it("Can set minimum bid to zero", async function () {
@@ -984,7 +987,7 @@ describe("AuctionHouse testing", function () {
         await liquidator.setLiquidationPenalty(fray("1.1"));
 
         // Set up auction house.
-        await auctionHouse.setMinimumBidFactor(fray("0.0"));
+        await liquidator.setMinimumAskingPriceVariables(fray("0.0"), fray("0.0"), fray("0.0"));
 
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
@@ -995,7 +998,7 @@ describe("AuctionHouse testing", function () {
         await userTwoAuctionHouse.raise(1, frad("1.0"));
     });
 
-    it("Minimum bid amount is calculated as expected", async function () {
+    it("Minimum bid amount is calculated as expected from collateral haircut", async function () {
         let userOneLMCV = lmcv.connect(userOne);
         let userTwoLMCV = lmcv.connect(userTwo);
         let userTwoLiquidator = liquidator.connect(userTwo);
@@ -1012,7 +1015,7 @@ describe("AuctionHouse testing", function () {
         await liquidator.setLiquidationPenalty(fray("1.1"));
 
         // Set up auction house.
-        await auctionHouse.setMinimumBidFactor(fray("0.25"));
+        await liquidator.setMinimumAskingPriceVariables(fray("0.25"), fray("0.5"), fray("1.1"));
 
         // Prices goes lower and user gets liquidated.
         await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
@@ -1020,13 +1023,52 @@ describe("AuctionHouse testing", function () {
         await userTwoLiquidator.liquidate(userOne.address);
 
         // Collateral value is 6.0 * 50     = 300 dPRIME
-        // Minimum bid is 300 * 0.25        = 75 dPRIME
-        // debtHaircut is 250 * 1.1         = 275 dPRIME
+        // min bid as % of collatera lvalue = 75 dPRIME
 
         // Let's bid 74.9999 dPRiME
         await expect(userTwoAuctionHouse.raise(1, frad("74.9999"))).to.be.revertedWith("AuctionHouse/Bid lower than minimum bid");
 
         // 75 dPRIME will work.
         await userTwoAuctionHouse.raise(1, frad("75.0"));
+    });
+
+    it("Minimum bid amount is calculated as expected from debt haircut", async function () {
+        let userOneLMCV = lmcv.connect(userOne);
+        let userTwoLMCV = lmcv.connect(userTwo);
+        let userTwoLiquidator = liquidator.connect(userTwo);
+        let userTwoAuctionHouse = auctionHouse.connect(userTwo);
+
+        // Auction house must be given approval to move dPRIME from participant's account.
+        await userTwoLMCV.approve(auctionHouse.address);
+
+        // Generate some dPRIME for user two via inflation. This is OK for testing.
+        await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
+
+        // Set LTV for foo to a lower value. This means that there will be much more collateral than
+        // debt and so we should calculate the minimum bid amount from the debt to be liquidated, rather
+        // than the collateral to be sold.
+        await lmcv.editCreditRatio(fooBytes, fray("0.4"));
+
+        // Set up liquidator.
+        await liquidator.setLotSize(fwad("1000"));
+        await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Set up auction house.
+        await liquidator.setMinimumAskingPriceVariables(fray("0.25"), fray("0.8"), fray("1.1"));
+
+        // Prices goes lower and user gets liquidated.
+        await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("150"), userOne.address);
+        await lmcv.updateSpotPrice(fooBytes, fray("6.00"));
+        await userTwoLiquidator.liquidate(userOne.address);
+
+        // Collateral value is 6.0 * 50     = 300 dPRIME
+        // debtHaircut is 150 * 1.1         = 165 dPRIME
+        // Minimum bid is 165 * 0.8         = 132 dPRIME
+
+        // Let's bid 131.99 dPRiME
+        await expect(userTwoAuctionHouse.raise(1, frad("131.99"))).to.be.revertedWith("AuctionHouse/Bid lower than minimum bid");
+
+        // 132 dPRIME will work.
+        await userTwoAuctionHouse.raise(1, frad("132.0"));
     });
 });

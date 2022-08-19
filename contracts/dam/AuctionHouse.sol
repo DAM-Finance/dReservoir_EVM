@@ -41,9 +41,9 @@ contract AuctionHouse {
         uint256     minBid;             // Debt bids must be above this minimum amount  [rad]
 
         uint256     bidExpiry;          //                                              [unix epoch time]
-        uint256     auctionExpiry;      //     
+        uint256     auctionExpiry;      //                                              [unix epoch time]
         
-        address     currentWinner;      // Highest bidder                               [unix epoch time]
+        address     currentWinner;      // Highest bidder                               
         address     liquidated;         // Liquidated user
         address     treasury;           // Treasury address
     }
@@ -57,7 +57,6 @@ contract AuctionHouse {
     uint256                         public              bidExpiry           = 3 hours;  // 3 hours bid duration         [seconds]
     uint256                         public              auctionExpiry       = 2 days;   // 2 days total auction length  [seconds]
     uint256                         public              auctionId           = 0;        // Monotonic auction ID
-    uint256                         public              minBidFactor        = 0.5E27;   // [rad] Minimum bid must be greater than this multiple of total lot value.
 
     //
     // --- Events ---
@@ -99,10 +98,6 @@ contract AuctionHouse {
 
     function setMinimumCollateralBidDecrease(uint256 ray) external auth {
         minimumBidDecrease = ray;
-    }
-
-    function setMinimumBidFactor(uint256 ray) external auth {
-        minBidFactor = ray;
     }
 
     function setBidExpiry(uint256 mins) external auth {
