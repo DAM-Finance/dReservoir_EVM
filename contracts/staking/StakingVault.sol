@@ -58,7 +58,7 @@ contract StakingVault {
     event PushStakingToken(address indexed user, uint256 amount);
     event PullStakingToken(address indexed user, uint256 amount);
     event Unstake(uint256 amount, address indexed user);
-    event Stake(uint256 amount, address indexed user);
+    event Stake(int256 amount, address indexed user);
     event RewardSpotPrice(bytes32 indexed rewardToken, uint256 ray);
     event StakedMintRatio(uint256 ray);
     event StakedAmountLimit(uint256 wad);
@@ -82,7 +82,6 @@ contract StakingVault {
         require(stakeLive == 1, "LMCV/Loan paused");
         _;
     }
-
 
     constructor(bytes32 _ddPRIMEBytes, address _ddPRIMEContract, address _lmcv) {
         ddPRIMEBytes        = _ddPRIMEBytes;        // bytes32 of ddPRIME in LMCV for lookup in locked collateral list
@@ -136,6 +135,14 @@ contract StakingVault {
         require(y <= 0 || z >= x);
     }
 
+    function _sub(uint256 x, int256 y) internal pure returns (uint256 z) {
+        unchecked {
+            z = x - uint256(y);
+        }
+        require(y <= 0 || z <= x);
+        require(y >= 0 || z >= x);
+    }
+
     function _int256(uint256 x) internal pure returns (int256 y) {
         require((y = int256(x)) >= 0);
     }
@@ -161,10 +168,15 @@ contract StakingVault {
 
     function pushRewards(bytes32 rewardToken, uint256 wad) external auth {
         require(stakedAmount != 0, "StakingVault/Staked amount must be greater than 0 to put rewards in");
-
         RewardTokenData storage tokenData = RewardData[rewardToken];
+
         tokenData.totalRewardAmount             += wad;
         tokenData.accumulatedRewardPerStaked    += wad * RAY / stakedAmount; // wad * RAY / wad = ray
+
+        // console.log("RT:  %s", bytes32ToString(rewardToken));
+        // console.log("TRA: %s", tokenData.totalRewardAmount);
+        // console.log("RPS: %s", tokenData.accumulatedRewardPerStaked);
+        // console.log("WAD: %s\n", wad);
 
         emit PushRewards(rewardToken, wad);
     }
@@ -210,13 +222,13 @@ contract StakingVault {
     //
     
     function pullRewards(bytes32 rewardToken, address usr, uint256 wad) external auth {
-        // console.log("RT:  %s", bytes32ToString(rewardToken));
-        // console.log("WAD: %s", wad);
-        
         RewardTokenData storage tokenData = RewardData[rewardToken];
+
+        // console.log("RT:  %s", bytes32ToString(rewardToken));
+        // console.log("WR:  %s", withdrawableRewards[usr][rewardToken]);
         // console.log("TRA: %s", tokenData.totalRewardAmount);
-        // console.log("WR:  %s\n", withdrawableRewards[usr][rewardToken]);
-        
+        // console.log("WAD: %s\n", wad);
+
         withdrawableRewards[usr][rewardToken]   -= wad;
         tokenData.totalRewardAmount             -= wad;
         emit PullRewards(rewardToken, usr, wad);
@@ -226,15 +238,16 @@ contract StakingVault {
     //
     // Main functionality
     //
-
-    function stake(uint256 wad, address user) external stakeAlive { // [wad]
+    function stake(int256 wad, address user) external stakeAlive { // [wad]
         require(approval(user, msg.sender), "StakingVault/Owner must consent");
-        require(checkDDPrimeOwnership(user, lockedStakeable[user] * stakedMintRatio), "Need to own ddPRIME to cover locked amount otherwise reset");
+        require(checkDDPrimeOwnership(user, lockedStakeable[user] * stakedMintRatio), "StakingVault/Need to own ddPRIME to cover locked amount otherwise reset");
         
         //1. Add locked tokens
-        uint256 prevStakedAmount     = lockedStakeable[user]; //[wad]
-        unlockedStakeable[user]     -= wad;
-        lockedStakeable[user]       += wad;
+        uint256 prevStakedAmount    = lockedStakeable[user]; //[wad]
+        unlockedStakeable[user]     = _sub(unlockedStakeable[user], wad);
+        lockedStakeable[user]       = _add(lockedStakeable[user], wad);
+        stakedAmount                = _add(stakedAmount, wad);
+        require(stakedAmount <= stakedAmountLimit, "StakingVault/Cannot be over staked token limit");
 
         //2. Set reward debts for each token based on current time and staked amount
         for (uint256 i = 0; i < RewardTokenList.length; i++) {
@@ -244,7 +257,7 @@ contract StakingVault {
             uint256 prevRewardDebt = rewardDebt[user][RewardTokenList[i]]; // [wad]
             rewardDebt[user][RewardTokenList[i]] = _rmul(lockedStakeable[user], tokenData.accumulatedRewardPerStaked); // rmul(wad, ray) = wad;
 
-            //Pay out old rewards
+            //Pay out rewards
             if(prevStakedAmount > 0){
                 uint256 payout = _rmul(prevStakedAmount, tokenData.accumulatedRewardPerStaked) - prevRewardDebt; // rmul(wad,ray) - wad = wad;
                 if(payout > 0){
@@ -253,34 +266,72 @@ contract StakingVault {
             }
         }
 
-        //3. Update total staked amounts
-        stakedAmount    += wad;
-        require(stakedAmount <= stakedAmountLimit, "StakingVault/Cannot be over staked token limit");
-
         //4. Set ddPrime
-        totalDDPrime    += wad * stakedMintRatio;
-        ddPrime[user]   += wad * stakedMintRatio;
+        totalDDPrime    = _add(totalDDPrime, wad * _int256(stakedMintRatio));
+        ddPrime[user]   = _add(ddPrime[user], wad * _int256(stakedMintRatio));
+
         emit Stake(wad, user);
     }
 
-    function unstake(uint256 wad, address user) external stakeAlive {
-        require(approval(user, msg.sender), "LMCV/Owner must consent");
-        // require() history of stake
-        
-        emit Unstake(wad, user);
+    //This could definitely be abused to liquidate accounts that don't have ownership of their tokens in some capacity
+    //Just an idea - a lot of work to do to make it proper
+    function adversarialLiquidationWithdraw(address liquidator, address liquidated, uint256 rad) external { // [rad]
+        require(approval(liquidator, msg.sender), "StakingVault/Owner must consent");
+
+        //This needs modification as well - account must own less than locked - rad
+        require(!checkDDPrimeOwnership(liquidated, lockedStakeable[liquidated] * stakedMintRatio), "StakingVault/Account must not have ownership of tokens");
+        uint256 liquidatedAmount         = lockedStakeable[liquidated] / stakedMintRatio; // rad / ray = wad
+
+        ddPrime[liquidator]             -= lockedStakeable[liquidated];
+        totalDDPrime                    -= lockedStakeable[liquidated];
+
+        lockedStakeable[liquidated]     -= liquidatedAmount;
+        unlockedStakeable[liquidator]   += liquidatedAmount;
+        stakedAmount                    -= liquidatedAmount;
+
+        //TODO: Pay out the rewards to the liquidator
     }
 
-    function liquidationWithdraw() external {
 
-    }
-
-    function forceRewardsReset(address user) external {
+    function liquidationWithdraw(address user, uint256 ddPrimeAmount) external { // [rad]
         require(approval(user, msg.sender), "StakingVault/Owner must consent");
-        //For when user gets liquidated and cannot stake
+        uint256 liquidatedAmount    = ddPrimeAmount / stakedMintRatio; // rad / ray = wad
+
+        ddPrime[user]              -= ddPrimeAmount;
+        totalDDPrime               -= ddPrimeAmount;
+
+        unlockedStakeable[user]    += liquidatedAmount;
     }
 
-    //TODO: Make sure functions it relies on are view
+    function forceStakeReset(address user) external {
+        require(approval(user, msg.sender), "StakingVault/Owner must consent");
+        
+
+        //TODO: Has to go here instead - then must recover the rewards somehow
+        // Has to be here because people can move their tokens around and use that to claim rewards even without ownership
+        // Fungibility baby
+        stakedAmount -= lockedStakeable[user];
+
+        lockedStakeable[user] = 0;
+
+        for (uint256 i = 0; i < RewardTokenList.length; i++) {
+            rewardDebt[user][RewardTokenList[i]] = 0;
+
+            //TODO: Redistribute rewards
+        }
+    }
+
+
+    //Very worried that this could be exploited somehow to 
     function checkDDPrimeOwnership(address user, uint256 rad) public view returns (bool ownership) {
+
+        // console.log("N-LMCV  %s", LMCVLike(lmcv).lockedCollateral(user, ddPRIMEBytes));
+        // console.log("N-BALOF %s", ddPRIMELike(ddPRIMEContract).balanceOf(user));
+        // console.log("N-SVBal %s", ddPrime[user]);
+
+        // console.log("LMCV  %s", LMCVLike(lmcv).lockedCollateral(user, ddPRIMEBytes) >= (rad / RAY));
+        // console.log("BALOF %s", ddPRIMELike(ddPRIMEContract).balanceOf(user) >= (rad / RAY));
+        // console.log("SVBal %s\n", ddPrime[user] >= rad);
 
         return LMCVLike(lmcv).lockedCollateral(user, ddPRIMEBytes) >= rad / RAY
             || ddPRIMELike(ddPRIMEContract).balanceOf(user) >= rad / RAY
