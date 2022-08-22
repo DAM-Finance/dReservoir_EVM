@@ -12,6 +12,7 @@ import "hardhat/console.sol";
 
 interface LMCVLike {
     function lockedCollateral(address, bytes32) external view returns (uint256 amount);
+    function unlockedCollateral(address, bytes32) external view returns (uint256 amount);
 }
 
 interface ddPRIMELike{
@@ -50,6 +51,7 @@ contract StakingVault {
 
 
     event EditRewardsToken(bytes32 indexed rewardToken, bool accepted, uint256 spot, uint256 position);
+    event LiquidationWithdraw(address indexed liquidated, address indexed liquidator, uint256 rad);
     event PullRewards(bytes32 indexed rewardToken, address indexed usr, uint256 wad);
     event MoveDDPrime(address indexed src, address indexed dst, uint256 rad);
     event PushRewards(bytes32 indexed rewardToken, uint256 wad);
@@ -62,6 +64,7 @@ contract StakingVault {
     event RewardSpotPrice(bytes32 indexed rewardToken, uint256 ray);
     event StakedMintRatio(uint256 ray);
     event StakedAmountLimit(uint256 wad);
+    
     
 
     //
@@ -250,79 +253,58 @@ contract StakingVault {
         require(stakedAmount <= stakedAmountLimit, "StakingVault/Cannot be over staked token limit");
 
         //2. Set reward debts for each token based on current time and staked amount
-        for (uint256 i = 0; i < RewardTokenList.length; i++) {
-            RewardTokenData storage tokenData = RewardData[RewardTokenList[i]];
+        _payRewards(user, user, prevStakedAmount);
 
-            //Save prev reward debt and set new reward debt
-            uint256 prevRewardDebt = rewardDebt[user][RewardTokenList[i]]; // [wad]
-            rewardDebt[user][RewardTokenList[i]] = _rmul(lockedStakeable[user], tokenData.accumulatedRewardPerStaked); // rmul(wad, ray) = wad;
-
-            //Pay out rewards
-            if(prevStakedAmount > 0){
-                uint256 payout = _rmul(prevStakedAmount, tokenData.accumulatedRewardPerStaked) - prevRewardDebt; // rmul(wad,ray) - wad = wad;
-                if(payout > 0){
-                    withdrawableRewards[user][RewardTokenList[i]] += payout;
-                }
-            }
-        }
-
-        //4. Set ddPrime
+        //3. Set ddPrime
         totalDDPrime    = _add(totalDDPrime, wad * _int256(stakedMintRatio));
         ddPrime[user]   = _add(ddPrime[user], wad * _int256(stakedMintRatio));
 
         emit Stake(wad, user);
     }
 
-    //This could definitely be abused to liquidate accounts that don't have ownership of their tokens in some capacity
-    //Just an idea - a lot of work to do to make it proper
-    function adversarialLiquidationWithdraw(address liquidator, address liquidated, uint256 rad) external { // [rad]
+    //This will be how accounts that are liquidated with ddPrime in them are recovered
+    //This also implicitly forbids the transfer of your assets anywhere except LMCV and your own wallet
+    function liquidationWithdraw(address liquidator, address liquidated, uint256 rad) external {
         require(approval(liquidator, msg.sender), "StakingVault/Owner must consent");
 
-        //This needs modification as well - account must own less than locked - rad
-        require(!checkDDPrimeOwnership(liquidated, lockedStakeable[liquidated] * stakedMintRatio), "StakingVault/Account must not have ownership of tokens");
-        uint256 liquidatedAmount         = lockedStakeable[liquidated] / stakedMintRatio; // rad / ray = wad
+        //1. Check that liquidated does not own ddPrime they claim to
+        require(!checkDDPrimeOwnership(liquidated, (lockedStakeable[liquidated] * stakedMintRatio) - rad), "StakingVault/Account must not have ownership of tokens");
+        uint256 liquidatedAmount         = rad / stakedMintRatio; // rad / ray = wad
 
-        ddPrime[liquidator]             -= lockedStakeable[liquidated];
-        totalDDPrime                    -= lockedStakeable[liquidated];
+        //2. Take ddPrime from liquidator's account to repay
+        ddPrime[liquidator]             -= rad;
+        totalDDPrime                    -= rad;
 
+        //3. Settle staking token amounts
+        uint256 prevStakedAmount    = lockedStakeable[liquidated]; //[wad]
         lockedStakeable[liquidated]     -= liquidatedAmount;
         unlockedStakeable[liquidator]   += liquidatedAmount;
         stakedAmount                    -= liquidatedAmount;
 
-        //TODO: Pay out the rewards to the liquidator
+        //4. Pay out rewards to the liquidator
+        _payRewards(liquidated, liquidator, prevStakedAmount);
+
+        emit LiquidationWithdraw(liquidated, liquidator, rad);
     }
 
-
-    function liquidationWithdraw(address user, uint256 ddPrimeAmount) external { // [rad]
-        require(approval(user, msg.sender), "StakingVault/Owner must consent");
-        uint256 liquidatedAmount    = ddPrimeAmount / stakedMintRatio; // rad / ray = wad
-
-        ddPrime[user]              -= ddPrimeAmount;
-        totalDDPrime               -= ddPrimeAmount;
-
-        unlockedStakeable[user]    += liquidatedAmount;
-    }
-
-    function forceStakeReset(address user) external {
-        require(approval(user, msg.sender), "StakingVault/Owner must consent");
-        
-
-        //TODO: Has to go here instead - then must recover the rewards somehow
-        // Has to be here because people can move their tokens around and use that to claim rewards even without ownership
-        // Fungibility baby
-        stakedAmount -= lockedStakeable[user];
-
-        lockedStakeable[user] = 0;
-
+    function _payRewards(address from, address to, uint256 previousAmount) internal {
         for (uint256 i = 0; i < RewardTokenList.length; i++) {
-            rewardDebt[user][RewardTokenList[i]] = 0;
+            RewardTokenData storage tokenData = RewardData[RewardTokenList[i]];
 
-            //TODO: Redistribute rewards
+            //Save prev reward debt and set new reward debt
+            uint256 prevRewardDebt = rewardDebt[from][RewardTokenList[i]]; // [wad]
+            rewardDebt[from][RewardTokenList[i]] = _rmul(lockedStakeable[from], tokenData.accumulatedRewardPerStaked); // rmul(wad, ray) = wad;
+
+            //Pay out rewards
+            if(previousAmount > 0){
+                uint256 payout = _rmul(previousAmount, tokenData.accumulatedRewardPerStaked) - prevRewardDebt; // rmul(wad,ray) - wad = wad;
+                if(payout > 0){
+                    withdrawableRewards[to][RewardTokenList[i]] += payout;
+                }
+            }
         }
     }
 
-
-    //Very worried that this could be exploited somehow to 
     function checkDDPrimeOwnership(address user, uint256 rad) public view returns (bool ownership) {
 
         // console.log("N-LMCV  %s", LMCVLike(lmcv).lockedCollateral(user, ddPRIMEBytes));
@@ -334,6 +316,7 @@ contract StakingVault {
         // console.log("SVBal %s\n", ddPrime[user] >= rad);
 
         return LMCVLike(lmcv).lockedCollateral(user, ddPRIMEBytes) >= rad / RAY
+            || LMCVLike(lmcv).unlockedCollateral(user, ddPRIMEBytes) >= rad / RAY
             || ddPRIMELike(ddPRIMEContract).balanceOf(user) >= rad / RAY
             || ddPrime[user] >= rad
             ?  true

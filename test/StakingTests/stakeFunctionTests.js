@@ -495,40 +495,6 @@ describe("Stake Testing", function () {
         });
     });
 
-    describe("Liquidation of ddPrime and staked token withdrawal", function () {
-        beforeEach(async function () {
-            // --- SAME SETUP AS BASIC STAKE TEST ABOVE WITHOUT END WITHDRAWS --- 
-            await userStakeJoin.join(addr1.address, fwad("1000"));
-            await userSV.stake(fwad("800"), addr1.address);
-    
-            await userStakeJoin2.join(addr2.address, fwad("1000"));
-            await userSV2.stake(fwad("300"), addr2.address);
-
-            await fooJoin.join(fwad("20"));
-
-            await userSV.stake("0", addr1.address);
-    
-            let userFooJoin1 = fooJoin.connect(addr1);
-            await userFooJoin1.exit(addr1.address, "14545454545454545454");
-    
-            await userStakeJoin3.join(addr3.address, fwad("2000"));
-            await userSV3.stake(fwad("2000"), addr3.address);
-
-            await fooJoin.join(fwad("5"));
-            await barJoin.join(fwad("100"));
-        });
-
-        it("", async function () {
-            //Admin sets limit
-            await stakingVault.setStakedAmountLimit(fwad("5000"));
-
-            //User tries to go above limit
-            await userStakeJoin.join(addr1.address, fwad("10000"));
-
-            await expect(userSV.stake(fwad("10000"), addr1.address)).to.be.revertedWith("StakingVault/Cannot be over staked token limit");
-        });
-    });
-
     describe("RewardJoin Push Function", function () {
         it("Rewards added by admin works properly", async function () {
             //Needs stake amount to put rewards in, otherwise reward per share is infinite
