@@ -267,16 +267,23 @@ contract StakingVault {
     function liquidationWithdraw(address liquidator, address liquidated, uint256 rad) external {
         require(approval(liquidator, msg.sender), "StakingVault/Owner must consent");
 
+        // console.log("locked:        %s", lockedStakeable[liquidated] * stakedMintRatio);
+        // console.log("owned:         %s", getOwnedDDPrime(liquidated) / RAY);
+        // console.log("rad:           %s", rad);
+        // console.log("check:         %s", lockedStakeable[liquidated] * stakedMintRatio - rad);
+
+
+
         //1. Check that liquidated does not own ddPrime they claim to
-        require(!checkDDPrimeOwnership(liquidated, (lockedStakeable[liquidated] * stakedMintRatio) - rad), "StakingVault/Account must not have ownership of tokens");
+        require(getOwnedDDPrime(liquidated) < lockedStakeable[liquidated] * stakedMintRatio - rad || getOwnedDDPrime(liquidated) == 0, "StakingVault/Account must not have ownership of tokens");
         uint256 liquidatedAmount         = rad / stakedMintRatio; // rad / ray = wad
+        uint256 prevStakedAmount         = lockedStakeable[liquidated]; //[wad]
 
         //2. Take ddPrime from liquidator's account to repay
         ddPrime[liquidator]             -= rad;
         totalDDPrime                    -= rad;
 
         //3. Settle staking token amounts
-        uint256 prevStakedAmount    = lockedStakeable[liquidated]; //[wad]
         lockedStakeable[liquidated]     -= liquidatedAmount;
         unlockedStakeable[liquidator]   += liquidatedAmount;
         stakedAmount                    -= liquidatedAmount;
@@ -295,13 +302,27 @@ contract StakingVault {
             uint256 prevRewardDebt = rewardDebt[from][RewardTokenList[i]]; // [wad]
             rewardDebt[from][RewardTokenList[i]] = _rmul(lockedStakeable[from], tokenData.accumulatedRewardPerStaked); // rmul(wad, ray) = wad;
 
+            // console.log("RT:  %s", bytes32ToString(RewardTokenList[i]));
+            // console.log("PREV AMOUNT: %s", previousAmount);
+            // console.log("PREV DEBT    %s", prevRewardDebt);
+
             //Pay out rewards
             if(previousAmount > 0){
                 uint256 payout = _rmul(previousAmount, tokenData.accumulatedRewardPerStaked) - prevRewardDebt; // rmul(wad,ray) - wad = wad;
+
+                // console.log("accumReward:                   %s", tokenData.accumulatedRewardPerStaked);
+                // console.log("PAYOUT:                        %s", payout);
+                // console.log("liquidatorWithdrawable:        %s", withdrawableRewards[to][RewardTokenList[i]]);
+
                 if(payout > 0){
                     withdrawableRewards[to][RewardTokenList[i]] += payout;
                 }
+
+                // console.log("liquidatorWithdrawableAfter:   %s", withdrawableRewards[to][RewardTokenList[i]]);
+                // console.log(to);
+                
             }
+            // console.log("\n");
         }
     }
 
@@ -315,12 +336,22 @@ contract StakingVault {
         // console.log("BALOF %s", ddPRIMELike(ddPRIMEContract).balanceOf(user) >= (rad / RAY));
         // console.log("SVBal %s\n", ddPrime[user] >= rad);
 
-        return LMCVLike(lmcv).lockedCollateral(user, ddPRIMEBytes) >= rad / RAY
-            || LMCVLike(lmcv).unlockedCollateral(user, ddPRIMEBytes) >= rad / RAY
-            || ddPRIMELike(ddPRIMEContract).balanceOf(user) >= rad / RAY
+        uint256 wad = rad / RAY;
+
+        return LMCVLike(lmcv).lockedCollateral(user, ddPRIMEBytes) >= wad
+            || LMCVLike(lmcv).unlockedCollateral(user, ddPRIMEBytes) >= wad
+            || ddPRIMELike(ddPRIMEContract).balanceOf(user) >= wad
             || ddPrime[user] >= rad
             ?  true
             :  false;
+    }
+
+
+    function getOwnedDDPrime(address user) public view returns (uint256 rad) {
+        return LMCVLike(lmcv).lockedCollateral(user, ddPRIMEBytes)      * RAY
+            +  LMCVLike(lmcv).unlockedCollateral(user, ddPRIMEBytes)    * RAY
+            +  ddPRIMELike(ddPRIMEContract).balanceOf(user)             * RAY
+            +  ddPrime[user];
     }
 
     //

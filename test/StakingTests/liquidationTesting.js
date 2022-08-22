@@ -223,7 +223,7 @@ describe("Testing Liquidation of ddPrime", function () {
             await setupLiquidatedUser();
         });
 
-        it("When user is liquidated and they HAVE NOT claimed their rewards before liquidation", async function () {
+        it("When user is fully liquidated and they HAVE claimed their rewards before liquidation", async function () {
             // Sanity checks
             expect(await lmcv.lockedCollateral(addr4.address, ddPrimeBytes)).to.equal(fwad("1000"));
             expect(await lmcv.lockedCollateral(addr4.address, blorpBytes)).to.equal(fwad("1000"));
@@ -265,7 +265,7 @@ describe("Testing Liquidation of ddPrime", function () {
             expect(await stakingVault.ddPrime(addr2.address)).to.equal(frad("1300"));
 
             //LiquidationWithdraws 1000 LP token
-            await userSV2.liquidationWithdraw(addr2.address, frad("1000"));
+            await userSV2.liquidationWithdraw(addr2.address, addr4.address, frad("1000"));
 
             expect(await stakingVault.ddPrime(addr2.address)).to.equal(frad("300"));
             expect(await stakingVault.lockedStakeable(addr2.address)).to.equal(fwad("300"));
@@ -274,7 +274,7 @@ describe("Testing Liquidation of ddPrime", function () {
             expect(await stakingVault.totalDDPrime()).to.equal(frad("3100"));
             expect(await stakingVault.stakedAmount()).to.equal(fwad("3100"));
 
-            //All users claim their rewards
+            // All users claim their rewards
             await userSV.stake(0, addr1.address);
             await userSV2.stake(0, addr2.address);
             await userSV3.stake(0, addr3.address);
@@ -291,8 +291,114 @@ describe("Testing Liquidation of ddPrime", function () {
             let userFooJoin1 = fooJoin.connect(addr1);
             let userFooJoin2 = fooJoin.connect(addr2);
             let userFooJoin3 = fooJoin.connect(addr3);
+            let userFooJoin4 = fooJoin.connect(addr4);
             await userFooJoin1.exit(addr1.address, "19512195121951219513");
             await userFooJoin2.exit(addr2.address, "7317073170731707317");
+            await userFooJoin3.exit(addr3.address, "48780487804878048780");
+            await userFooJoin4.exit(addr4.address, "24390243902439024390");
+
+            await fooJoin.join(fwad("50"));
+
+            //All users claim their rewards
+            await userSV.stake(fwad("-800"), addr1.address);
+            await userSV2.stake(fwad("-300"), addr2.address);
+            await userSV3.stake(fwad("-2000"), addr3.address);
+
+            expect(await stakingVault.withdrawableRewards(addr1.address, fooBytes)).to.equal("12903225806451612903");
+            expect(await stakingVault.withdrawableRewards(addr2.address, fooBytes)).to.equal("4838709677419354839");
+            expect(await stakingVault.withdrawableRewards(addr3.address, fooBytes)).to.equal("32258064516129032258");
+            expect(await stakingVault.rewardDebt(addr2.address, fooBytes)).to.equal("0");
+            expect(await stakingVault.rewardDebt(addr1.address, fooBytes)).to.equal("0");
+            expect(await stakingVault.rewardDebt(addr3.address, fooBytes)).to.equal("0");
+
+            userFooJoin1 = fooJoin.connect(addr1);
+            userFooJoin2 = fooJoin.connect(addr2);
+            userFooJoin3 = fooJoin.connect(addr3);
+            await userFooJoin1.exit(addr1.address, "12903225806451612903");
+            await userFooJoin2.exit(addr2.address, "4838709677419354839");
+            await userFooJoin3.exit(addr3.address, "32258064516129032258");
+
+            let rewardTokenData = await stakingVault.RewardData(fooBytes);
+            expect(rewardTokenData['totalRewardAmount']).to.equal(1);
+            expect(await stakingVault.stakedAmount()).to.equal("0");
+    
+        });
+
+        it("When user is fully liquidated and they HAVE NOT claimed their rewards before liquidation", async function () {
+            // Sanity checks
+            expect(await lmcv.lockedCollateral(addr4.address, ddPrimeBytes)).to.equal(fwad("1000"));
+            expect(await lmcv.lockedCollateral(addr4.address, blorpBytes)).to.equal(fwad("1000"));
+            expect(await ddPrime.balanceOf(addr4.address)).to.equal(0);
+            expect(await stakingVault.ddPrime(addr4.address)).to.equal(0);
+            expect(await stakingVault.checkDDPrimeOwnership(addr4.address, frad("1000"))).to.be.true;
+            expect(await lmcv.normalizedDebt(addr4.address)).to.equal(fwad("100"));
+
+            await fooJoin.join(fwad("100"));
+
+            expect(await stakingVault.withdrawableRewards(addr4.address, fooBytes)).to.equal("0");
+
+            // User 1 gets liquidated, ddPrime is transferred to user 2 (bypasses auction functionality)
+            await lmcv.liquidate([ddPrimeBytes], [fwad("1000")], fwad("100"), addr4.address, addr2.address, owner.address);
+
+            expect(await lmcv.lockedCollateral(addr4.address, ddPrimeBytes)).to.equal(0);
+            expect(await lmcv.lockedCollateral(addr4.address, blorpBytes)).to.equal(fwad("1000"));
+            expect(await ddPrime.balanceOf(addr4.address)).to.equal(0);
+            expect(await stakingVault.ddPrime(addr4.address)).to.equal(0);
+            expect(await stakingVault.checkDDPrimeOwnership(addr4.address, frad("1000"))).to.be.false;
+            expect(await lmcv.normalizedDebt(addr4.address)).to.equal(0);
+
+            //User 2 gets ddPrime
+            expect(await lmcv.unlockedCollateral(addr2.address, ddPrimeBytes)).to.equal(fwad("1000"));
+
+            console.log(addr4.address);
+            console.log(addr2.address);
+            
+            let user2ddPrimeCollatJoin = ddPrimeCollateralJoin.connect(addr2);
+            await user2ddPrimeCollatJoin.exit(addr2.address, fwad("1000"));
+
+            expect(await ddPrime.balanceOf(addr2.address)).to.equal(fwad("1000"));
+            expect(await stakingVault.ddPrime(addr2.address)).to.equal(frad("300"));
+            expect(await stakingVault.checkDDPrimeOwnership(addr2.address, frad("1000"))).to.be.true;
+
+            let user2ddPrimeJoin = ddPrimeJoin.connect(addr2);
+            await user2ddPrimeJoin.join(addr2.address, fwad("1000"));
+
+            expect(await ddPrime.balanceOf(addr2.address)).to.equal(0);
+            expect(await stakingVault.ddPrime(addr2.address)).to.equal(frad("1300"));
+
+            //LiquidationWithdraws 1000 LP token
+            await userSV2.liquidationWithdraw(addr2.address, addr4.address, frad("1000"));
+
+            expect(await stakingVault.ddPrime(addr2.address)).to.equal(frad("300"));
+            expect(await stakingVault.lockedStakeable(addr2.address)).to.equal(fwad("300"));
+            expect(await stakingVault.unlockedStakeable(addr2.address)).to.equal(fwad("1700"));
+
+            expect(await stakingVault.totalDDPrime()).to.equal(frad("3100"));
+            expect(await stakingVault.stakedAmount()).to.equal(fwad("3100"));
+
+
+            expect(await stakingVault.withdrawableRewards(addr2.address, fooBytes)).to.equal("24390243902439024390");
+
+            // All users claim their rewards
+            await userSV.stake(0, addr1.address);
+            // console.log("-----------------HERE-----------------")
+            await userSV2.stake(0, addr2.address);
+            await userSV3.stake(0, addr3.address);
+
+            expect(await stakingVault.withdrawableRewards(addr1.address, fooBytes)).to.equal("19512195121951219513");
+            expect(await stakingVault.rewardDebt(addr1.address, fooBytes)).to.equal("35347972248050926257"); 
+
+            expect(await stakingVault.withdrawableRewards(addr2.address, fooBytes)).to.equal("31707317073170731707");
+            expect(await stakingVault.rewardDebt(addr2.address, fooBytes)).to.equal("13255489593019097346"); 
+
+            expect(await stakingVault.withdrawableRewards(addr3.address, fooBytes)).to.equal("48780487804878048780");
+            expect(await stakingVault.rewardDebt(addr3.address, fooBytes)).to.equal("88369930620127315642"); 
+
+            let userFooJoin1 = fooJoin.connect(addr1);
+            let userFooJoin2 = fooJoin.connect(addr2);
+            let userFooJoin3 = fooJoin.connect(addr3);
+            await userFooJoin1.exit(addr1.address, "19512195121951219513");
+            await userFooJoin2.exit(addr2.address, "31707317073170731707");
             await userFooJoin3.exit(addr3.address, "48780487804878048780");
 
             await fooJoin.join(fwad("50"));
@@ -317,54 +423,8 @@ describe("Testing Liquidation of ddPrime", function () {
             await userFooJoin3.exit(addr3.address, "32258064516129032258");
 
             let rewardTokenData = await stakingVault.RewardData(fooBytes);
-            expect(rewardTokenData['totalRewardAmount']).to.equal(0);
+            expect(rewardTokenData['totalRewardAmount']).to.equal(1);
             expect(await stakingVault.stakedAmount()).to.equal("0");
-
-            
-
-            // if rewardPerStaked * staked != totalRewardAmount a reset happened
-    
-        });
-
-        it("When user is liquidated and they HAVE claimed their rewards before liquidation", async function () {
-            
-            // Sanity checks
-            expect(await lmcv.lockedCollateral(addr4.address, ddPrimeBytes)).to.equal(fwad("1000"));
-            expect(await lmcv.lockedCollateral(addr4.address, blorpBytes)).to.equal(fwad("1000"));
-            expect(await ddPrime.balanceOf(addr4.address)).to.equal(0);
-            expect(await stakingVault.ddPrime(addr4.address)).to.equal(0);
-            expect(await stakingVault.checkDDPrimeOwnership(addr4.address, frad("1000"))).to.be.true;
-            expect(await lmcv.normalizedDebt(addr4.address)).to.equal(fwad("100"));
-
-            await fooJoin.join(fwad("100"));
-
-            // User 1 gets liquidated, ddPrime is transferred to user 2 (bypasses auction functionality)
-            await lmcv.liquidate([ddPrimeBytes], [fwad("1000")], fwad("100"), addr4.address, addr2.address, owner.address);
-
-            expect(await lmcv.lockedCollateral(addr4.address, ddPrimeBytes)).to.equal(0);
-            expect(await lmcv.lockedCollateral(addr4.address, blorpBytes)).to.equal(fwad("1000"));
-            expect(await ddPrime.balanceOf(addr4.address)).to.equal(0);
-            expect(await stakingVault.ddPrime(addr4.address)).to.equal(0);
-            expect(await stakingVault.checkDDPrimeOwnership(addr4.address, frad("1000"))).to.be.false;
-            expect(await lmcv.normalizedDebt(addr4.address)).to.equal(0);
-
-            // //User 2 gets ddPrime
-            // expect(await lmcv.unlockedCollateral(addr2.address, ddPrimeBytes)).to.equal(fwad("1000"));
-            
-            // let user2ddPrimeCollatJoin = ddPrimeCollateralJoin.connect(addr2);
-            // await user2ddPrimeCollatJoin.exit(addr2.address, fwad("1000"));
-
-            // expect(await ddPrime.balanceOf(addr2.address)).to.equal(fwad("1000"));
-            // expect(await stakingVault.ddPrime(addr2.address)).to.equal(0);
-            // expect(await stakingVault.checkDDPrimeOwnership(addr2.address, frad("1000"))).to.be.true;
-
-            // await userSV2.liquidationWithdraw()
-
-
-
-            
-
-    
         });
     });
 
