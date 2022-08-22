@@ -112,7 +112,7 @@ contract AuctionHouse {
     // -- Maths ---
     //
     
-    uint256 constant WAD = 1.00E18;
+    uint256 constant WAD = 10 ** 18;
     uint256 constant RAY = 10 ** 27;
 
     function rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
