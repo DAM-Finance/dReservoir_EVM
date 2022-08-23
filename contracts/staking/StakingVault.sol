@@ -243,8 +243,8 @@ contract StakingVault {
     //
     function stake(int256 wad, address user) external stakeAlive { // [wad]
         require(approval(user, msg.sender), "StakingVault/Owner must consent");
-        require(checkDDPrimeOwnership(user, lockedStakeable[user] * stakedMintRatio), "StakingVault/Need to own ddPRIME to cover locked amount otherwise reset");
-        
+        require(getOwnedDDPrime(user) >= lockedStakeable[user] * stakedMintRatio, "StakingVault/Need to own ddPRIME to cover locked amount otherwise reset");
+
         //1. Add locked tokens
         uint256 prevStakedAmount    = lockedStakeable[user]; //[wad]
         unlockedStakeable[user]     = _sub(unlockedStakeable[user], wad);
@@ -325,27 +325,6 @@ contract StakingVault {
             // console.log("\n");
         }
     }
-
-    function checkDDPrimeOwnership(address user, uint256 rad) public view returns (bool ownership) {
-
-        // console.log("N-LMCV  %s", LMCVLike(lmcv).lockedCollateral(user, ddPRIMEBytes));
-        // console.log("N-BALOF %s", ddPRIMELike(ddPRIMEContract).balanceOf(user));
-        // console.log("N-SVBal %s", ddPrime[user]);
-
-        // console.log("LMCV  %s", LMCVLike(lmcv).lockedCollateral(user, ddPRIMEBytes) >= (rad / RAY));
-        // console.log("BALOF %s", ddPRIMELike(ddPRIMEContract).balanceOf(user) >= (rad / RAY));
-        // console.log("SVBal %s\n", ddPrime[user] >= rad);
-
-        uint256 wad = rad / RAY;
-
-        return LMCVLike(lmcv).lockedCollateral(user, ddPRIMEBytes) >= wad
-            || LMCVLike(lmcv).unlockedCollateral(user, ddPRIMEBytes) >= wad
-            || ddPRIMELike(ddPRIMEContract).balanceOf(user) >= wad
-            || ddPrime[user] >= rad
-            ?  true
-            :  false;
-    }
-
 
     function getOwnedDDPrime(address user) public view returns (uint256 rad) {
         return LMCVLike(lmcv).lockedCollateral(user, ddPRIMEBytes)      * RAY

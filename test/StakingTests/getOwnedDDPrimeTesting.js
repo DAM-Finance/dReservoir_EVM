@@ -166,36 +166,36 @@ describe("Testing checkDDPrimeOwnership", function () {
 
         await userLMCV.loan([ddPrimeBytes], [fwad("1000")], "0", addr1.address);
 
-        expect(await stakingVault.checkDDPrimeOwnership(addr1.address, frad("1000"))).to.be.true;
+        expect(await stakingVault.getOwnedDDPrime(addr1.address)).to.equal(frad("1000"))
     });
 
     it("Stake function should work properly when ddPrime is in wallet of user", async function () {
-         //Set up LMCV
-         let userLMCV = lmcv.connect(addr1);
-         await userLMCV.loan([blorpBytes], [fwad("1000")], fwad("100"), addr1.address);
- 
-         //Stake with LP tokens
-         await userStakeJoin.join(addr1.address, fwad("1000"));
-         await userSV.stake(fwad("1000"), addr1.address);
- 
-         expect(await stakingVault.ddPrime(addr1.address)).to.equal(frad("1000"));
-         expect(await stakingVault.lockedStakeable(addr1.address)).to.equal(fwad("1000"));
- 
-         //Have to approve ddPrime to exit 
-         await userSV.approve(ddPrimeJoin.address);
- 
-         let userDDPrimeJoin = ddPrimeJoin.connect(addr1);
-         await userDDPrimeJoin.exit(addr1.address, fwad("1000"));
- 
-         expect(await ddPrime.balanceOf(addr1.address)).to.equal(fwad("1000"));
- 
-         //Set up ddPrime in LMCV
- 
-         let userDDPRIME = ddPrime.connect(addr1);
-         await userDDPRIME.approve(ddPrimeCollateralJoin.address, MAX_INT);
- 
-         expect(await ddPrime.balanceOf(addr1.address)).to.equal(fwad("1000"));
-         expect(await stakingVault.checkDDPrimeOwnership(addr1.address, frad("1000"))).to.be.true;
+        //Set up LMCV
+        let userLMCV = lmcv.connect(addr1);
+        await userLMCV.loan([blorpBytes], [fwad("1000")], fwad("100"), addr1.address);
+
+        //Stake with LP tokens
+        await userStakeJoin.join(addr1.address, fwad("1000"));
+        await userSV.stake(fwad("1000"), addr1.address);
+
+        expect(await stakingVault.ddPrime(addr1.address)).to.equal(frad("1000"));
+        expect(await stakingVault.lockedStakeable(addr1.address)).to.equal(fwad("1000"));
+
+        //Have to approve ddPrime to exit 
+        await userSV.approve(ddPrimeJoin.address);
+
+        let userDDPrimeJoin = ddPrimeJoin.connect(addr1);
+        await userDDPrimeJoin.exit(addr1.address, fwad("1000"));
+
+        expect(await ddPrime.balanceOf(addr1.address)).to.equal(fwad("1000"));
+
+        //Set up ddPrime in LMCV
+
+        let userDDPRIME = ddPrime.connect(addr1);
+        await userDDPRIME.approve(ddPrimeCollateralJoin.address, MAX_INT);
+
+        expect(await ddPrime.balanceOf(addr1.address)).to.equal(fwad("1000"));
+        expect(await stakingVault.getOwnedDDPrime(addr1.address)).to.equal(frad("1000"));
     });
 
     it("Stake function should not work when none of conditions are true", async function () {
@@ -224,6 +224,6 @@ describe("Testing checkDDPrimeOwnership", function () {
 
         expect(await ddPrime.balanceOf(addr1.address)).to.equal(fwad("1000"));
         await userDDPRIME.transfer(addr2.address, fwad("1000"));
-        expect(await stakingVault.checkDDPrimeOwnership(addr1.address, frad("1000"))).to.be.false;
+        expect(await stakingVault.getOwnedDDPrime(addr1.address)).to.equal("0");
     });
 });
