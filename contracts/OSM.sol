@@ -142,14 +142,14 @@ contract OSM {
     /**
      * Returns the current value. This function should normally be used by the LMCV.
      */
-    function peek() external view toll returns (uint256,bool) {
+    function peek() external view toll returns (uint256, bool) {
         return (cur.val, cur.has == 1);
     }
 
     /**
      * Returns the next value. Don't normally need to use this.
      */
-    function peep() external view toll returns (uint256,bool) {
+    function peep() external view toll returns (uint256, bool) {
         return (nxt.val, nxt.has == 1);
     }
 

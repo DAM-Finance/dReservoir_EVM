@@ -16,11 +16,11 @@
 pragma solidity ^0.8.7;
 
 interface LMCVLike {
-    function updateSpotPrice(bytes32, uint) external;
+    function updateSpotPrice(bytes32, uint256) external;
 }
 
 interface OSMLike {
-    function peek() external returns (bytes32, bool);
+    function peek() external returns (uint256, bool);
 }
 
 contract PriceUpdater {
@@ -51,8 +51,8 @@ contract PriceUpdater {
     //
 
     event PriceUpdate(
-      bytes32 collateral,
-      uint256 price              // [ray]
+        bytes32 collateral,
+        uint256 price              // [ray]
     );
 
     // 
@@ -104,8 +104,8 @@ contract PriceUpdater {
      * Grabs the next spot price from the OSM.
      */
     function updatePrice(bytes32 collateral) external {
-        (bytes32 val, bool has) = osms[collateral].peek();
-        uint256 spot = has ? mul(uint(val), 10 ** 9) : 0;
+        (uint256 val, bool has) = osms[collateral].peek();
+        uint256 spot = has ? val : 0;
         lmcv.updateSpotPrice(collateral, spot);
         emit PriceUpdate(collateral, spot);
     }

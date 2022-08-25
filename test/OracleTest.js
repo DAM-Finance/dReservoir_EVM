@@ -72,6 +72,7 @@ const { BigNumber } = require("ethers");
         lmcvProxyFactory        = await ethers.getContractFactory("LMCVProxy");
         oracleStubFactory       = await ethers.getContractFactory("OracleStub");
         osmFactory              = await ethers.getContractFactory("OSM");
+        priceUpdaterFactory     = await ethers.getContractFactory("PriceUpdater");
     });
 
     beforeEach(async function () {
@@ -260,6 +261,55 @@ const { BigNumber } = require("ethers");
             await userOneOSM.poke();
         });
 
+    });
+
+    describe("Price updater testing", function () {
+
+        beforeEach(async function () {
+            // Create an oracle.
+            oracleStub = await oracleStubFactory.deploy("DOTUSD");
+
+            // Create the OSM pointing to the Oracle stub.
+            osm = await osmFactory.deploy(oracleStub.address);
+
+            // It's a DOT oracle.
+            expect(await oracleStub.what()).to.equal("DOTUSD");
+
+            // Permission a user to call peek and peep and get a handle to the contract.
+            await osm.kiss(userOne.address);
+            userOneOSM = osm.connect(userOne);
+
+            priceUpdater = await priceUpdaterFactory.deploy(lmcv.address);
+
+            // Permission the price updater to call peek on the OSM.
+            await osm.kiss(priceUpdater.address);
+
+            // Permission the PriceUpdater to update collateral spot prices.
+            await lmcv.administrate(priceUpdater.address, 1);
+        });
+
+        it("Can update address for OSM, poke it and receive an updated collateral price", async function () {
+            // Update the oracle address for foo collateral.
+            await priceUpdater.updateSource(fooBytes, osm.address);
+            let userOnePriceUpdater = priceUpdater.connect(userOne);
+
+            // Generate a new value in the Oracle, fast forward and try again.
+            // This is so there is a current value in the OSM.
+            await oracleStub.poke();
+            await userOneOSM.poke();
+            await network.provider.send("evm_increaseTime", [3600]);
+            await userOneOSM.poke();
+
+            // Get the oracle value so we can compare with the
+            var [val, _] = await userOneOSM.peek();
+
+            // User one now calls update price on the price updater.
+            await userOnePriceUpdater.updatePrice(fooBytes);
+
+            // Check the price updated.
+            let collateralType = await lmcv.CollateralData(fooBytes);
+            expect(collateralType['spotPrice']).to.equal(val);
+        });
     });
 
 });
