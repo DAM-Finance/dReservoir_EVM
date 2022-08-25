@@ -59,7 +59,7 @@ contract PriceUpdater {
     // --- Init ---
     //
 
-    constructor(address vat_) public {
+    constructor(address vat_) {
         wards[msg.sender] = 1;
         lmcv = LMCVLike(vat_);
         live = 1;

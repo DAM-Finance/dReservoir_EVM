@@ -2,30 +2,29 @@
 
 pragma solidity >=0.8.7;
 
-// TODO: Should implement the right interface.
-
-import "hardhat/console.sol";
-
 contract OracleStub {
-    uint256 public value = 0;
-    uint256 public random = 0;
+    string  wut;
+    uint256 val;
+    bool    has = false;
+
     uint256 private nonce = 0;
+    uint256 private constant RAY = 10 ** 27;
 
-    uint256 constant RAY = 10 ** 27;
-
-    function nextValue() external {
-        value++;
+    constructor (string memory _wut) {
+        wut = _wut;
     }
 
-    function rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        z = x * y;
-        require(y == 0 || z / y == x);
-        z = z / RAY;
+    function poke() external {
+        uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, ++nonce))) % 1000;
+        val = randomNumber * RAY / 1000;
+        has = true;
     }
 
-    function nextRandom() external {
-        uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, nonce))) % 1000;
-        random = randomNumber * RAY / 100;
-        nonce++;
+    function peek() external view returns (uint256, bool) {
+        return (val, has);
+    }
+
+    function what() external view returns (string memory) {
+        return wut;
     }
 }

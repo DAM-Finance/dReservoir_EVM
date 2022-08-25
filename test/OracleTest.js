@@ -1,4 +1,5 @@
 const {expect} = require("chai");
+const { BigNumber } = require("ethers");
  const {ethers, network} = require("hardhat");
 
  //Format as wad, ray, rad
@@ -21,7 +22,7 @@ const {expect} = require("chai");
  let tokenFactory, foo, bar, baz;
  let collateralJoinFactory, fooJoin, barJoin, bazJoin;
  let priceUpdaterFactory, priceUpdater;
- let osmFactory, osm;
+ let osmFactory, osm, userOneOSM;
  let oracleStubFactory, oracleStub;
 
  // LMCV settings.
@@ -60,7 +61,7 @@ const {expect} = require("chai");
      expect(ethers.utils.formatUnits(await fun(), units)).to.be.equal(val);
  }
 
- describe("AuctionHouse testing", function () {
+ describe("Oracle testing", function () {
 
     before(async function () {
         dPrimeFactory           = await ethers.getContractFactory("dPrime");
@@ -70,6 +71,7 @@ const {expect} = require("chai");
         collateralJoinFactory   = await ethers.getContractFactory("CollateralJoin");
         lmcvProxyFactory        = await ethers.getContractFactory("LMCVProxy");
         oracleStubFactory       = await ethers.getContractFactory("OracleStub");
+        osmFactory              = await ethers.getContractFactory("OSM");
     });
 
     beforeEach(async function () {
@@ -89,7 +91,6 @@ const {expect} = require("chai");
         fooJoin         = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, fooBytes, foo.address);
         barJoin         = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, barBytes, bar.address);
         bazJoin         = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, bazBytes, baz.address);
-        oracleStub      = await oracleStubFactory.deploy();
 
         // Allow the collateral join contracts to call functions on LMCV.
         await lmcv.administrate(fooJoin.address, 1);
@@ -121,21 +122,142 @@ const {expect} = require("chai");
 
     describe("OracleStub testing", function () {
 
-        it("Can increment and get value", async function () {
-            await oracleStub.nextValue();
-            await oracleStub.nextValue();
-            expect(await oracleStub.value()).to.equal(2);
+        it("Can peek value", async function () {
+            // Create an oracle.
+            oracleStub = await oracleStubFactory.deploy("DOTUSD");
 
-            await oracleStub.nextRandom();
-            console.log(await oracleStub.random());
-            await oracleStub.nextRandom();
-            console.log(await oracleStub.random());
-            await oracleStub.nextRandom();
-            console.log(await oracleStub.random());
-            await oracleStub.nextRandom();
-            console.log(await oracleStub.random());
-            await oracleStub.nextRandom();
-            console.log(await oracleStub.random());
+            // It's a DOT oracle.
+            expect(await oracleStub.what()).to.equal("DOTUSD");
+
+            // Value should be not set initially.
+            let [val, set] = await oracleStub.peek();
+            expect(val).to.equal(0);
+            expect(set).to.equal(false);
+
+            // After a poke the value should be set. This simulates some off-shain entity updating the oracle with a new price.
+            await oracleStub.poke();
+            let [valTwo, setTwo] = await oracleStub.peek();
+            expect(valTwo.gt(BigNumber.from(fray("0")))).equals(true);
+            expect(valTwo.lte(BigNumber.from(fray("1")))).equals(true); 
+            expect(setTwo).to.equal(true);      
+        });
+
+    });
+    
+    describe("OSM testing", function () {
+
+        beforeEach(async function () {
+            // Create an oracle.
+            oracleStub = await oracleStubFactory.deploy("DOTUSD");
+
+            // Create the OSM pointing to the Oracle stub.
+            osm = await osmFactory.deploy(oracleStub.address);
+
+            // It's a DOT oracle.
+            expect(await oracleStub.what()).to.equal("DOTUSD");
+
+            // Permission a user to call peek and peep and get a handle to the contract.
+            await osm.kiss(userOne.address);
+            userOneOSM = osm.connect(userOne);
+        });
+
+        it("Poke twice. cur value should initially be nil until an hour passes and we poke again", async function () {
+            // Update the oracle price.
+            await oracleStub.poke();
+            var [oracleValue, _] = await oracleStub.peek();
+
+            // Anyone can poke the contract but user one does it for now.
+            await userOneOSM.poke();
+
+            // Get the latest price. It should still be zero.
+            // expect(await userOneOSM.peek()).to.equal(0);
+            var [val, has] = await userOneOSM.peek();
+            expect(val).to.equal(0);
+            expect(has).to.equal(false);
+
+            var [val, has] = await userOneOSM.peep();
+            expect(val).to.equal(oracleValue);
+            expect(has).to.equal(true);
+
+            // Fast forward one hour.
+            await network.provider.send("evm_increaseTime", [60 * 60]);
+
+            // Update the oracle price.
+            await oracleStub.poke();
+
+            // Get the price from the oracle again.
+            await userOneOSM.poke();
+
+            // Get the latest price. It should still be zero.
+            var [val, has] = await userOneOSM.peek();
+            expect(val).to.equal(oracleValue);
+            expect(has).to.equal(true);
+
+            // Re-assign oracleValue to the new value from the oracle.
+            var [oracleValue, _] = await oracleStub.peek();
+
+            var [val, has] = await userOneOSM.peep();
+            expect(val).to.equal(oracleValue);
+            expect(has).to.equal(true);
+        });
+
+        it("Poke only succeeds if the peek value is good.", async function () {
+            // All of these are no-ops. Thte second call to poke should revert but 
+            // doesn't as the initial oracle value is a zero.
+            await userOneOSM.poke();
+            await userOneOSM.poke();
+        });
+
+        it("Can't poke osm twice within a one hour period.", async function () {
+            await oracleStub.poke();
+            await userOneOSM.poke();
+            await expect(userOneOSM.poke()).to.be.revertedWith("OSM/Called poke too soon");
+        });
+
+        it("Can't poke stopped OSM.", async function () {
+            await oracleStub.poke();
+            await userOneOSM.stop();
+            await expect(userOneOSM.poke()).to.be.revertedWith("OSM/OSM is stopped");
+        });
+
+        it("Can restart stopped OSM.", async function () {
+            // Stopping means we can't poke.
+            await oracleStub.poke();
+            await userOneOSM.stop();
+            await expect(userOneOSM.poke()).to.be.revertedWith("OSM/OSM is stopped");
+
+            // Restart and poke.
+            await userOneOSM.start();
+            await userOneOSM.poke();
+            
+            // Check value is good.
+            var [oracleValue, _] = await oracleStub.peek();
+            var [val, has] = await userOneOSM.peep();
+            expect(val).to.equal(oracleValue);
+            expect(has).to.equal(true);
+        });
+
+        it("Poke can be called on the hour, which doesn't necessarily mean and hour wait before the next call.", async function () {
+            await oracleStub.poke();
+            await userOneOSM.poke();
+
+            // As soon as we call poke, zzz is set to the start of the last hour.
+            let now = (await ethers.provider.getBlock("latest")).timestamp
+            expect(await userOneOSM.zzz()).is.equal(now - (now % 3600));
+            
+            // Meaning that we can call poke again in 3600 - (now % 3600).
+            let timeToNextCall = 3600 - (now % 3600);
+
+            // This will fail as it's too soon.
+            await expect(userOneOSM.poke()).to.be.revertedWith("OSM/Called poke too soon");
+
+            // Fast forward time 100 seconds before the next hour. It will still fail.
+            await network.provider.send("evm_increaseTime", [timeToNextCall - 100]);
+            await expect(userOneOSM.poke()).to.be.revertedWith("OSM/Called poke too soon");
+
+            // Now, it's time.
+            await network.provider.send("evm_increaseTime", [100]);
+            await userOneOSM.poke();
         });
 
     });

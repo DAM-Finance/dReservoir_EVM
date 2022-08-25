@@ -17,10 +17,10 @@
 
 pragma solidity >=0.8.7;
 
-// TODO: Include DSValue interface or something similar. Common interface which all oralces and medianizers implement.
+import "hardhat/console.sol";
 
 interface OracleLike {
-    function getPrice() external returns (uint256, bool);
+    function peek() external returns (uint256, bool);
 }
 
 contract OSM {
@@ -39,123 +39,140 @@ contract OSM {
     //
 
     address     public      oracleAddress;
-    uint16      constant    ONE_HOUR        = uint16(3600);
-    uint16      public      hop             = ONE_HOUR;
-    uint64      public      zzz;
+    uint256     constant    ONE_HOUR        = 3600;
+    uint256     public      pokeTimeout     = ONE_HOUR;
+    uint256     public      zzz;
 
-    struct Feed {
-        uint128 val;
-        uint128 has;
+    struct Data {
+        uint256 val;
+        uint256 has;
     }
 
-    Feed cur;
-    Feed nxt;
+    Data cur;
+    Data nxt;
 
     //
     // --- Events ---
     //
 
-    event LogValue(bytes32 val);
+    event LogValue(uint256 val);
 
-    constructor (address src_) public {
+    constructor (address _oracleAddress) {
         wards[msg.sender] = 1;
-        oracleAddress = src_;
+        oracleAddress = _oracleAddress;
     }
 
     //
     // --- Admin ---
     // 
 
-    // Whitelisted contracts, set by an auth
+    /**
+     * Only whitelisted contracts, set by an auth, can call peek, peep and read.
+     */
     mapping (address => uint256) public bud;
-
     modifier toll { require(bud[msg.sender] == 1, "OSM/contract-not-whitelisted"); _; }
-
     function kiss(address a) external auth {
         require(a != address(0), "OSM/no-contract-0");
         bud[a] = 1;
     }
-
     function diss(address a) external auth {
         bud[a] = 0;
     }
 
-    function kiss(address[] calldata a) external auth {
-        for(uint i = 0; i < a.length; i++) {
-            require(a[i] != address(0), "OSM/no-contract-0");
-            bud[a[i]] = 1;
-        }
-    }
-
-    function diss(address[] calldata a) external auth {
-        for(uint i = 0; i < a.length; i++) {
-            bud[a[i]] = 0;
-        }
-    }
-
+    /** 
+     * For starting and stopping the OSM in the case of an oracle attack.
+    */ 
     uint256 public stopped;
-    modifier stoppable { require(stopped == 0, "OSM/is-stopped"); _; }
+    modifier stoppable { require(stopped == 0, "OSM/OSM is stopped"); _; }
+    function stop() external auth { stopped = 1; }
+    function start() external auth { stopped = 0; }
 
-    function stop() external auth {
-        stopped = 1;
+    /**
+     * Updates the address where the price oracle exists.
+     */
+    function changeOracleAddress(address _oracleAddress) external auth {
+        oracleAddress = _oracleAddress;
     }
 
-    function start() external auth {
-        stopped = 0;
-    }
-
-    function changeOracleAddress(address src_) external auth {
-        oracleAddress = src_;
+    /**
+     * Updates the delay before the next time poke can be called.
+     */
+    function changePokeTimeout(uint256 _pokeTimeout) external auth {
+        require(_pokeTimeout > 0, "OSM/ts-is-zero");
+        pokeTimeout = _pokeTimeout;
     }
 
     //
     // --- User functions ---
     //
 
-    function era() internal view returns (uint) {
-        return block.timestamp;
-    }
-
-    function prev(uint ts) internal view returns (uint64) {
-        require(hop != 0, "OSM/hop-is-zero");
-        return uint64(ts - (ts % hop));
-    }
-
-    function step(uint16 ts) external auth {
-        require(ts > 0, "OSM/ts-is-zero");
-        hop = ts;
-    }
-
+    /**
+     * Sets all prices to zero. Used in the case of an oracle attack. Renders poke() a no-op.
+     * We can recover by starting the oracle and poking it to get the next price.
+     */
     function void() external auth {
-        cur = nxt = Feed(0, 0);
+        cur = nxt = Data(0, 0);
         stopped = 1;
     }
 
+    /**
+     * Determines if the current block timestamp is greater than zzz plus the pokeTimeout.
+     */
     function pass() public view returns (bool ok) {
-        return era() >= zzz + hop;
+        return block.timestamp >= zzz + pokeTimeout;
     }
 
+    /**
+     * Sets the current price to the next price and grabs a new next price from the 
+     * specified oracle. 
+     * 
+     * If the value from the oracle has not been set then this function is a no-op.
+     */
     function poke() external stoppable {
-        require(pass(), "OSM/not-passed");
-        (uint256 wut, bool ok) = OracleLike(oracleAddress).getPrice();
+        require(pass(), "OSM/Called poke too soon");
+        (uint256 wut, bool ok) = OracleLike(oracleAddress).peek();
         if (ok) {
             cur = nxt;
-            nxt = Feed(uint128(uint(wut)), 1);
-            zzz = prev(era());
-            emit LogValue(bytes32(uint(cur.val)));
+            nxt = Data(wut, 1);
+            zzz = prev(block.timestamp);
+            emit LogValue(cur.val);
         }
     }
 
-    function peek() external view toll returns (bytes32,bool) {
-        return (bytes32(uint(cur.val)), cur.has == 1);
+    /**
+     * Returns the current value. This function should normally be used by the LMCV.
+     */
+    function peek() external view toll returns (uint256,bool) {
+        return (cur.val, cur.has == 1);
     }
 
-    function peep() external view toll returns (bytes32,bool) {
-        return (bytes32(uint(nxt.val)), nxt.has == 1);
+    /**
+     * Returns the next value. Don't normally need to use this.
+     */
+    function peep() external view toll returns (uint256,bool) {
+        return (nxt.val, nxt.has == 1);
     }
 
-    function read() external view toll returns (bytes32) {
+    function read() external view toll returns (uint256) {
         require(cur.has == 1, "OSM/no-current-value");
-        return (bytes32(uint(cur.val)));
+        return cur.val;
+    }
+
+    //
+    // --- Helpers ---
+    //
+
+    /**
+     * Rounds down a timestamp to the nearest hour. This means that poke intervals
+     * may not necessarily always be one hour but it means that poke can be called
+     * at the top of the hour, every hour. 
+     * 
+     * E.g. 
+     * If poke() was called at 1:10pm, it can next be called in 50 minutes, at 2pm.
+     * If poke() was called at 1:59pm, it can next be called in 1 minutes, at 2pm.
+     */
+    function prev(uint ts) internal view returns (uint256) {
+        require(pokeTimeout != 0, "OSM/hop-is-zero");
+        return ts - (ts % pokeTimeout);
     }
 }
