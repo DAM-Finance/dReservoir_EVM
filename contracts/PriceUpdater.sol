@@ -66,19 +66,6 @@ contract PriceUpdater {
     }
 
     //
-    // --- Math ---
-    //
-
-    uint constant ONE = 10 ** 27;
-
-    function mul(uint x, uint y) internal pure returns (uint z) {
-        require(y == 0 || (z = x * y) / y == x);
-    }
-    function rdiv(uint x, uint y) internal pure returns (uint z) {
-        z = mul(x, ONE) / y;
-    }
-
-    //
     // --- Administration ---
     //
 
@@ -101,7 +88,7 @@ contract PriceUpdater {
     //
 
     /**
-     * Grabs the next spot price from the OSM.
+     * Grabs the next spot price from the OSM and updates the LMCV.
      */
     function updatePrice(bytes32 collateral) external {
         (uint256 val, bool has) = osms[collateral].peek();
