@@ -300,7 +300,7 @@ const { BigNumber } = require("ethers");
             await network.provider.send("evm_increaseTime", [3600]);
             await userOneOSM.poke();
 
-            // Get the oracle value so we can compare with the
+            // Get the oracle value so we can compare with the value in the LMCV.
             var [val, _] = await userOneOSM.peek();
 
             // User one now calls update price on the price updater.

@@ -17,8 +17,6 @@
 
 pragma solidity >=0.8.7;
 
-import "hardhat/console.sol";
-
 interface OracleLike {
     function peek() external returns (uint256, bool);
 }
