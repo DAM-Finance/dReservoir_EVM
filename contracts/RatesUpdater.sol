@@ -22,19 +22,17 @@ contract RatesUpdater {
     // --- Data ---
     //
 
-    uint256     public stabilityRate;   // Stability rate as an APY.                        [ray]
+    uint256     public stabilityRate;   // Stability rate as a per second compounding rate.                        [ray]
     uint256     public rho;             // Time of last drip [unix epoch time]
     LMCVLike    public lmcv;            // LMCV contract
-    address     public vow;             // Debt Engine
-    uint256     public base;            // Global, per-second stability fee contribution    [ray]
 
     //
     // --- Init ---
     //
 
-    constructor(address vat_) {
+    constructor(address lmcvAddress) {
         wards[msg.sender]   = 1;
-        lmcv                = LMCVLike(vat_);
+        lmcv                = LMCVLike(lmcvAddress);
         stabilityRate       = ONE;
         rho                 = block.timestamp;
     }
@@ -86,7 +84,7 @@ contract RatesUpdater {
     // --- Administration ---
     //
 
-    function updateStabilityRate(uint256 _stabilityRate) external auth {
+    function changeStabilityRate(uint256 _stabilityRate) external auth {
         stabilityRate = _stabilityRate;
     }
 
@@ -94,10 +92,10 @@ contract RatesUpdater {
     // --- User functions ---
     //
 
-    function drip() external returns (uint rate) {
-        require(block.timestamp >= rho, "Jug/invalid-now");
+    function accrueInterest() external returns (uint256 rate) {
+        require(block.timestamp >= rho, "RatesUpdater/invalid block.timestamp");
         uint256 prev = lmcv.AccumulatedRate();
-        rate = _rmul(_rpow(_add(base, stabilityRate), block.timestamp - rho, ONE), prev);
+        rate = _rmul(_rpow(stabilityRate, block.timestamp - rho, ONE), prev);
         lmcv.updateRate(_diff(rate, prev));
         rho = block.timestamp;
     }
