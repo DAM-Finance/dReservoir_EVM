@@ -2,11 +2,23 @@
 
 pragma solidity 0.8.7;
 
+import "hardhat/console.sol";
+
 interface LMCVLike {
     function updateRate(int256) external;
     function AccumulatedRate() external returns (uint256);
 }
 
+/**
+ * RatesUpdates.sol - allows any interested party to accrue interest on any
+ * LMCV vaults. If the vault has a debt (ie. it has issued dPRIME), then interest
+ * will accrue, compounding on a per second basis, set by the `stabilityRate` 
+ * property of this contract. Note: if a user issues dPRIME, then redeems the 
+ * full amount and `aaccrueInterest` in not called in between the issuance and
+ * redemption, then no interest would have accrue on the debt in respect of the 
+ * issued dPRIME. In other words, interest only accrues is someone calls 
+ * `accrueInterest`.
+ */
 contract RatesUpdater {
     
     //
@@ -22,25 +34,32 @@ contract RatesUpdater {
     // --- Data ---
     //
 
-    uint256     public stabilityRate;   // Stability rate as a per second compounding rate.                        [ray]
-    uint256     public rho;             // Time of last drip [unix epoch time]
+    uint256     public stabilityRate;   // [ray] Stability rate as a per second compounding rate.
+    uint256     public lastAccrual;     // [unix epoch time] Time of last accrual 
     LMCVLike    public lmcv;            // LMCV contract
 
     //
     // --- Init ---
     //
 
+    /**
+     * Rate defaults to one, meaning there is no interest by default.
+     * Rate must be set greater than one for iterest to accrue.
+     */
     constructor(address lmcvAddress) {
         wards[msg.sender]   = 1;
         lmcv                = LMCVLike(lmcvAddress);
         stabilityRate       = ONE;
-        rho                 = block.timestamp;
+        lastAccrual         = block.timestamp;
     }
 
     //
     // --- Math ---
     //
 
+    /**
+     * Calculates powers, taken direcly from MakerDAO jug.sol.
+     */
     function _rpow(uint x, uint n, uint b) internal pure returns (uint z) {
       assembly {
         switch x case 0 {switch n case 0 {z := b} default {z := 0}}
@@ -66,10 +85,6 @@ contract RatesUpdater {
     }
 
     uint256 constant ONE = 10 ** 27;
-    function _add(uint x, uint y) internal pure returns (uint z) {
-        z = x + y;
-        require(z >= x);
-    }
     function _diff(uint x, uint y) internal pure returns (int z) {
         z = int(x) - int(y);
         require(int(x) >= 0 && int(y) >= 0);
@@ -92,11 +107,14 @@ contract RatesUpdater {
     // --- User functions ---
     //
 
+    /**
+     * Calculates the new accumualated rate and updates the LMCV. Can be called by anyone.
+     */
     function accrueInterest() external returns (uint256 rate) {
-        require(block.timestamp >= rho, "RatesUpdater/invalid block.timestamp");
+        require(block.timestamp >= lastAccrual, "RatesUpdater/invalid block.timestamp");
         uint256 prev = lmcv.AccumulatedRate();
-        rate = _rmul(_rpow(stabilityRate, block.timestamp - rho, ONE), prev);
+        rate = _rmul(_rpow(stabilityRate, block.timestamp - lastAccrual, ONE), prev);
         lmcv.updateRate(_diff(rate, prev));
-        rho = block.timestamp;
+        lastAccrual = block.timestamp;
     }
 }
