@@ -275,7 +275,7 @@ contract StakingVault {
 
 
         //1. Check that liquidated does not own ddPrime they claim to
-        require(getOwnedDDPrime(liquidated) < lockedStakeable[liquidated] * stakedMintRatio - rad || getOwnedDDPrime(liquidated) == 0, "StakingVault/Account must not have ownership of tokens");
+        require(getOwnedDDPrime(liquidated) <= lockedStakeable[liquidated] * stakedMintRatio - rad, "StakingVault/Account must not have ownership of tokens");
         uint256 liquidatedAmount         = rad / stakedMintRatio; // rad / ray = wad
         uint256 prevStakedAmount         = lockedStakeable[liquidated]; //[wad]
 
