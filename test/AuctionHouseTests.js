@@ -471,6 +471,39 @@ describe("AuctionHouse testing", function () {
         await expect(userTwoAuctionHouse.raise(1, frad("25.0"))).to.be.revertedWith("AuctionHouse/Highest bidder not set");
     });
 
+    it("Bid increase must be higher than minimumBidIncrease", async function () {
+        let userOneLMCV = lmcv.connect(userOne);
+        let userTwoLMCV = lmcv.connect(userTwo);
+        let userTwoLiquidator = liquidator.connect(userTwo);
+        let userTwoAuctionHouse = auctionHouse.connect(userTwo);
+
+        // Auction house must be given approval to move dPRIME from participant's account.
+        await userTwoLMCV.approve(auctionHouse.address);
+
+        // Generate some dPRIME for user two via inflation. This is OK for testing.
+        await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
+
+        // Set up liquidator.
+        await liquidator.setLotSize(fwad("1000"));
+        await liquidator.setLiquidationPenalty(fray("1.1"));
+
+        // Prices goes lower and user gets liquidated.
+        await userOneLMCV.loan([fooBytes], [fwad("50")], fwad("250"), userOne.address);
+        await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
+        await userTwoLiquidator.liquidate(userOne.address);
+
+        // Initial bid.
+        await userTwoAuctionHouse.raise(1, frad("100.0"));
+
+        // Fails as lower than min bid increase.
+        await expect(userTwoAuctionHouse.raise(1, frad("104.0"))).to.be.revertedWith("AuctionHouse/Insufficient increase");
+
+        // 105 should work.
+        await userTwoAuctionHouse.raise(1, frad("105.0"));
+        let auctionStruct = await auctionHouse.auctions(1);
+        expect(ethers.utils.formatUnits(auctionStruct["debtBid"], NumType.RAD)).to.be.equal("105.0");
+    });
+
     //
     // --- Auction end tests ---
     //

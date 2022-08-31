@@ -52,7 +52,7 @@ contract AuctionHouse {
 
     LMCVLike                        public immutable    lmcv;                           // LMCV.
     uint256                         public              live;                           // Active flag
-    uint256                         public              minimumBidIncrease  = 1.05E18;  // 5% minimum debt bid increase
+    uint256                         public              minimumBidIncrease  = 1.05E27;  // 5% minimum debt bid increase
     uint256                         public              minimumBidDecrease  = 0.95E27;  // 5% minimum collateral bid decrease
     uint256                         public              bidExpiry           = 3 hours;  // 3 hours bid duration         [seconds]
     uint256                         public              auctionExpiry       = 2 days;   // 2 days total auction length  [seconds]
@@ -179,7 +179,7 @@ contract AuctionHouse {
         // New bid must be higher than old bid!
         require(bid > auctions[id].debtBid, "AuctionHouse/Bid must be higher than current highest bid");
         // Bid must increase by the minimum amount or be the asking amount.
-        require(bid * WAD >= minimumBidIncrease * auctions[id].debtBid || bid == auctions[id].askingAmount, "AuctionHouse/Insufficient increase");
+        require(bid * RAY >= minimumBidIncrease * auctions[id].debtBid || bid == auctions[id].askingAmount, "AuctionHouse/Insufficient increase");
         // Bid must be greater than the minimum bid.
         require(bid >= auctions[id].minBid, "AuctionHouse/Bid lower than minimum bid");
         
