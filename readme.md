@@ -69,6 +69,21 @@ Contract specific documentation:
 * Saves us from having a separate join contract for Glimmer.
 * Fairly standard design: deposit/withdraw/transfer/etc.
 
+**[Liquidation.sol](contracts/dam/Liquidation.sol) - for kicking off the vault liquidation process**
+
+* Based upon the MakerDAO "Cat.sol"
+* Admins for the Liquidation contract can specify an auction lot size - this is the maxmimum amount of dPRIME which can be raised in a single auction
+* Note that many auctions can happen in parallel though
+* If the vault size is less than the lot size then the whole vault will be liquidated, the amount to liquidate is the total normalized debt multiplied by the accumulated stability rate
+* If the vault size is greater than the lot size then the amount to liquidate is the lot size divided by the stability rate and divided by the liquidation penalty, the number we end up with after these divisions is an amount of normalized debt, when multiplied by the accumualted stabiltiy rate and the liquidation penalty, gets us to a dPRIME amount which is equal to the lot size.
+* The liquidation penalty can be set by the contract admin and is used as a deterrant to stop users willfully liquidating their vaults to potentially buy back the collateral at a discount. The penalty also does what it says on the tin, it's a punishment for being liquidated. The proceeds of the liquidation penalty go to the protocol treasury and are most liqkely used to indemnify teh protocol in case of bad debt losses.
+* The Liquidation contract transfers the necessary collateral to its account when `liquidate` is called. The amount transferred is a multiple of the `debtHaircut` to the total normalized debt. I.e. if the whole vault is liquidated because it's smaller than the lot size then all of the collateral is confiscated. If the vault is larger than the lot size then the same percentage of collateral is confiscated as normalized debt liquidated.
+* The last thing this `liquidate` does is start the auction process.
+
+**[AuctionHouse.sol](contracts/dam/AuctionHouse.sol) - auctions off collateral for dPRIME which is then burnt to offset the protocol deficit**
+
+* TBC. We probably need a long section on how the auction process works with diagrams so it's easily understandable.
+
 ## Limitations / future features
 
 1. In V1 no interest is payable on dPRIME deposits.

@@ -71,7 +71,6 @@ describe("Testing LMCV", function () {
         await lmcv.editAcceptedCollateralType(USDCMockBytes, fwad("10000"), fwad("1"), fray("1"), false);
         await lmcv.updateSpotPrice(USDCMockBytes, fray("1"));
 
-
         //TOken setup
         tokenTwo = await regularTokenFactory.deploy("TST2");
         collatJoinTwo = await regularCollateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, mockToken2Bytes, tokenTwo.address);
