@@ -149,7 +149,7 @@ contract Liquidator {
     function setAuctionHouse(address addr) external auth {
         lmcv.disapprove(address(auctionHouse));
         auctionHouse = AuctionHouseLike(addr);
-        lmcv.approve(addr);  
+        lmcv.approve(addr);
     }
 
     //
@@ -157,7 +157,6 @@ contract Liquidator {
     //
 
     uint256 constant RAY = 10 ** 27;
-    uint256 constant WAD = 10 ** 18;
 
     function rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         z = x * y;

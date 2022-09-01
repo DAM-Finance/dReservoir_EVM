@@ -87,6 +87,8 @@ contract StakingVault {
     }
 
     constructor(bytes32 _ddPRIMEBytes, address _ddPRIMEContract, address _lmcv) {
+        require(_ddPRIMEContract != address(0), "StakingVault/dPrimeContract address cannot be zero");
+        require(_lmcv != address(0), "StakingVault/LMCV address cannot be zero");
         ddPRIMEBytes        = _ddPRIMEBytes;        // bytes32 of ddPRIME in LMCV for lookup in locked collateral list
         ddPRIMEContract     = _ddPRIMEContract;     // Address of ddPRIME for balance lookup
         lmcv                = _lmcv;
@@ -102,11 +104,11 @@ contract StakingVault {
         admins[admin] = authorization;
     }
 
-    function approve(address user) public {
+    function approve(address user) external {
         proxyApprovals[msg.sender][user] = 1;
     }
 
-    function disapprove(address user) public {
+    function disapprove(address user) external {
         proxyApprovals[msg.sender][user] = 0;
     }
 
