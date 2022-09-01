@@ -239,7 +239,7 @@ describe("Testing Liquidation of ddPrime", function () {
             expect(await stakingVault.rewardDebt(addr4.address, fooBytes)).to.equal("44184965310063657821");
 
             // User 1 gets liquidated, ddPrime is transferred to user 2 (bypasses auction functionality)
-            await lmcv.liquidate([ddPrimeBytes], [fwad("1000")], fwad("100"), addr4.address, addr2.address, owner.address);
+            await lmcv.seize([ddPrimeBytes], [fwad("1000")], fwad("100"), addr4.address, addr2.address, owner.address);
 
             expect(await lmcv.lockedCollateral(addr4.address, ddPrimeBytes)).to.equal(0);
             expect(await lmcv.lockedCollateral(addr4.address, blorpBytes)).to.equal(fwad("1000"));
@@ -338,7 +338,7 @@ describe("Testing Liquidation of ddPrime", function () {
             expect(await stakingVault.withdrawableRewards(addr4.address, fooBytes)).to.equal("0");
 
             // User 1 gets liquidated, ddPrime is transferred to user 2 (bypasses auction functionality)
-            await lmcv.liquidate([ddPrimeBytes], [fwad("1000")], fwad("100"), addr4.address, addr2.address, owner.address);
+            await lmcv.seize([ddPrimeBytes], [fwad("1000")], fwad("100"), addr4.address, addr2.address, owner.address);
 
             expect(await lmcv.lockedCollateral(addr4.address, ddPrimeBytes)).to.equal(0);
             expect(await lmcv.lockedCollateral(addr4.address, blorpBytes)).to.equal(fwad("1000"));
