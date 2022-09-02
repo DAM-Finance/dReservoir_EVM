@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-//Inspiration from mSpell and DAM's own LMCV
+// Inspiration from mSpell and DAM's own LMCV
 
 // - `wad`: fixed point decimal with 18 decimals (for basic quantities, e.g. balances)
 // - `ray`: fixed point decimal with 27 decimals (for precise quantites, e.g. ratios)
 // - `rad`: fixed point decimal with 45 decimals (result of integer multiplication with a `wad` and a `ray`)
 
 pragma solidity 0.8.7;
-
-import "hardhat/console.sol";
 
 interface LMCVLike {
     function lockedCollateral(address, bytes32) external view returns (uint256 amount);
@@ -87,6 +85,8 @@ contract StakingVault {
     }
 
     constructor(bytes32 _ddPRIMEBytes, address _ddPRIMEContract, address _lmcv) {
+        require(_ddPRIMEContract != address(0), "StakingVault/dPrimeContract address cannot be zero");
+        require(_lmcv != address(0), "StakingVault/LMCV address cannot be zero");
         ddPRIMEBytes        = _ddPRIMEBytes;        // bytes32 of ddPRIME in LMCV for lookup in locked collateral list
         ddPRIMEContract     = _ddPRIMEContract;     // Address of ddPRIME for balance lookup
         lmcv                = _lmcv;
@@ -102,11 +102,11 @@ contract StakingVault {
         admins[admin] = authorization;
     }
 
-    function approve(address user) public {
+    function approve(address user) external {
         proxyApprovals[msg.sender][user] = 1;
     }
 
-    function disapprove(address user) public {
+    function disapprove(address user) external {
         proxyApprovals[msg.sender][user] = 0;
     }
 

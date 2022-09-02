@@ -13,7 +13,7 @@ interface StakingVaultLike {
 }
 
 /*
- TODO: Description
+    Much like LMCV CollateralJoin except specific to staking tokens and StakingVault
 */
 contract StakeJoin {
     

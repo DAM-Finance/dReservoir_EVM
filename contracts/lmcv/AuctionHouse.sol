@@ -112,7 +112,6 @@ contract AuctionHouse {
     // -- Maths ---
     //
     
-    uint256 constant WAD = 10 ** 18;
     uint256 constant RAY = 10 ** 27;
 
     function rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
@@ -218,13 +217,6 @@ contract AuctionHouse {
         // New lot bids must be lower than the minimum decrease.
         require(rmul(collateralBid, RAY) <= rmul(minimumBidDecrease, auctions[id].collateralBid), "AuctionHouse/Insufficient decrease");
 
-        // The lowest bidder at this stage, if not the highest bidder in the first stage has to move the 
-        // amount of dPRIME decided in the first stage to the prior highest bidder.
-        if (msg.sender != auctions[id].currentWinner) {
-            lmcv.moveDPrime(msg.sender, auctions[id].currentWinner, auctions[id].debtBid);
-            auctions[id].currentWinner = msg.sender;
-        }
-
         // Return collateral to the user - difference between last collateralBid and current collateralBid.
         for(uint256 i = 0; i < auctions[id].lotList.length; i++) {
             uint256 portionToReturn = rmul(auctions[id].lotValues[i], (auctions[id].collateralBid - collateralBid)); 
@@ -233,6 +225,13 @@ contract AuctionHouse {
 
         auctions[id].collateralBid = collateralBid;
         auctions[id].bidExpiry = uint256(block.timestamp) + bidExpiry;
+
+        // The lowest bidder at this stage, if not the highest bidder in the first stage has to move the
+        // amount of dPRIME decided in the first stage to the prior highest bidder.
+        if (msg.sender != auctions[id].currentWinner) {
+            lmcv.moveDPrime(msg.sender, auctions[id].currentWinner, auctions[id].debtBid);
+            auctions[id].currentWinner = msg.sender;
+        }
     }
 
     /**

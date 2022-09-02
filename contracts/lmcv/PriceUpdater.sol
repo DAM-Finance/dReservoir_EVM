@@ -37,6 +37,8 @@ contract PriceUpdater {
         _;
     }
 
+
+
     //
     // --- Data ---
     //
@@ -77,10 +79,10 @@ contract PriceUpdater {
     }
 
     /**
-     * Stop the contract. TODO: Needs an "on" switch.
+     * Stop the contract.
      */
-    function cage() external auth {
-        live = 0;
+    function cage(uint256 _live) external auth {
+        live = _live;
     }
 
     //
@@ -91,6 +93,7 @@ contract PriceUpdater {
      * Grabs the next spot price from the OSM and updates the LMCV.
      */
     function updatePrice(bytes32 collateral) external {
+        require(live == 1, "PriceUpdater/not-live");
         (uint256 val, bool has) = osms[collateral].peek();
         uint256 spot = has ? val : 0;
         lmcv.updateSpotPrice(collateral, spot);
