@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-//Inspiration from mSpell and DAM's own LMCV
+// Inspiration from mSpell and DAM's own LMCV
 
 // - `wad`: fixed point decimal with 18 decimals (for basic quantities, e.g. balances)
 // - `ray`: fixed point decimal with 27 decimals (for precise quantites, e.g. ratios)
 // - `rad`: fixed point decimal with 45 decimals (result of integer multiplication with a `wad` and a `ray`)
 
 pragma solidity 0.8.7;
-
-import "hardhat/console.sol";
 
 interface LMCVLike {
     function lockedCollateral(address, bytes32) external view returns (uint256 amount);

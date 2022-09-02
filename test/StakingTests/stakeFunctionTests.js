@@ -57,13 +57,6 @@ describe("Stake Testing", function () {
         stakeJoinFactory            = await ethers.getContractFactory("StakeJoin");
     });
 
-    // ************************
-    // --------- TODO ---------
-    // ************************
-
-    //2. LIQUIDATIONWITHDRAW TESTING
-    //3. REQUIRE STATEMENT CHECKS
-
     beforeEach(async function () {
         [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners();
 
