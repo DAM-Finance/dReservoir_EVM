@@ -172,15 +172,8 @@ contract StakingVault {
     function pushRewards(bytes32 rewardToken, uint256 wad) external auth {
         require(stakedAmount != 0, "StakingVault/Staked amount must be greater than 0 to put rewards in");
         RewardTokenData storage tokenData = RewardData[rewardToken];
-
         tokenData.totalRewardAmount             += wad;
         tokenData.accumulatedRewardPerStaked    += wad * RAY / stakedAmount; // wad * RAY / wad = ray
-
-        // console.log("RT:  %s", bytes32ToString(rewardToken));
-        // console.log("TRA: %s", tokenData.totalRewardAmount);
-        // console.log("RPS: %s", tokenData.accumulatedRewardPerStaked);
-        // console.log("WAD: %s\n", wad);
-
         emit PushRewards(rewardToken, wad);
     }
 
@@ -226,12 +219,6 @@ contract StakingVault {
     
     function pullRewards(bytes32 rewardToken, address usr, uint256 wad) external auth {
         RewardTokenData storage tokenData = RewardData[rewardToken];
-
-        // console.log("RT:  %s", bytes32ToString(rewardToken));
-        // console.log("WR:  %s", withdrawableRewards[usr][rewardToken]);
-        // console.log("TRA: %s", tokenData.totalRewardAmount);
-        // console.log("WAD: %s\n", wad);
-
         withdrawableRewards[usr][rewardToken]   -= wad;
         tokenData.totalRewardAmount             -= wad;
         emit PullRewards(rewardToken, usr, wad);
@@ -243,7 +230,7 @@ contract StakingVault {
     //
     function stake(int256 wad, address user) external stakeAlive { // [wad]
         require(approval(user, msg.sender), "StakingVault/Owner must consent");
-        require(getOwnedDDPrime(user) >= lockedStakeable[user] * stakedMintRatio, "StakingVault/Need to own ddPRIME to cover locked amount otherwise reset");
+        require(getOwnedDDPrime(user) >= lockedStakeable[user] * stakedMintRatio, "StakingVault/Need to own ddPRIME to cover locked amount");
 
         //1. Add locked tokens
         uint256 prevStakedAmount    = lockedStakeable[user]; //[wad]
@@ -266,13 +253,6 @@ contract StakingVault {
     //This also implicitly forbids the transfer of your assets anywhere except LMCV and your own wallet
     function liquidationWithdraw(address liquidator, address liquidated, uint256 rad) external {
         require(approval(liquidator, msg.sender), "StakingVault/Owner must consent");
-
-        // console.log("locked:        %s", lockedStakeable[liquidated] * stakedMintRatio);
-        // console.log("owned:         %s", getOwnedDDPrime(liquidated) / RAY);
-        // console.log("rad:           %s", rad);
-        // console.log("check:         %s", lockedStakeable[liquidated] * stakedMintRatio - rad);
-
-
 
         //1. Check that liquidated does not own ddPrime they claim to
         require(getOwnedDDPrime(liquidated) <= lockedStakeable[liquidated] * stakedMintRatio - rad, "StakingVault/Account must not have ownership of tokens");
@@ -302,27 +282,14 @@ contract StakingVault {
             uint256 prevRewardDebt = rewardDebt[from][RewardTokenList[i]]; // [wad]
             rewardDebt[from][RewardTokenList[i]] = _rmul(lockedStakeable[from], tokenData.accumulatedRewardPerStaked); // rmul(wad, ray) = wad;
 
-            // console.log("RT:  %s", bytes32ToString(RewardTokenList[i]));
-            // console.log("PREV AMOUNT: %s", previousAmount);
-            // console.log("PREV DEBT    %s", prevRewardDebt);
-
             //Pay out rewards
             if(previousAmount > 0){
                 uint256 payout = _rmul(previousAmount, tokenData.accumulatedRewardPerStaked) - prevRewardDebt; // rmul(wad,ray) - wad = wad;
 
-                // console.log("accumReward:                   %s", tokenData.accumulatedRewardPerStaked);
-                // console.log("PAYOUT:                        %s", payout);
-                // console.log("liquidatorWithdrawable:        %s", withdrawableRewards[to][RewardTokenList[i]]);
-
                 if(payout > 0){
                     withdrawableRewards[to][RewardTokenList[i]] += payout;
                 }
-
-                // console.log("liquidatorWithdrawableAfter:   %s", withdrawableRewards[to][RewardTokenList[i]]);
-                // console.log(to);
-                
             }
-            // console.log("\n");
         }
     }
 
