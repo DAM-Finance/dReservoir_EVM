@@ -14,7 +14,8 @@ interface StakingVaultLike {
 }
 
 /*
- TODO: Description
+    Much like LMCV CollateralJoin, except the admin is probably the only person pushing rewards in
+    And there is no ability to remove them because that would break the StakingVault math
 */
 contract RewardJoin {
     
