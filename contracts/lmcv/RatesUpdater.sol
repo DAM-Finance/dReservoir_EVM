@@ -112,9 +112,10 @@ contract RatesUpdater {
      */
     function accrueInterest() external returns (uint256 rate) {
         require(block.timestamp >= lastAccrual, "RatesUpdater/invalid block.timestamp");
-        uint256 prev = lmcv.AccumulatedRate();
-        rate = _rmul(_rpow(stabilityRate, block.timestamp - lastAccrual, ONE), prev);
-        lmcv.updateRate(_diff(rate, prev));
+        uint256 prevAccrualTime = lastAccrual;
         lastAccrual = block.timestamp;
+        uint256 prev = lmcv.AccumulatedRate();
+        rate = _rmul(_rpow(stabilityRate, block.timestamp - prevAccrualTime, ONE), prev);
+        lmcv.updateRate(_diff(rate, prev));
     }
 }

@@ -56,6 +56,7 @@ contract OSM {
     event LogValue(uint256 val);
 
     constructor (address _oracleAddress) {
+        require(_oracleAddress != address(0), "OSM/Oracle address cannot be zero");
         wards[msg.sender] = 1;
         oracleAddress = _oracleAddress;
     }
