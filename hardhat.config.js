@@ -14,11 +14,11 @@ const {privateKey, privateKeyTwo} = require('./secrets.json');
       accounts: [privateKey, privateKeyTwo]
     },
 
-    // rinkeby: {
-    //   url: 'https://rpc.api.moonbase.moonbeam.network',
-    //   chainId: 1287,
-    //   accounts: [privateKey, privateKeyTwo]
-    // },
+    rinkeby: {
+      url: 'https://rinkeby.infura.io/v3/1d467071c6794169be35250bfb2a3bd5',
+      chainId: 4,
+      accounts: [privateKey, privateKeyTwo]
+    },
 
     testbnb: {
       url: 'https://data-seed-prebsc-1-s1.binance.org:8545/',
