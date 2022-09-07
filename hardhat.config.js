@@ -13,6 +13,18 @@ const {privateKey, privateKeyTwo} = require('./secrets.json');
       chainId: 1287,
       accounts: [privateKey, privateKeyTwo]
     },
+
+    // rinkeby: {
+    //   url: 'https://rpc.api.moonbase.moonbeam.network',
+    //   chainId: 1287,
+    //   accounts: [privateKey, privateKeyTwo]
+    // },
+
+    testbnb: {
+      url: 'https://data-seed-prebsc-1-s1.binance.org:8545/',
+      chainId: 97,
+      accounts: [privateKey, privateKeyTwo]
+    },
   },
   solidity: {
     version: "0.8.7",
