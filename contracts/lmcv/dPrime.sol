@@ -85,7 +85,7 @@ contract dPrime is OFTCore, IOFT {
 
     function _debitFrom(address _from, uint16, bytes memory, uint _amount) internal virtual override {
         address spender = _msgSender();
-        if (_from != spender) decreaseAllowance(_from, spender, _amount);
+        if (_from != spender) _decreaseAllowance(_from, spender, _amount);
         burn(_from, _amount);
     }
 
@@ -143,7 +143,8 @@ contract dPrime is OFTCore, IOFT {
         return true;
     }
 
-    function increaseAllowance(address owner, address spender, uint256 addedValue) public returns (bool) {
+    function increaseAllowance(address spender, uint256 addedValue) external returns (bool) {
+        
         uint256 newValue = allowance[msg.sender][spender] + addedValue;
         allowance[msg.sender][spender] = newValue;
 
@@ -152,15 +153,19 @@ contract dPrime is OFTCore, IOFT {
         return true;
     }
 
-    function decreaseAllowance(address owner, address spender, uint256 subtractedValue) public returns (bool) {
-        uint256 allowed = allowance[msg.sender][spender];
+    function decreaseAllowance(address spender, uint256 subtractedValue) external returns (bool) {
+        return _decreaseAllowance(msg.sender, spender, subtractedValue);
+    }
+
+    function _decreaseAllowance(address owner, address spender, uint256 subtractedValue) internal returns (bool) {
+        uint256 allowed = allowance[owner][spender];
         require(allowed >= subtractedValue, "dPrime/insufficient-allowance");
         unchecked{
             allowed = allowed - subtractedValue;
         }
-        allowance[msg.sender][spender] = allowed;
+        allowance[owner][spender] = allowed;
 
-        emit Approval(msg.sender, spender, allowed);
+        emit Approval(owner, spender, allowed);
 
         return true;
     }
