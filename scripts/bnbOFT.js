@@ -2,33 +2,14 @@ const { ethers } = require("hardhat");
 
 //Format as wad, ray, rad
 function fwad(wad) { return ethers.utils.parseEther(wad) }
-function fray(ray) { return ethers.utils.parseEther(ray).mul("1000000000") }
-function frad(rad) { return ethers.utils.parseEther(rad).mul("1000000000000000000000000000") }
-
-// Token types.
-let fooBytes = ethers.utils.formatBytes32String("FOO");
-let barBytes = ethers.utils.formatBytes32String("BAR");
-let bazBytes = ethers.utils.formatBytes32String("BAZ");
-
-// Accounts.
-let userOne, userTwo;
 
 // Contracts and contract factories.
 let dPrimeFactory, dPrime;
-
 let feeAmount;
-
 let lzEndpoint;
-
 
 async function main(){
     dPrimeFactory           = await ethers.getContractFactory("dPrime");
-    LMCVFactory             = await ethers.getContractFactory("LMCV");
-    dPrimeJoinFactory       = await ethers.getContractFactory("dPrimeJoin");
-    tokenFactory            = await ethers.getContractFactory("MockTokenTwo");
-    collateralJoinFactory   = await ethers.getContractFactory("CollateralJoin");
-    lmcvProxyFactory        = await ethers.getContractFactory("LMCVProxy");
-
     endpointFactory         = await ethers.getContractFactory("Endpoint");
 
     [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners();
@@ -48,20 +29,20 @@ async function attach(){
 
     const [deployer] = await ethers.getSigners();
 
-    dPrime = await dPrimeFactory.attach("0xFE0b8fc2247515374F4D261ae5DcAE95eb3D93d0");
+    dPrime = await dPrimeFactory.attach("0x00D8b21256d979ACB348c2022C8Bf9B37418D3Dc");
     lzEndpoint = await endpointFactory.attach("0x6Fcb97553D41516Cb228ac03FdC8B9a0a9df04A1");
 
     console.log("Attached: ", dPrime.address, "\n");
     
-    // feeAmount = await dPrime.estimateSendFee(
-    //     "10001", 
-    //     "0x57A80C11413d4014B223687E07C827e8175F20e4", 
-    //     fwad("10"),
-    //     false,
-    //     ethers.utils.randomBytes(0)
-    // );
+    feeAmount = await dPrime.estimateSendFee(
+        "10001", 
+        "0x57A80C11413d4014B223687E07C827e8175F20e4", 
+        fwad("10"),
+        false,
+        ethers.utils.randomBytes(0)
+    );
 
-    // console.log(feeAmount.nativeFee);
+    console.log(feeAmount.nativeFee);
 }
 
 async function mint(){
@@ -69,11 +50,15 @@ async function mint(){
 }
 
 async function setTrustedRemote(){
-    let result = await dPrime.setTrustedRemote("10001", "0xFE0b8fc2247515374F4D261ae5DcAE95eb3D93d0");
+    let result = await dPrime.setTrustedRemote("10001", "0x4eA2CaA1eb20A211c6d926287b6b39D0E002fCf6");
     console.log(result);
 }
 
-async function teleportDPRIME(){
+async function getSenders(){
+    console.log(await dPrime.senders(0));
+}
+
+async function teleport(){
     let resultNoAwait = await dPrime.sendFrom(
         "0x57A80C11413d4014B223687E07C827e8175F20e4",   //address _from, 
         "10001",                                        //uint16 _dstChainId, 
@@ -85,23 +70,13 @@ async function teleportDPRIME(){
         {value: feeAmount.nativeFee}
     );
     console.log(resultNoAwait);
-    console.log(await resultNoAwait.wait);
-}
-
-async function checkStoredPayload(){
-    let nonceResult = await lzEndpoint.outboundNonce("10001", "0xFE0b8fc2247515374F4D261ae5DcAE95eb3D93d0");
-    console.log(nonceResult);
-}
-
-async function checkTrusted(){
-    let trusted = await dPrime.trustedRemoteLookup("10001");
-    console.log(trusted);
 }
 
 
 main()
     .then(() => attach())
-    .then(() => checkStoredPayload())
+    .then(() => getSenders())
+    .then(() => teleport())
     .then(() => process.exit(0))
     .catch((error) => {
         console.error(error);

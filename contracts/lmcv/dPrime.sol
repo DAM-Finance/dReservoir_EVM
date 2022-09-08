@@ -74,7 +74,6 @@ contract dPrime is OFTCore, IOFT {
     }
 
     // --- LayerZero ---
-
     function supportsInterface(bytes4 interfaceId) public view virtual override(OFTCore, IERC165) returns (bool) {
         return interfaceId == type(IOFT).interfaceId || interfaceId == type(IERC20).interfaceId || super.supportsInterface(interfaceId);
     }
@@ -90,7 +89,7 @@ contract dPrime is OFTCore, IOFT {
     }
 
     function _creditTo(uint16, address _toAddress, uint _amount) internal virtual override {
-        mint(_toAddress, _amount);
+        _mint(_toAddress, _amount);
     }
 
     // --- ERC20 Mutations ---
@@ -171,7 +170,11 @@ contract dPrime is OFTCore, IOFT {
     }
 
     // --- Mint/Burn ---
-    function mint(address to, uint256 value) public auth {
+    function mint(address to, uint256 value) external auth {
+        _mint(to, value);
+    }
+
+    function _mint(address to, uint256 value) internal {
         require(to != address(0) && to != address(this), "dPrime/invalid-address");
         unchecked {
             balanceOf[to] = balanceOf[to] + value; // note: we don't need an overflow check here b/c balanceOf[to] <= totalSupply and there is an overflow check below
