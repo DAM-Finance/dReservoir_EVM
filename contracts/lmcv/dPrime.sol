@@ -17,6 +17,7 @@ contract dPrime is OFTCore, IOFT {
     string  public constant version  = "1";
     uint8   public constant decimals = 18;
     uint256 public totalSupply;
+    uint256 public live;
 
     mapping (address => uint256)                      public balanceOf;
     mapping (address => mapping (address => uint256)) public allowance;
@@ -39,6 +40,7 @@ contract dPrime is OFTCore, IOFT {
     }
 
     constructor(address _lzEndpoint) OFTCore(_lzEndpoint) {
+        live = 1;
         admins[msg.sender] = 1;
         emit Rely(msg.sender);
 
@@ -73,6 +75,10 @@ contract dPrime is OFTCore, IOFT {
         emit Deny(usr);
     }
 
+    function cage(uint256 _live) external auth {
+        live = _live;
+    }
+
     // --- LayerZero ---
     function supportsInterface(bytes4 interfaceId) public view virtual override(OFTCore, IERC165) returns (bool) {
         return interfaceId == type(IOFT).interfaceId || interfaceId == type(IERC20).interfaceId || super.supportsInterface(interfaceId);
@@ -83,12 +89,14 @@ contract dPrime is OFTCore, IOFT {
     }
 
     function _debitFrom(address _from, uint16, bytes memory, uint _amount) internal virtual override {
+        require(live == 1, "dPrimeLayerZeroEndpoint/not-live");
         address spender = _msgSender();
         if (_from != spender) _decreaseAllowance(_from, spender, _amount);
         burn(_from, _amount);
     }
 
     function _creditTo(uint16, address _toAddress, uint _amount) internal virtual override {
+        require(live == 1, "dPrimeLayerZeroEndpoint/not-live");
         _mint(_toAddress, _amount);
     }
 

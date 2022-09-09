@@ -57,7 +57,7 @@ describe("Testing Setup for functions", function () {
         [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
 
         dPrimeFactory = await ethers.getContractFactory("dPrime");
-        dPrime = await dPrimeFactory.deploy();
+        dPrime = await dPrimeFactory.deploy(ethers.constants.AddressZero);
 
         LMCVFactory = await ethers.getContractFactory("LMCV");
         lmcv = await LMCVFactory.deploy();

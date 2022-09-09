@@ -45,7 +45,7 @@ async function setupUser(user, amounts) {
 describe("Testing RewardJoins", function () {
 
     before(async function () {
-        ddPrimeFactory              = await ethers.getContractFactory("dPrime");
+        ddPrimeFactory              = await ethers.getContractFactory("ddPrime");
         LMCVFactory                 = await ethers.getContractFactory("LMCV");
         stakingVaultFactory         = await ethers.getContractFactory("StakingVault");
         ddPrimeJoinFactory          = await ethers.getContractFactory("ddPrimeJoin");
