@@ -28,7 +28,7 @@ async function attach(){
 
     const [deployer] = await ethers.getSigners();
 
-    dPrime = await dPrimeFactory.attach("0x4eA2CaA1eb20A211c6d926287b6b39D0E002fCf6");
+    dPrime = await dPrimeFactory.attach("0x75396167802c8719A85571c37240c3E16B2007c2");
     lzEndpoint = await endpointFactory.attach("0x79a63d6d8BBD5c6dfc774dA79bCcD948EAcb53FA");
 
     console.log("Attached: ", dPrime.address, "\n");
@@ -49,7 +49,7 @@ async function mint(){
 }
 
 async function setTrustedRemote(){
-    let result = await dPrime.setTrustedRemote("10002", "0x00D8b21256d979ACB348c2022C8Bf9B37418D3Dc");
+    let result = await dPrime.setTrustedRemote("10002", "0xf209894986d921b2868821E728eFa57145Fed3f7");
     console.log(result);
 }
 
@@ -69,8 +69,8 @@ async function getSenders(){
 
 main()
     .then(() => attach())
-    .then(() => getSenders())
-    // .then(() => setTrustedRemote())
+    .then(() => mint())
+    .then(() => setTrustedRemote())
     .then(() => process.exit(0))
     .catch((error) => {
         console.error(error);
