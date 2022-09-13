@@ -4,7 +4,11 @@
 
 pragma solidity 0.8.7;
 
-contract dPrime {
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "../L0/IOFT.sol";
+import "../L0/OFTCore.sol";
+
+contract dPrime is OFTCore, IOFT {
     mapping (address => uint256) public admins;
 
     // --- ERC20 Data ---
@@ -13,6 +17,7 @@ contract dPrime {
     string  public constant version  = "1";
     uint8   public constant decimals = 18;
     uint256 public totalSupply;
+    uint256 public live;
 
     mapping (address => uint256)                      public balanceOf;
     mapping (address => mapping (address => uint256)) public allowance;
@@ -34,7 +39,8 @@ contract dPrime {
         _;
     }
 
-    constructor() {
+    constructor(address _lzEndpoint) OFTCore(_lzEndpoint) {
+        live = 1;
         admins[msg.sender] = 1;
         emit Rely(msg.sender);
 
@@ -67,6 +73,31 @@ contract dPrime {
     function deny(address usr) external auth {
         admins[usr] = 0;
         emit Deny(usr);
+    }
+
+    function cage(uint256 _live) external auth {
+        live = _live;
+    }
+
+    // --- LayerZero ---
+    function supportsInterface(bytes4 interfaceId) public view virtual override(OFTCore, IERC165) returns (bool) {
+        return interfaceId == type(IOFT).interfaceId || interfaceId == type(IERC20).interfaceId || super.supportsInterface(interfaceId);
+    }
+
+    function circulatingSupply() public view virtual override returns (uint) {
+        return totalSupply;
+    }
+
+    function _debitFrom(address _from, uint16, bytes memory, uint _amount) internal virtual override {
+        require(live == 1, "dPrimeLayerZeroEndpoint/not-live");
+        address spender = _msgSender();
+        if (_from != spender) _decreaseAllowance(_from, spender, _amount);
+        burn(_from, _amount);
+    }
+
+    function _creditTo(uint16, address _toAddress, uint _amount) internal virtual override {
+        require(live == 1, "dPrimeLayerZeroEndpoint/not-live");
+        _mint(_toAddress, _amount);
     }
 
     // --- ERC20 Mutations ---
@@ -120,6 +151,7 @@ contract dPrime {
     }
 
     function increaseAllowance(address spender, uint256 addedValue) external returns (bool) {
+        
         uint256 newValue = allowance[msg.sender][spender] + addedValue;
         allowance[msg.sender][spender] = newValue;
 
@@ -129,20 +161,28 @@ contract dPrime {
     }
 
     function decreaseAllowance(address spender, uint256 subtractedValue) external returns (bool) {
-        uint256 allowed = allowance[msg.sender][spender];
+        return _decreaseAllowance(msg.sender, spender, subtractedValue);
+    }
+
+    function _decreaseAllowance(address owner, address spender, uint256 subtractedValue) internal returns (bool) {
+        uint256 allowed = allowance[owner][spender];
         require(allowed >= subtractedValue, "dPrime/insufficient-allowance");
         unchecked{
             allowed = allowed - subtractedValue;
         }
-        allowance[msg.sender][spender] = allowed;
+        allowance[owner][spender] = allowed;
 
-        emit Approval(msg.sender, spender, allowed);
+        emit Approval(owner, spender, allowed);
 
         return true;
     }
 
     // --- Mint/Burn ---
     function mint(address to, uint256 value) external auth {
+        _mint(to, value);
+    }
+
+    function _mint(address to, uint256 value) internal {
         require(to != address(0) && to != address(this), "dPrime/invalid-address");
         unchecked {
             balanceOf[to] = balanceOf[to] + value; // note: we don't need an overflow check here b/c balanceOf[to] <= totalSupply and there is an overflow check below
@@ -152,7 +192,7 @@ contract dPrime {
         emit Transfer(address(0), to, value);
     }
 
-    function burn(address from, uint256 value) external {
+    function burn(address from, uint256 value) public {
         uint256 balance = balanceOf[from];
         require(balance >= value, "dPrime/insufficient-balance");
 
