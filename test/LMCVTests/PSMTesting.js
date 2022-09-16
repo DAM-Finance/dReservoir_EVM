@@ -122,9 +122,16 @@ describe("Testing LMCV", function () {
         });
 
         it("Should properly add collateral, loan, and exit with dPrime", async function () {
+
+            //Set PSM in LMCV for no fee or interest
             await lmcv.setPSMAddress(psm.address, true);
+
+            //Approve PSM from user perspective to transfer out
             await userDPrime.approve(psm.address, fray("100000"));
+
             expect(await psm.collateralJoin()).to.equal(collateralJoin.address);
+
+            //Auth needed on collatJoin so regular users can't deposit as PSM does
             await collateralJoin.rely(psm.address);
 
             expect(await USDCMock.balanceOf(addr1.address)).to.equal("4000000000000000000000")
