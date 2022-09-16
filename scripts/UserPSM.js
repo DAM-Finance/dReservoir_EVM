@@ -59,12 +59,35 @@ async function usermodePSM(){
 }
 
 async function usermodeTeleport(){
+    let userDPrime = dPrime.connect(addr1);
 
+    let fees = await userDPrime.estimateSendFee(
+        "10002", 
+        "0x7B92eD00d96DfaFA1dF6E5531F1D502AaBF4834e", 
+        fwad("100"),
+        false,
+        []
+    );
+
+    console.log(fees);
+
+    let res = await userDPrime.sendFrom(
+        "0x7B92eD00d96DfaFA1dF6E5531F1D502AaBF4834e",   //address _from, 
+        "10002",                                        //uint16 _dstChainId, 
+        "0x7B92eD00d96DfaFA1dF6E5531F1D502AaBF4834e",   //bytes memory _toAddress, 
+        fwad("100"),                                     //uint _amount, 
+        "0x7B92eD00d96DfaFA1dF6E5531F1D502AaBF4834e",   //address payable _refundAddress, 
+        "0x7B92eD00d96DfaFA1dF6E5531F1D502AaBF4834e",   //address _zroPaymentAddress, 
+        [],                                             //bytes memory _adapterParams
+        {value: fees.nativeFee}
+    );
+
+    console.log(res);
 }
 
 main()
     .then(() => attach())
-    .then(() => usermodePSM())
+    .then(() => usermodeTeleport())
     .then(() => process.exit(0))
     .catch((error) => {
         console.error(error);
