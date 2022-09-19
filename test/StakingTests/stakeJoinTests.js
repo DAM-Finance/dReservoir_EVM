@@ -26,6 +26,9 @@ let stakeJoinFactory, stakeJoin;
 // LMCV settings.
 let DEBT_CEILING = frad("50000");
 
+
+const MAX_INT = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+
 // Mint a bunch of tokens and deposit some specified amount of them in the protocol.
 async function setupUser(user, amounts) {
     let fooConnect = foo.connect(user);
@@ -36,9 +39,9 @@ async function setupUser(user, amounts) {
     await barConnect.mint(fwad(amounts.at(1)));
     await bazConnect.mint(fwad(amounts.at(2)));
 
-    await fooConnect.approve(fooJoin.address);
-    await barConnect.approve(barJoin.address);
-    await bazConnect.approve(stakeJoin.address);
+    await fooConnect.approve(fooJoin.address, MAX_INT);
+    await barConnect.approve(barJoin.address, MAX_INT);
+    await bazConnect.approve(stakeJoin.address, MAX_INT);
 }
 
 
@@ -49,7 +52,7 @@ describe("Testing RewardJoins", function () {
         LMCVFactory                 = await ethers.getContractFactory("LMCV");
         stakingVaultFactory         = await ethers.getContractFactory("StakingVault");
         ddPrimeJoinFactory          = await ethers.getContractFactory("ddPrimeJoin");
-        tokenFactory                = await ethers.getContractFactory("MockTokenTwo");
+        tokenFactory                = await ethers.getContractFactory("MockTokenFour");
         rewardJoinFactory           = await ethers.getContractFactory("RewardJoin");
         stakeJoinFactory            = await ethers.getContractFactory("StakeJoin");
     });

@@ -17,6 +17,7 @@ let debtCeiling;
 let userLMCV, userTwoLMCV, userThreeLMCV;
 let lmcvProxy, lmcvProxyFactory;
 
+const MAX_INT = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 
 //Format as wad, ray, rad
 function fwad(wad){ return ethers.utils.parseEther(wad)}
@@ -32,9 +33,9 @@ async function setupUser(addr, amounts){
     let mockToken2Connect = tokenTwo.connect(addr);
     let mockToken3Connect = tokenThree.connect(addr);
     
-    await mockTokenConnect.approve(collateralJoin.address);
-    await mockToken2Connect.approve(collatJoinTwo.address);
-    await mockToken3Connect.approve(collatJoinThree.address);
+    await mockTokenConnect.approve(collateralJoin.address, MAX_INT);
+    await mockToken2Connect.approve(collatJoinTwo.address, MAX_INT);
+    await mockToken3Connect.approve(collatJoinThree.address, MAX_INT);
 
     await mockTokenConnect.mint(fwad(amounts.at(0)));
     await mockToken2Connect.mint(fwad(amounts.at(1)));
@@ -56,7 +57,7 @@ describe("Testing LMCV", function () {
         dPrimeFactory = await ethers.getContractFactory("dPrime");
         LMCVFactory = await ethers.getContractFactory("LMCV");
         dPrimeJoinFactory = await ethers.getContractFactory("dPrimeJoin");
-        tokenFactory = await ethers.getContractFactory("MockTokenTwo");
+        tokenFactory = await ethers.getContractFactory("MockTokenFour");
         collateralJoinFactory = await ethers.getContractFactory("CollateralJoin");
         lmcvProxyFactory = await ethers.getContractFactory("LMCVProxy");
     });

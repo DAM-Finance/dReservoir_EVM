@@ -20,6 +20,8 @@ let mockToken2Bytes = ethers.utils.formatBytes32String("MOCKTOKENTWO");
 let tokenTwo;
 let collatJoinTwo;
 
+const MAX_INT = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+
 
 //Format as wad, ray, rad
 function fwad(wad){ return ethers.utils.parseEther(wad)}
@@ -35,7 +37,7 @@ async function setupUser(addr, amounts){
     let mockToken2Connect = tokenTwo.connect(addr);
     
     await mockTokenConnect.approve(collateralJoin.address);
-    await mockToken2Connect.approve(collatJoinTwo.address);
+    await mockToken2Connect.approve(collatJoinTwo.address, MAX_INT);
 
     await mockTokenConnect.mint(fwad(amounts.at(0)));
     await mockToken2Connect.mint(fwad(amounts.at(0)));
@@ -52,7 +54,7 @@ describe("Testing LMCV", function () {
         lmcvProxyFactory = await ethers.getContractFactory("LMCVProxy");
         psmFactory = await ethers.getContractFactory("PSM");
 
-        regularTokenFactory = await ethers.getContractFactory("MockTokenTwo");
+        regularTokenFactory = await ethers.getContractFactory("MockTokenFour");
         regularCollateralJoinFactory = await ethers.getContractFactory("CollateralJoin");
     });
 

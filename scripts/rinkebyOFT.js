@@ -59,6 +59,34 @@ async function getSenders(){
     console.log(await dPrime.senders(2));
 }
 
+async function moonbaseTrustedRemote(){
+    let result = await dPrime.setTrustedRemote("10026", "0x95D8E71E2E31fB3B99aD398745856AEAbE2cf3ac");
+    console.log(result);
+}
+
+async function sendToMoonbase(){
+
+    feeAmount = await dPrime.estimateSendFee(
+        "10026",
+        "0x57A80C11413d4014B223687E07C827e8175F20e4",
+        fwad("10"),
+        false,
+        []
+    );
+
+    let resultNoAwait = await dPrime.sendFrom(
+        "0x57A80C11413d4014B223687E07C827e8175F20e4",   //address _from, 
+        "10026",                                        //uint16 _dstChainId, 
+        "0x57A80C11413d4014B223687E07C827e8175F20e4",   //bytes memory _toAddress, 
+        fwad("10"),                                     //uint _amount, 
+        "0x57A80C11413d4014B223687E07C827e8175F20e4",   //address payable _refundAddress, 
+        "0x57A80C11413d4014B223687E07C827e8175F20e4",   //address _zroPaymentAddress, 
+        [],                    //bytes memory _adapterParams
+        {value: feeAmount.nativeFee}
+    );
+    console.log(resultNoAwait);
+}
+
 // async function setAuth(){
 //     let result = await dPrime.rely("0xf5e8a439c599205c1ab06b535de46681aed1007a");
 //     console.log(result);
@@ -69,8 +97,7 @@ async function getSenders(){
 
 main()
     .then(() => attach())
-    .then(() => mint())
-    .then(() => setTrustedRemote())
+    .then(() => sendToMoonbase())
     .then(() => process.exit(0))
     .catch((error) => {
         console.error(error);

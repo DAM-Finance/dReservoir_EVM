@@ -6,6 +6,9 @@ function fwad(wad) { return ethers.utils.parseEther(wad) }
 function fray(ray) { return ethers.utils.parseEther(ray).mul("1000000000") }
 function frad(rad) { return ethers.utils.parseEther(rad).mul("1000000000000000000000000000") }
 
+const MAX_INT = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+
+
 // Token types.
 let fooBytes = ethers.utils.formatBytes32String("FOO");
 let barBytes = ethers.utils.formatBytes32String("BAR");
@@ -36,9 +39,9 @@ async function setupUser(user, amounts) {
     await barConnect.mint(fwad("1000"));
     await bazConnect.mint(fwad("1000"));
     
-    await fooConnect.approve(fooJoin.address);
-    await barConnect.approve(barJoin.address);
-    await bazConnect.approve(bazJoin.address);
+    await fooConnect.approve(fooJoin.address, MAX_INT);
+    await barConnect.approve(barJoin.address, MAX_INT);
+    await bazConnect.approve(bazJoin.address, MAX_INT);
 
     let fooJoinConnect = fooJoin.connect(user);
     let barJoinConnect = barJoin.connect(user);
@@ -65,7 +68,7 @@ describe("AuctionHouse testing", function () {
         dPrimeFactory           = await ethers.getContractFactory("dPrime");
         LMCVFactory             = await ethers.getContractFactory("LMCV");
         dPrimeJoinFactory       = await ethers.getContractFactory("dPrimeJoin");
-        tokenFactory            = await ethers.getContractFactory("MockTokenTwo");
+        tokenFactory            = await ethers.getContractFactory("MockTokenFour");
         collateralJoinFactory   = await ethers.getContractFactory("CollateralJoin");
         liquidatorFactory       = await ethers.getContractFactory("Liquidator");
         auctionHouseFactory     = await ethers.getContractFactory("AuctionHouse");
