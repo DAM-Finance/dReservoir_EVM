@@ -7,7 +7,8 @@ function frad(rad) { return ethers.utils.parseEther(rad).mul("100000000000000000
 
 //BYTES
 let USDCBytes = ethers.utils.formatBytes32String("PSM-USDC");
-
+let CHAINLINKBYTES = ethers.utils.formatBytes32String("LINK");
+let WETHBYTES = ethers.utils.formatBytes32String("WETH-A");
 
 // Contracts and contract factories.
 let dPrimeFactory, dPrime;
@@ -20,6 +21,9 @@ let psm, psmFactory;
 let tokenFactory, foo, bar, baz;
 let collateralJoinFactory, fooJoin, barJoin, bazJoin;
 
+const MAX_INT = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+
+
 async function main(){
     dPrimeFactory               = await ethers.getContractFactory("dPrime");
     endpointFactory             = await ethers.getContractFactory("Endpoint");
@@ -29,7 +33,6 @@ async function main(){
     lmcvProxyFactory            = await ethers.getContractFactory("LMCVProxy");
     psmFactory                  = await ethers.getContractFactory("PSM");
 
-    tokenFactory                = await ethers.getContractFactory("MockTokenFour");
     collateralJoinFactory       = await ethers.getContractFactory("CollateralJoin");
 
     [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners();
@@ -52,25 +55,35 @@ async function attach(){
 }
 
 async function setupCollateral(){
+
+    let ret = await collateralJoinFactory.deploy(lmcv.address, lmcvProxy.address, WETHBYTES, "0xc778417E063141139Fce010982780140Aa0cD5Ab");
+    console.log(ret);
     
 }
 
 async function addPerms(){
 
     console.log("Setting collateralJoin rely");
-    // await lmcv.administrate(TODO, 1); TODO
+    await lmcv.administrate("0x3685328d43EC3F5F3efD3c61E05cDdD037aab949", 1); 
 
     console.log("Setting collateral types");
-    // await lmcv.editAcceptedCollateralType(USDCBytes, fwad("1000000"), fwad("1"), fray("1"), false); //TODO: 
+    await lmcv.editAcceptedCollateralType(WETHBYTES, fwad("1000000"), fwad(".0001"), fray(".7"), false); 
 
-    console.log("Setting spot prices");// TODO
-    // await lmcv.updateSpotPrice(USDCBytes, fray("1"));
+    console.log("Setting spot prices");
+    await lmcv.updateSpotPrice(WETHBYTES, fray("1600"));
+
+}
+
+async function lmcvProxySetup(){
+
+    console.log("edit collateral setup");
+    await lmcvProxy.editCollateral(WETHBYTES, "0x3685328d43EC3F5F3efD3c61E05cDdD037aab949", "0xc778417E063141139Fce010982780140Aa0cD5Ab", MAX_INT);
 
 }
 
 main()
     .then(() => attach())
-    .then(() => setPSMPerms())
+    .then(() => updatePrices())
     .then(() => process.exit(0))
     .catch((error) => {
         console.error(error);

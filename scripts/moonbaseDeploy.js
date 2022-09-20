@@ -55,11 +55,6 @@ async function setTrustedRemote(){
     console.log(result);
 }
 
-async function checkFailedMessages(){
-    let failed = await dPrime.failedMessages("10001", "0x75396167802c8719A85571c37240c3E16B2007c2", 0);
-    console.log(failed);
-}
-
 
 main()
     .then(() => attach())
