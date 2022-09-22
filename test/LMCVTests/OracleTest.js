@@ -27,6 +27,7 @@ const { BigNumber } = require("ethers");
 
  // LMCV settings.
  let DEBT_CEILING = frad("50000");
+ const MAX_INT = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 
  // Mint a bunch of tokens and deposit some specified amount of them in the protocol.
  async function setupUser(user, amounts) {
@@ -38,9 +39,9 @@ const { BigNumber } = require("ethers");
      await barConnect.mint(fwad("1000"));
      await bazConnect.mint(fwad("1000"));
 
-     await fooConnect.approve(fooJoin.address);
-     await barConnect.approve(barJoin.address);
-     await bazConnect.approve(bazJoin.address);
+     await fooConnect.approve(fooJoin.address, MAX_INT);
+     await barConnect.approve(barJoin.address, MAX_INT);
+     await bazConnect.approve(bazJoin.address, MAX_INT);
 
      let fooJoinConnect = fooJoin.connect(user);
      let barJoinConnect = barJoin.connect(user);
@@ -60,6 +61,7 @@ const { BigNumber } = require("ethers");
  let checkUint256Value = async (fun, val, units = NumType.WAD) => {
      expect(ethers.utils.formatUnits(await fun(), units)).to.be.equal(val);
  }
+ 
 
  describe("Oracle testing", function () {
 
@@ -67,7 +69,7 @@ const { BigNumber } = require("ethers");
         dPrimeFactory           = await ethers.getContractFactory("dPrime");
         LMCVFactory             = await ethers.getContractFactory("LMCV");
         dPrimeJoinFactory       = await ethers.getContractFactory("dPrimeJoin");
-        tokenFactory            = await ethers.getContractFactory("MockTokenTwo");
+        tokenFactory            = await ethers.getContractFactory("MockTokenFour");
         collateralJoinFactory   = await ethers.getContractFactory("CollateralJoin");
         lmcvProxyFactory        = await ethers.getContractFactory("LMCVProxy");
         oracleStubFactory       = await ethers.getContractFactory("OracleStub");
