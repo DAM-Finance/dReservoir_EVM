@@ -25,6 +25,7 @@ contract CollateralJoinDecimals {
     // --- Auth ---
     //
 
+    address public ArchAdmin;
     mapping(address => uint256) public wards;
 
     function rely(address usr) external auth {
@@ -33,6 +34,7 @@ contract CollateralJoinDecimals {
     }
 
     function deny(address usr) external auth {
+        require(usr != ArchAdmin, "CollateralJoinDec/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         wards[usr] = 0;
         emit Deny(usr);
     }
@@ -82,6 +84,7 @@ contract CollateralJoinDecimals {
         collateralContract = CollateralLike(collateralContract_);
         dec = collateralContract.decimals();
         require(dec < 18, "CollateralJoin/decimals cannot be higher than 17");
+        ArchAdmin = msg.sender;
         wards[msg.sender] = 1;
         live = 1;
         lmcv = LMCVLike(lmcv_);

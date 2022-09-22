@@ -58,6 +58,7 @@ contract PSM {
     // --- Auth ---
     //
 
+    address public ArchAdmin;
     mapping(address => uint256) public wards;
 
     function rely(address usr) external auth {
@@ -66,6 +67,7 @@ contract PSM {
     }
 
     function deny(address usr) external auth {
+        require(usr != ArchAdmin, "PSM/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         wards[usr] = 0;
         emit Deny(usr);
     }
@@ -110,6 +112,7 @@ contract PSM {
 
     constructor(address collateralJoin_, address dPrimeJoin_, address treasury_) {
         wards[msg.sender] = 1;
+        ArchAdmin = msg.sender;
         emit Rely(msg.sender);
         CollateralJoinLike collateralJoin__ = collateralJoin = CollateralJoinLike(collateralJoin_);
         dPrimeJoinLike dPrimeJoin__ = dPrimeJoin = dPrimeJoinLike(dPrimeJoin_);
@@ -138,6 +141,7 @@ contract PSM {
     //
 
     function setMintRepayFees(uint256 mintRay, uint256 repayRay) external auth {
+        require(mintRay < RAY && repayRay < RAY, "PSM/Fees must be less than 100%");
         mintFee = mintRay;
         repayFee = repayRay;
         emit MintRepayFee(mintRay, repayRay);

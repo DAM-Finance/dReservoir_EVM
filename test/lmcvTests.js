@@ -114,6 +114,12 @@ describe("Testing LMCV", function () {
             userLMCV = await lmcv.connect(addr1);
         });
 
+        it("Cannot have no admin on LMCV", async function () {
+            await expect(
+                lmcv.administrate(owner.address, 0)
+            ).to.be.revertedWith("LMCV/ArchAdmin cannot lose admin - update ArchAdmin to another address");
+        });
+
         it("Cannot lock more collateral than available unlocked balance", async function () {
             await expect(
                 userLMCV.loan(collateralBytesList, [fwad("600"), fwad("600"), fwad("600")], fwad("100"), addr1.address)

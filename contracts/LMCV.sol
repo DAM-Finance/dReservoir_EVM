@@ -20,6 +20,8 @@ contract LMCV {
     // Authorisation.
     //
 
+    address public ArchAdmin;
+
     mapping (address => uint256) public admins;
     mapping (address => bool)    public PSMAddresses;
     mapping (address => mapping (address => uint256))    public proxyApprovals;
@@ -115,6 +117,7 @@ contract LMCV {
     constructor() {
         AccumulatedRate = RAY;
         loanLive = 1;
+        ArchAdmin = msg.sender;
         admins[msg.sender] = 1;
         Treasury = msg.sender;
     }
@@ -124,6 +127,7 @@ contract LMCV {
     //
 
     function administrate(address admin, uint256 authorization) external auth {
+        require(admin != ArchAdmin || authorization == 1, "LMCV/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         admins[admin] = authorization;
     }
 
@@ -218,6 +222,7 @@ contract LMCV {
 
     function editCreditRatio(bytes32 collateral, uint256 ray) external auth {
         CollateralData[collateral].creditRatio = ray;
+        require(CollateralData[collateral].creditRatio < RAY, "LMCV/Credit ratio cannot be higher than 100%");
         emit CreditRatio(collateral, ray);
     }
 
@@ -256,7 +261,9 @@ contract LMCV {
         collateralData.dustLevel            = _dustLevel;
         collateralData.creditRatio          = _creditRatio;
         collateralData.liqBonusMult         = _liqBonusMult;
-        collateralData.leveraged = _leveraged;
+        collateralData.leveraged            = _leveraged;
+
+        require(collateralData.creditRatio < RAY, "LMCV/Credit ratio cannot be higher than 100%");
 
         CollateralData[collateralName] = collateralData;
         emit EditAcceptedCollateralType(collateralName, _lockedAmountLimit, _dustLevel, _creditRatio, _liqBonusMult,  _leveraged);

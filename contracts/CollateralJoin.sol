@@ -42,6 +42,7 @@ contract CollateralJoin {
     // --- Auth ---
     //
 
+    address public ArchAdmin;
     mapping(address => uint256) public wards;
 
     function rely(address usr) external auth {
@@ -50,6 +51,7 @@ contract CollateralJoin {
     }
 
     function deny(address usr) external auth {
+        require(usr != ArchAdmin, "CollateralJoin/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         wards[usr] = 0;
         emit Deny(usr);
     }
@@ -103,6 +105,7 @@ contract CollateralJoin {
 
     constructor(address lmcv_, address _lmcvProxy, bytes32 collateralName_, address collateralContract_) {
         wards[msg.sender] = 1;
+        ArchAdmin = msg.sender;
         live = 1;
         lmcv = LMCVLike(lmcv_);
         lmcvProxy = _lmcvProxy;
@@ -123,7 +126,6 @@ contract CollateralJoin {
     }
 
     function exit(address usr, uint256 wad) external {
-        require(live == 1, "CollateralJoin/not-live");
         lmcv.pullCollateral(collateralName, msg.sender, wad);
         require(collateralContract.transfer(usr, wad), "CollateralJoin/failed-transfer");
         emit Exit(usr, wad);

@@ -38,6 +38,7 @@ interface LMCVLike {
 }
 
 contract LMCVProxy { 
+    address public ArchAdmin;
     mapping(address => uint256) public wards;
 
     mapping (bytes32 => address)        public collateralContracts;
@@ -66,6 +67,7 @@ contract LMCVProxy {
 
     constructor(address _lmcv) {
         require(_lmcv != address(0x0), "LMCVProxy/Can't be zero address");
+        ArchAdmin = msg.sender;
         wards[msg.sender] = 1;
         live = 1;
         lmcv = _lmcv;
@@ -94,6 +96,7 @@ contract LMCVProxy {
     }
 
     function deny(address usr) external auth {
+        require(usr != ArchAdmin, "LMCVProxy/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         wards[usr] = 0;
         emit Deny(usr);
     }
