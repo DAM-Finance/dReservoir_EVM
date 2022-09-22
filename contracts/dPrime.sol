@@ -5,6 +5,7 @@
 pragma solidity 0.8.7;
 
 contract dPrime {
+    address public ArchAdmin;
     mapping (address => uint256) public admins;
 
     // --- ERC20 Data ---
@@ -36,6 +37,7 @@ contract dPrime {
 
     constructor() {
         admins[msg.sender] = 1;
+        ArchAdmin = msg.sender;
         emit Rely(msg.sender);
 
         deploymentChainId = block.chainid;
@@ -59,12 +61,20 @@ contract dPrime {
     }
 
     // --- Administration ---
+
+    function setArchAdmin(address newArch) external auth {
+        require(ArchAdmin == msg.sender, "LMCVProxy/Must be ArchAdmin");
+        ArchAdmin = newArch;
+        admins[ArchAdmin] = 1;
+    }
+
     function rely(address usr) external auth {
         admins[usr] = 1;
         emit Rely(usr);
     }
 
     function deny(address usr) external auth {
+        require(usr != ArchAdmin, "dPrime/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         admins[usr] = 0;
         emit Deny(usr);
     }

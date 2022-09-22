@@ -28,6 +28,12 @@ contract CollateralJoinDecimals {
     address public ArchAdmin;
     mapping(address => uint256) public wards;
 
+    function setArchAdmin(address newArch) external auth {
+        require(ArchAdmin == msg.sender, "LMCVProxy/Must be ArchAdmin");
+        ArchAdmin = newArch;
+        wards[ArchAdmin] = 1;
+    }
+
     function rely(address usr) external auth {
         wards[usr] = 1;
         emit Rely(usr);

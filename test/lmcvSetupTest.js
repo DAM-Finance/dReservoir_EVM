@@ -100,9 +100,9 @@ describe("Testing Setup for functions", function () {
     });
 
     it("should set up collateral list", async function () {
-        await lmcv.editCollateralList(mockTokenBytes, true, 0);
-        await lmcv.editCollateralList(mockToken2Bytes, true, 0);
-        await lmcv.editCollateralList(mockToken3Bytes, true, 0);
+        await lmcv.editCollateralList(mockTokenBytes, true);
+        await lmcv.editCollateralList(mockToken2Bytes, true);
+        await lmcv.editCollateralList(mockToken3Bytes, true);
 
         expect(await lmcv.CollateralList(0)).to.equal(mockTokenBytes);
         expect(await lmcv.CollateralList(1)).to.equal(mockToken2Bytes);
@@ -111,7 +111,7 @@ describe("Testing Setup for functions", function () {
 
     it("should not let non-auth set up collateral list", async function () {
         let addr1LMCV = await lmcv.connect(addr1);
-        await expect(addr1LMCV.editCollateralList(mockTokenBytes, true, 0)).to.be.revertedWith("LMCV/Not Authorized");
+        await expect(addr1LMCV.editCollateralList(mockTokenBytes, true)).to.be.revertedWith("LMCV/Not Authorized");
     });
 
     it("should set up collateralType mapping", async function () {
@@ -159,5 +159,22 @@ describe("Testing Setup for functions", function () {
 
         let collateralType3 = await lmcv.CollateralData(mockToken3Bytes);
         expect(collateralType3['spotPrice']).to.equal("10000000000000000000000000000");
+    });
+
+    it("should edit collateral list", async function () {
+        await lmcv.editCollateralList(mockTokenBytes, true);
+        await lmcv.editCollateralList(mockToken2Bytes, true);
+        await lmcv.editCollateralList(mockToken3Bytes, true);
+
+        expect(await lmcv.CollateralList(0)).to.equal(mockToken2Bytes);
+        expect(await lmcv.CollateralList(1)).to.equal(mockTokenBytes);
+        expect(await lmcv.CollateralList(2)).to.equal(mockToken3Bytes);
+        await expect(lmcv.CollateralList(3)).to.be.reverted;
+
+        await lmcv.editCollateralList(mockToken2Bytes, false);
+        await lmcv.editCollateralList(mockToken3Bytes, false);
+
+        expect(await lmcv.CollateralList(0)).to.equal(mockTokenBytes);
+        await expect(lmcv.CollateralList(1)).to.be.reverted;
     });
 });

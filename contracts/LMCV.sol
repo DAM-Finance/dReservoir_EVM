@@ -131,6 +131,12 @@ contract LMCV {
         admins[admin] = authorization;
     }
 
+    function setArchAdmin(address newArch) external auth {
+        require(ArchAdmin == msg.sender, "LMCVProxy/Must be ArchAdmin");
+        ArchAdmin = newArch;
+        admins[ArchAdmin] = 1;
+    }
+
     function approveMultiple(address[] memory users) external {
         for(uint256 i = 0; i < users.length; i++){
             approve(users[i]);
@@ -222,7 +228,7 @@ contract LMCV {
 
     function editCreditRatio(bytes32 collateral, uint256 ray) external auth {
         CollateralData[collateral].creditRatio = ray;
-        require(CollateralData[collateral].creditRatio < RAY, "LMCV/Credit ratio cannot be higher than 100%");
+        require(CollateralData[collateral].creditRatio <= RAY, "LMCV/Credit ratio cannot be higher than 100%");
         emit CreditRatio(collateral, ray);
     }
 
@@ -240,11 +246,14 @@ contract LMCV {
         emit SpotUpdate(collateral, ray);
     }
 
-    function editCollateralList(bytes32 collateralName, bool accepted, uint256 position) external auth {
+    function editCollateralList(bytes32 collateralName, bool accepted) external auth {
+        for (uint256 i = 0; i < CollateralList.length; i++) {
+            if(CollateralList[i] == collateralName){
+                deleteElement(CollateralList, i);
+            }
+        }
         if(accepted){
             CollateralList.push(collateralName);
-        }else{
-            deleteElement(CollateralList, position);
         }
     }
 
@@ -263,7 +272,7 @@ contract LMCV {
         collateralData.liqBonusMult         = _liqBonusMult;
         collateralData.leveraged            = _leveraged;
 
-        require(collateralData.creditRatio < RAY, "LMCV/Credit ratio cannot be higher than 100%");
+        require(collateralData.creditRatio <= RAY, "LMCV/Credit ratio cannot be higher than 100%");
 
         CollateralData[collateralName] = collateralData;
         emit EditAcceptedCollateralType(collateralName, _lockedAmountLimit, _dustLevel, _creditRatio, _liqBonusMult,  _leveraged);
