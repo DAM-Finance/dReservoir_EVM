@@ -329,8 +329,8 @@ contract LMCV {
      * happening. Regardless, we think the semantics still make sense.
      */
     function loan(
-        bytes32[] memory collateralList,        // List of collateral identifiers.
-        uint256[] memory collateralChange,      // List of collateral change amounts.   [wad]
+        bytes32[] calldata collateralList,        // List of collateral identifiers.
+        uint256[] calldata collateralChange,      // List of collateral change amounts.   [wad]
         uint256 normalizedDebtChange,           // Debt change in t=0 terms.            [wad]
         address user                            // Address of the user's vault.
     ) external loanAlive {
@@ -402,8 +402,8 @@ contract LMCV {
     //    decreases.
     // 3. A combination of the above.
     function repay(
-        bytes32[] memory collateralList,        // List of collateral identifiers.
-        uint256[] memory collateralChange,      // List of collateral amount changes.   [wad]
+        bytes32[] calldata collateralList,        // List of collateral identifiers.
+        uint256[] calldata collateralChange,      // List of collateral amount changes.   [wad]
         uint256 normalizedDebtChange,           // Debt change in t=0 terms.            [wad]
         address user                            // Address of the user's vault.
     ) external loanAlive {
@@ -475,8 +475,8 @@ contract LMCV {
      * vault and the amount to liquidate is significantly larger than the auction lot size.
      */
     function liquidate(
-        bytes32[] memory collateralList,    // List of collateral identifiers.
-        uint256[] memory collateralChange,  // List of collateral amount changes.   [wad]
+        bytes32[] calldata collateralList,    // List of collateral identifiers.
+        uint256[] calldata collateralChange,  // List of collateral amount changes.   [wad]
         uint256 normalizedDebtChange,       // Debt change in t=0 terms.            [wad]
         address liquidated, 
         address liquidator,

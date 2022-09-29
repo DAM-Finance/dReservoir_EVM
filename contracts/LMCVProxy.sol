@@ -24,14 +24,14 @@ interface dPrimeJoinLike {
 interface LMCVLike {
     function dPrime(address user) external returns (uint256);
     function loan(
-        bytes32[] memory collats,           
-        uint256[] memory collateralChange,  // [wad]
+        bytes32[] calldata collats,           
+        uint256[] calldata collateralChange,  // [wad]
         uint256 dPrimeChange,               // [wad]
         address user
     ) external;
     function repay(
-        bytes32[] memory collats, 
-        uint256[] memory collateralChange, 
+        bytes32[] calldata collats, 
+        uint256[] calldata collateralChange, 
         uint256 dPrimeChange,
         address user
     ) external;
@@ -128,7 +128,7 @@ contract LMCVProxy {
         emit EditCollateral(name, collateralJoin, collateralContract);
     }
 
-    function createLoan(bytes32[] memory collaterals, uint256[] memory amounts, uint256 wad) external alive {
+    function createLoan(bytes32[] calldata collaterals, uint256[] calldata amounts, uint256 wad) external alive {
         require(collaterals.length == amounts.length, "LMCVProxy/Not the same length");
 
         for(uint256 i = 0; i < collaterals.length; i++){
@@ -139,7 +139,7 @@ contract LMCVProxy {
         dPrimeJoinLike(dPrimeJoin).proxyExit(msg.sender, (LMCVLike(lmcv).dPrime(msg.sender) / RAY));
     }
 
-    function repayLoan(bytes32[] memory collaterals, uint256[] memory amounts, uint256 wad) external alive {
+    function repayLoan(bytes32[] calldata collaterals, uint256[] calldata amounts, uint256 wad) external alive {
         require(collaterals.length == amounts.length, "LMCVProxy/Not the same length");
 
         require(ERC20Like(dPrime).transferFrom(msg.sender, address(this), wad), "LMCVProxy/dPrime transfer failed");

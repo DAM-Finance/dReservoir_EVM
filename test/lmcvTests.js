@@ -72,13 +72,13 @@ describe("Testing LMCV", function () {
 
         mockToken = await tokenFactory.deploy("TSTR");
 
-        collateralJoin = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, mockTokenBytes, mockToken.address);
+        collateralJoin = await collateralJoinFactory.deploy(lmcv.address, "0x6961D457fA5DBc3968DFBeD0b2df2D0954332a01", mockTokenBytes, mockToken.address);
 
         tokenTwo = await tokenFactory.deploy("TST2");
         tokenThree = await tokenFactory.deploy("TST3");
 
-        collatJoinTwo = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, mockToken2Bytes, tokenTwo.address);
-        collatJoinThree = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, mockToken3Bytes, tokenThree.address);
+        collatJoinTwo = await collateralJoinFactory.deploy(lmcv.address, "0x6961D457fA5DBc3968DFBeD0b2df2D0954332a01", mockToken2Bytes, tokenTwo.address);
+        collatJoinThree = await collateralJoinFactory.deploy(lmcv.address, "0x6961D457fA5DBc3968DFBeD0b2df2D0954332a01", mockToken3Bytes, tokenThree.address);
 
         await lmcv.administrate(collateralJoin.address, 1);
         await lmcv.administrate(collatJoinTwo.address, 1);
