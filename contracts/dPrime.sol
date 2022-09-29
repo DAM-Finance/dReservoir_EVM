@@ -63,7 +63,7 @@ contract dPrime {
     // --- Administration ---
 
     function setArchAdmin(address newArch) external auth {
-        require(ArchAdmin == msg.sender, "LMCVProxy/Must be ArchAdmin");
+        require(ArchAdmin == msg.sender && newArch != address(0), "LMCVProxy/Must be ArchAdmin");
         ArchAdmin = newArch;
         admins[ArchAdmin] = 1;
     }

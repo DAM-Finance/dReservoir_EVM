@@ -29,7 +29,7 @@ contract CollateralJoinDecimals {
     mapping(address => uint256) public wards;
 
     function setArchAdmin(address newArch) external auth {
-        require(ArchAdmin == msg.sender, "LMCVProxy/Must be ArchAdmin");
+        require(ArchAdmin == msg.sender && newArch != address(0), "LMCVProxy/Must be ArchAdmin");
         ArchAdmin = newArch;
         wards[ArchAdmin] = 1;
     }
@@ -86,7 +86,8 @@ contract CollateralJoinDecimals {
     // --- Init ---
     //
     
-    constructor(address lmcv_, address _lmcvProxy, bytes32 collateralName_, address collateralContract_) {
+    constructor(address lmcv_, address lmcvProxy_, bytes32 collateralName_, address collateralContract_) {
+        require(lmcv_ != address(0x0) && lmcvProxy_ != address(0x0) && collateralContract_ != address(0x0), "CollateralJoinDec/Can't be zero address");
         collateralContract = CollateralLike(collateralContract_);
         dec = collateralContract.decimals();
         require(dec < 18, "CollateralJoin/decimals cannot be higher than 17");
@@ -95,7 +96,7 @@ contract CollateralJoinDecimals {
         live = 1;
         lmcv = LMCVLike(lmcv_);
         collateralName = collateralName_;
-        lmcvProxy = _lmcvProxy;
+        lmcvProxy = lmcvProxy_;
     }
 
     //

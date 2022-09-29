@@ -51,9 +51,14 @@ contract LMCVProxy {
     uint256 public live;
 
     // --- Events ---
+    event EditCollateral(bytes32 indexed name, address collateralJoin, address indexed collateralContract);
+    event SetDPrimeJoin(address indexed dPrimeJoin);
+    event SetDPrime(address indexed dPrime);
+    event SetLMCV(address indexed lmcv);
+    event Cage(uint256 indexed status);
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event Cage(uint256 indexed status);
+    
 
     modifier auth {
         require(wards[msg.sender] == 1, "LMCVProxy/not-authorized");
@@ -77,22 +82,25 @@ contract LMCVProxy {
     function setLMCV(address _lmcv) external auth {
         require(_lmcv != address(0x0), "LMCVProxy/Can't be zero address");
         lmcv = _lmcv;
+        emit SetLMCV(lmcv);
     }
 
     function setDPrimeJoin(address _dPrimeJoin) external auth {
         require(_dPrimeJoin != address(0x0), "LMCVProxy/Can't be zero address");
         dPrimeJoin = _dPrimeJoin;
+        emit SetDPrimeJoin(dPrimeJoin);
     }
 
     function setDPrime(address _dPrime) external auth {
         require(_dPrime != address(0x0), "LMCVProxy/Can't be zero address");
         dPrime = _dPrime;
+        emit SetDPrime(dPrime);
     }
 
     // --- Administration ---
 
     function setArchAdmin(address newArch) external auth {
-        require(ArchAdmin == msg.sender, "LMCVProxy/Must be ArchAdmin");
+        require(ArchAdmin == msg.sender && newArch != address(0), "LMCVProxy/Must be ArchAdmin");
         ArchAdmin = newArch;
         wards[ArchAdmin] = 1;
     }
@@ -117,6 +125,7 @@ contract LMCVProxy {
         collateralContracts[name] = collateralContract;
         collateralJoins[name] = collateralJoin;
         require(ERC20Like(collateralContract).approve(collateralJoin, amount), "LMCVProxy/Approval failed");
+        emit EditCollateral(name, collateralJoin, collateralContract);
     }
 
     function createLoan(bytes32[] memory collaterals, uint256[] memory amounts, uint256 wad) external alive {

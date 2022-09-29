@@ -46,7 +46,7 @@ contract CollateralJoin {
     mapping(address => uint256) public wards;
 
     function setArchAdmin(address newArch) external auth {
-        require(ArchAdmin == msg.sender, "LMCVProxy/Must be ArchAdmin");
+        require(ArchAdmin == msg.sender && newArch != address(0), "LMCVProxy/Must be ArchAdmin");
         ArchAdmin = newArch;
         wards[ArchAdmin] = 1;
     }
@@ -109,12 +109,13 @@ contract CollateralJoin {
     // --- Init ---
     //
 
-    constructor(address lmcv_, address _lmcvProxy, bytes32 collateralName_, address collateralContract_) {
+    constructor(address lmcv_, address lmcvProxy_, bytes32 collateralName_, address collateralContract_) {
+        require(lmcv_ != address(0x0) && lmcvProxy_ != address(0x0) && collateralContract_ != address(0x0), "CollateralJoin/Can't be zero address");
         wards[msg.sender] = 1;
         ArchAdmin = msg.sender;
         live = 1;
         lmcv = LMCVLike(lmcv_);
-        lmcvProxy = _lmcvProxy;
+        lmcvProxy = lmcvProxy_;
         collateralName = collateralName_;
         collateralContract = CollateralLike(collateralContract_);
         emit Rely(msg.sender);

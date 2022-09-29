@@ -62,7 +62,7 @@ contract PSM {
     mapping(address => uint256) public wards;
 
     function setArchAdmin(address newArch) external auth {
-        require(ArchAdmin == msg.sender, "LMCVProxy/Must be ArchAdmin");
+        require(ArchAdmin == msg.sender && newArch != address(0), "LMCVProxy/Must be ArchAdmin");
         ArchAdmin = newArch;
         wards[ArchAdmin] = 1;
     }
@@ -117,6 +117,7 @@ contract PSM {
     //
 
     constructor(address collateralJoin_, address dPrimeJoin_, address treasury_) {
+        require(collateralJoin_ != address(0x0) && dPrimeJoin_ != address(0x0) && treasury_ != address(0x0), "PSM/Can't be zero address");
         wards[msg.sender] = 1;
         ArchAdmin = msg.sender;
         emit Rely(msg.sender);
