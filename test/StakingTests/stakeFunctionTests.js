@@ -250,6 +250,51 @@ describe("Stake Testing", function () {
             expect(await foo.balanceOf(fooJoin.address)).to.equal("1");
             expect(await bar.balanceOf(barJoin.address)).to.equal("1");
         });
+
+        it("User may not be able to unstake / claim rewards when stakedAmountLimit is decreased ", async function () {
+            //User1and2add10000stakeablecoinwithjoincontract
+            await userStakeJoin.join(addr1.address,fwad("10000"));
+            await userStakeJoin2.join(addr2.address,fwad("10000"));
+
+             // User1 stakes 4000 of tokens ( stakedAmount < limit )
+            await userSV . stake ( fwad ("4000") , addr1 . address ) ;
+            
+             // assert balances
+            expect ( await stakingVault . lockedStakeable ( addr1 . address ) ) .to.equal ( fwad ("4000")) ;
+            expect ( await stakingVault . unlockedStakeable ( addr1 . address ) ) .to.equal ( fwad ("6000")) ;
+            expect ( await stakingVault . ddPrime ( addr1 . address )) .to. equal (frad ("4000") ) ;
+            // User2 stakes 1000 of tokens ( stakedAmount == limit )
+            await userSV2 . stake ( fwad ("1000") , addr2 . address );
+            
+             // assert balances
+             expect ( await stakingVault . lockedStakeable ( addr2 . address ) ) .to.equal ( fwad ("1000")) ;
+            expect ( await stakingVault . unlockedStakeable ( addr2 . address ) ) .to. equal ( fwad ("9000")) ;
+            expect ( await stakingVault . ddPrime ( addr2 . address )) .to. equal (
+            frad ("1000") ) ;
+            
+             // Foo Rewards get added
+             await fooJoin . join ( fwad ("50")) ;
+            
+            // limit is changed to 3000
+            await stakingVault . setStakedAmountLimit ( fwad ("3000") ) ;
+            
+             // user 2 stakes 0 to claim rewards - transaction fails
+             await expect ( userSV2 . stake ( fwad ("0") , addr2 . address ) ) .to.be. revertedWith ("StakingVault/Cannot be over staked token limit");
+             // user 2 tries to unstake -1000 tokens to claim rewards - transaction fails
+            await expect ( userSV2 . stake ( fwad ("-1000") , addr2 . address ) ).to.be. revertedWith ("StakingVault/Cannot be over staked token limit");
+            await expect ( userSV . stake ( fwad ("0") , addr1 . address )).to.be. revertedWith (" StakingVault / Cannot be over stakedtoken limit ");
+
+            // User 1 reduces staked tokens to claim rewards
+            await userSV . stake ( fwad (" -2000") , addr1 . address );
+            expect ( await stakingVault . rewardDebt ( addr1 . address , fooBytes ) ) .to. equal ( fwad ("20") ) ;
+            expect ( await stakingVault . rewardDebt ( addr2 . address , fooBytes ) ).to. equal (0) ;
+            expect ( await stakingVault . withdrawableRewards ( addr1 . address , fooBytes ) ) .to. equal ( fwad ("40")) ;
+            expect ( await stakingVault . withdrawableRewards ( addr2 . address ,fooBytes ) ) .to. equal (0) ;
+
+            await userSV2 . stake ( fwad ("0") , addr2 . address );
+            expect ( await stakingVault . rewardDebt ( addr2 . address , fooBytes ) ).to. equal ( fwad ("10") ) ;
+            expect ( await stakingVault . withdrawableRewards ( addr2 . address ,fooBytes ) ) .to. equal ( fwad ("10")) ;
+        });
     });
 
     describe("Unstake Function", function () {

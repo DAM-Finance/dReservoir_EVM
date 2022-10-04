@@ -253,7 +253,7 @@ contract LMCV {
         collateralData.lockedAmountLimit    = _lockedAmountLimit;
         collateralData.dustLevel            = _dustLevel;
         collateralData.creditRatio          = _creditRatio;
-        collateralData.leveraged =          _leveraged;
+        collateralData.leveraged            = _leveraged;
 
         if(collateralData.leveraged){
             require(collateralData.creditRatio <= RAY, "LMCV/Credit ratio cannot be higher than 100%");

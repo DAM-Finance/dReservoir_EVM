@@ -50,7 +50,7 @@ contract RewardJoin {
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event Cage();
+    event Cage(uint256 status);
     event Join(uint256 wad);
     event Exit(address indexed usr, uint256 wad);
 
@@ -67,9 +67,9 @@ contract RewardJoin {
     // --- Admin ---
     //
 
-    function cage() external auth {
-        live = 0;
-        emit Cage();
+    function cage(uint256 status) external auth {
+        live = status;
+        emit Cage(status);
     }
 
     //

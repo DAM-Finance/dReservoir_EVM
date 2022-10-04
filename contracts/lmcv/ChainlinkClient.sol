@@ -17,12 +17,15 @@ contract ChainlinkClient {
      */
     function getLatestPrice() public view returns (int256) {
         (
-            /*uint80 roundID*/,
+            uint80 roundID,
             int256 price,
-            /*uint startedAt*/,
-            /*uint timeStamp*/,
-            /*uint80 answeredInRound*/
+            uint startedAt,
+            uint timeStamp,
+            uint80 answeredInRound
         ) = priceFeed.latestRoundData();
+        require(price > 0, "Price must be higher than 0");
+        require(timeStamp != 0, "Time stamp must not be 0");
+        require(answeredInRound >= roundID, "Must not be stale price");
         return price;
     }
 }

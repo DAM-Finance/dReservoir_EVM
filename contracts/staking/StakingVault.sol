@@ -237,7 +237,7 @@ contract StakingVault {
         unlockedStakeable[user]     = _sub(unlockedStakeable[user], wad);
         lockedStakeable[user]       = _add(lockedStakeable[user], wad);
         stakedAmount                = _add(stakedAmount, wad);
-        require(stakedAmount <= stakedAmountLimit, "StakingVault/Cannot be over staked token limit");
+        require(stakedAmount <= stakedAmountLimit || wad < 0, "StakingVault/Cannot be over staked token limit");
 
         //2. Set reward debts for each token based on current time and staked amount
         _payRewards(user, user, prevStakedAmount);
