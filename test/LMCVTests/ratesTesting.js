@@ -1,5 +1,5 @@
 const {expect} = require("chai");
-const {ethers} = require("hardhat");
+const {ethers, network} = require("hardhat");
 
 let owner, addr1, addr2, addr3, addrs;
 let dPrimeFactory, dPrime;
@@ -16,6 +16,7 @@ let collateralBytesList = [mockTokenBytes, mockToken2Bytes, mockToken3Bytes];
 let debtCeiling;
 let userLMCV, userTwoLMCV, userThreeLMCV;
 let lmcvProxy, lmcvProxyFactory;
+let ratesUpdaterFactory, ratesUpdater;
 
 
 //Format as wad, ray, rad
@@ -59,6 +60,7 @@ describe("Testing LMCV", function () {
         tokenFactory = await ethers.getContractFactory("MockTokenTwo");
         collateralJoinFactory = await ethers.getContractFactory("CollateralJoin");
         lmcvProxyFactory = await ethers.getContractFactory("LMCVProxy");
+        ratesUpdaterFactory = await ethers.getContractFactory("RatesUpdater");
     });
 
     beforeEach(async function () {
@@ -90,9 +92,9 @@ describe("Testing LMCV", function () {
         await setupUser(addr2, ["1000", "1000", "1000"]);
         await setupUser(addr3, ["0", "0", "0"]);
 
-        await lmcv.editAcceptedCollateralType(mockTokenBytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), false);
-        await lmcv.editAcceptedCollateralType(mockToken2Bytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), false);
-        await lmcv.editAcceptedCollateralType(mockToken3Bytes, fwad("1000"), fwad("1"), fray("0.5"), fray("0.08"), false);
+        await lmcv.editAcceptedCollateralType(mockTokenBytes, fwad("1000"), fwad("1"), fray("0.5"), false);
+        await lmcv.editAcceptedCollateralType(mockToken2Bytes, fwad("1000"), fwad("1"), fray("0.5"), false);
+        await lmcv.editAcceptedCollateralType(mockToken3Bytes, fwad("1000"), fwad("1"), fray("0.5"), false);
 
         await lmcv.updateSpotPrice(mockTokenBytes, fray("40"));
         await lmcv.updateSpotPrice(mockToken2Bytes, fray("20"));
@@ -163,6 +165,110 @@ describe("Testing LMCV", function () {
             expect(await lmcv.dPrime(addr1.address)).to.equal(frad("1600"));
             expect(await lmcv.normalizedDebt(addr1.address)).to.equal(0);
             expect(await lmcv.totalNormalizedDebt()).to.equal(fwad("2000"));
+        });
+
+        it("Should be able to set stability rate, call accrue interest and have it update the accumulated rate", async function () {
+            // Get a new rates updater contract.
+            ratesUpdater = await ratesUpdaterFactory.deploy(lmcv.address);
+
+            // Permission rates updater to call functinos on LMCV.
+            await lmcv.administrate(ratesUpdater.address, 1);
+
+            expect(await ratesUpdater.stabilityRate()).to.equal(fray("1"));
+
+            // So user one can call accrue interest.
+            userOneRatesUpdater = ratesUpdater.connect(addr1);
+
+            // Accruing interest with a rate of one should have no effect.
+            expect(await lmcv.AccumulatedRate()).to.equal(fray("1"));
+
+            // Change the stability rate to 5%.
+            // We actually store the per second rate which is 1.05^(1/3153600)
+            await ratesUpdater.changeStabilityRate(fray("1.00000000154713000000"));
+
+            // Fast forward by one year.
+            await network.provider.send("evm_increaseTime", [60 * 60 * 24 * 365]);
+
+            // Accrue interest after one year. We would expect the accumulated rate to be 5%.
+            await userOneRatesUpdater.accrueInterest();
+            const accumulatedfRate = await lmcv.AccumulatedRate();
+            const fivePercent = ethers.BigNumber.from(fray("1.05"));
+            expect(accumulatedfRate.gt(fivePercent)).equals(true);
+        });
+
+        it("Should be able to support negative rates", async function () {
+            // Get a new rates updater contract.
+            ratesUpdater = await ratesUpdaterFactory.deploy(lmcv.address);
+
+            // Permission rates updater to call functinos on LMCV.
+            await lmcv.administrate(ratesUpdater.address, 1);
+
+            expect(await ratesUpdater.stabilityRate()).to.equal(fray("1"));
+
+            // So user one can call accrue interest.
+            userOneRatesUpdater = ratesUpdater.connect(addr1);
+
+            // Accruing interest with a rate of one should have no effect.
+            expect(await lmcv.AccumulatedRate()).to.equal(fray("1"));
+
+            // Change the stability rate to -5%.
+            // We actually store the per second rate which is 0.95^(1/3153600)
+            await ratesUpdater.changeStabilityRate(fray("0.9999999983735"));
+
+            // Fast forward by one year.
+            await network.provider.send("evm_increaseTime", [60 * 60 * 24 * 365]);
+            
+            // Accrue interest after one year. We would expect the accumulated rate to be 5%.
+            await userOneRatesUpdater.accrueInterest();
+            const accumulatedRate = await lmcv.AccumulatedRate();
+            const ninetyFivePercent = ethers.BigNumber.from(fray("0.95"));
+            expect(accumulatedRate.lt(ninetyFivePercent)).equals(true);
+        });
+
+        it("Can change stability rate", async function () {
+            // Get a new rates updater contract.
+            ratesUpdater = await ratesUpdaterFactory.deploy(lmcv.address);
+
+            // Permission rates updater to call functinos on LMCV.
+            await lmcv.administrate(ratesUpdater.address, 1);
+
+            expect(await ratesUpdater.stabilityRate()).to.equal(fray("1"));
+
+            // So user one can call accrue interest.
+            userOneRatesUpdater = ratesUpdater.connect(addr1);
+
+            // Accruing interest with a rate of one should have no effect.
+            expect(await lmcv.AccumulatedRate()).to.equal(fray("1"));
+
+            // Change the stability rate to 5%.
+            // We actually store the per second rate which is 1.05^(1/3153600)
+            await ratesUpdater.changeStabilityRate(fray("1.00000000154713"));
+
+            // Fast forward six months.
+            await network.provider.send("evm_increaseTime", [15768000]);
+            
+            // Accrue interest after half a year. We would expect the accumulated rate to be around 2.46%.
+            await userOneRatesUpdater.accrueInterest();
+            let accumulatedRate = await lmcv.AccumulatedRate();
+            const twoPointFourSixPc = ethers.BigNumber.from(fray("1.0246"));
+            const twoPointFourSevenPc = ethers.BigNumber.from(fray("1.0247"));
+            expect(accumulatedRate.gt(twoPointFourSixPc)).equals(true);
+            expect(accumulatedRate.lt(twoPointFourSevenPc)).equals(true);
+
+            // Change to 10% rate.
+            await ratesUpdater.changeStabilityRate(fray("1.00000000302227"));
+
+            // Fast forward another six months.
+            await network.provider.send("evm_increaseTime", [15768000]);
+
+            // Accrue interest after half a year. We would expect the accumulated rate to be around 7.46%
+            // based on a rate of 5% for 6 months and then a rate of 10% for 6 months.
+            await userOneRatesUpdater.accrueInterest();
+            accumulatedRate = await lmcv.AccumulatedRate();
+            const sevenPointFourSevenPc = ethers.BigNumber.from(fray("1.0747"));
+            const sevenPointFourSevenOnePc = ethers.BigNumber.from(fray("1.07471"));
+            expect(accumulatedRate.gt(sevenPointFourSevenPc)).equals(true);
+            expect(accumulatedRate.lt(sevenPointFourSevenOnePc)).equals(true);
         });
     });
 });

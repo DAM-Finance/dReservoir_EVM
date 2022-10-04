@@ -60,7 +60,6 @@ describe("dPrimeJoin Testing", function () {
             fwad("10000"),      // Amount limit.
             fwad("1"),          // Dust level.
             fray("0.5"),        // Credit limit. I.e. an LTV of 50%.
-            fray("0.08"),        // Liquidation bonus.
             false
         );
 

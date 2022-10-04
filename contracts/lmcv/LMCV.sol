@@ -1,9 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-// - `wad`: fixed point decimal with 18 decimals (for basic quantities, e.g. balances)
-// - `ray`: fixed point decimal with 27 decimals (for precise quantites, e.g. ratios)
-// - `rad`: fixed point decimal with 45 decimals (result of integer multiplication with a `wad` and a `ray`)
-
 pragma solidity 0.8.7;
 
 /*
@@ -36,7 +32,6 @@ contract LMCV {
         uint256 lockedAmountLimit;      // [wad] - Protocol Level limit for amount of locked collateral.
         uint256 dustLevel;              // [wad] - Minimum amount of collateral allowed per vault.
         uint256 creditRatio;            // [ray] - ie. max 70% loaned out as dPrime.
-        uint256 liqBonusMult;           // [ray] - ie. 5% for bluechip, 15% for junk
         bool    leveraged;
     }
     bytes32[] public CollateralList;
@@ -75,13 +70,13 @@ contract LMCV {
     //
 
     mapping (address => uint256)                        public protocolDeficit;         // [rad]
-    uint256                                             public totalProtocoldeficit;    // [rad]
+    uint256                                             public totalProtocolDeficit;    // [rad]
 
     //
     // Events
     //
 
-    event EditAcceptedCollateralType(bytes32 indexed collateralName, uint256 _debtCeiling, uint256 _debtFloor, uint256 _creditRatio, uint256 _liqBonusMult, bool _leveraged);
+    event EditAcceptedCollateralType(bytes32 indexed collateralName, uint256 _debtCeiling, uint256 _debtFloor, uint256 _creditRatio, bool _leveraged);
     event Liquidation(address indexed liquidated, address indexed liquidator, uint256 normalDebtChange, bytes32[] collats, uint256[] collateralChange);
     event LoanRepayment(uint256 indexed dPrimeChange, address indexed user, bytes32[] collats, uint256[] amounts);
     event Loan(uint256 indexed dPrimeChange, address indexed user, bytes32[] collats, uint256[] amounts);
@@ -103,6 +98,10 @@ contract LMCV {
     event ExitDPrime(address indexed src, uint256 rad);
     event Deflate(address indexed u, uint256 rad);
     event UpdateRate(int256 rate);
+
+    //
+    // --- Modifiers ---
+    //
 
     modifier auth() {
         require(admins[msg.sender] == 1, "LMCV/Not Authorized");
@@ -228,13 +227,10 @@ contract LMCV {
 
     function editCreditRatio(bytes32 collateral, uint256 ray) external auth {
         CollateralData[collateral].creditRatio = ray;
-        require(CollateralData[collateral].creditRatio <= RAY, "LMCV/Credit ratio cannot be higher than 100%");
+        if(CollateralData[collateral].leveraged){
+            require(CollateralData[collateral].creditRatio <= RAY, "LMCV/Credit ratio cannot be higher than 100%");
+        }
         emit CreditRatio(collateral, ray);
-    }
-
-    function editLiquidationBonus(bytes32 collateral, uint256 ray) external auth {
-        CollateralData[collateral].liqBonusMult = ray;
-        emit LiquidationBonus(collateral, ray);
     }
 
     function editLeverageStatus(bytes32 collateral, bool _leveraged) external auth {
@@ -251,20 +247,20 @@ contract LMCV {
         uint256 _lockedAmountLimit,     // [wad] - Protocol Level
         uint256 _dustLevel,             // [wad] - Account level
         uint256 _creditRatio,           // [ray] - ie. max 70% loaned out as dPrime
-        uint256 _liqBonusMult,           // [ray] - ie. 5% for bluechip, 15% for junk
         bool    _leveraged
     ) external auth {
         Collateral memory collateralData    = CollateralData[collateralName];
         collateralData.lockedAmountLimit    = _lockedAmountLimit;
         collateralData.dustLevel            = _dustLevel;
         collateralData.creditRatio          = _creditRatio;
-        collateralData.liqBonusMult         = _liqBonusMult;
-        collateralData.leveraged            = _leveraged;
+        collateralData.leveraged =          _leveraged;
 
-        require(collateralData.creditRatio <= RAY, "LMCV/Credit ratio cannot be higher than 100%");
+        if(CollateralData[collateral].leveraged){
+            require(collateralData.creditRatio <= RAY, "LMCV/Credit ratio cannot be higher than 100%");
+        }
 
         CollateralData[collateralName] = collateralData;
-        emit EditAcceptedCollateralType(collateralName, _lockedAmountLimit, _dustLevel, _creditRatio, _liqBonusMult,  _leveraged);
+        emit EditAcceptedCollateralType(collateralName, _lockedAmountLimit, _dustLevel, _creditRatio,  _leveraged);
     }
 
     //
@@ -463,16 +459,16 @@ contract LMCV {
      * might be the case that the user's vault is still eligible for liquidation if it's a large
      * vault and the amount to liquidate is significantly larger than the auction lot size.
      */
-    function liquidate(
-        bytes32[] calldata collateralList,    // List of collateral identifiers.
-        uint256[] calldata collateralChange,  // List of collateral amount changes.   [wad]
-        uint256 normalizedDebtChange,       // Debt change in t=0 terms.            [wad]
+    function seize(
+        bytes32[] calldata collateralList,      // List of collateral types being liquidated.
+        uint256[] calldata collateralHaircuts,  // List of collateral amount changes.   [wad]
+        uint256 debtHaircut,                    // Debt change in t=0 terms.            [wad]
         address liquidated, 
         address liquidator,
-        address liquidationContract         // Assigned the liquidation debt
+        address treasury
     ) external auth {
-        require(collateralList.length == collateralChange.length, "LMCV/Missing collateral type or collateral amount");
-        uint256 dPrimeChange = normalizedDebtChange * AccumulatedRate;
+        require(collateralList.length == collateralHaircuts.length, "LMCV/Missing collateral type or collateral amount");
+        uint256 dPrimeChange = debtHaircut * AccumulatedRate;
 
         // This debt represnts the amount of liquidated user's dPRIME which is still floating around. 
         // We need to burn the same amount of dPRIME raised via auction. Assuming a successful
@@ -480,24 +476,24 @@ contract LMCV {
         // than the required dPRIME amount will result in some amount of `protocolDeficit` persisting
         // over time. This means that, on aggregate, dPRIME will be less collateralised than it 
         // previously was.
-        totalProtocoldeficit                    += dPrimeChange;
-        protocolDeficit[liquidationContract]    += dPrimeChange;
+        totalProtocolDeficit        += dPrimeChange;
+        protocolDeficit[treasury]   += dPrimeChange;
 
         // Here, we reduce the amount of outstanding debt for the liquidated user and the protocol
         // as a whole because we accounted for it above in `protocolDeficit`. This operation and the one
         // above has the effect of moving the debt to where it will be handled by the liquidation contract.
         // Above, we increase `protocolDeficit` by the dPRIME amount which also takes into account
         // accrued interat interest to date.
-        normalizedDebt[liquidated]  -= normalizedDebtChange;
-        totalNormalizedDebt         -= normalizedDebtChange;
+        normalizedDebt[liquidated]  -= debtHaircut;
+        totalNormalizedDebt         -= debtHaircut;
 
         // Move collateral from the liquidated user's address to liquidator's address. 
         // This might leave the vault in a dusty state.
         for (uint256 i = 0; i < collateralList.length; i++) {
             bytes32 collateral = collateralList[i];
-            CollateralData[collateral].lockedAmount -= collateralChange[i];     // Reduce total locked.
-            lockedCollateral[liquidated][collateral] -= collateralChange[i];    // Reduce locked for user.
-            unlockedCollateral[liquidator][collateral] += collateralChange[i];  // Increase unlocked for liquidator.
+            CollateralData[collateral].lockedAmount     -= collateralHaircuts[i];   // Reduce total locked.
+            lockedCollateral[liquidated][collateral]    -= collateralHaircuts[i];   // Reduce locked for user.
+            unlockedCollateral[liquidator][collateral]  += collateralHaircuts[i];   // Increase unlocked for liquidator.
         }
 
         // Remove collateral from the list of locked collateral indicies if all of it is confiscated
@@ -510,7 +506,7 @@ contract LMCV {
             }
         }
 
-        emit Liquidation(liquidated, liquidator, normalizedDebtChange, collateralList, collateralChange);
+        emit Liquidation(liquidated, liquidator, debtHaircut, collateralList, collateralHaircuts);
     }
 
     /*
@@ -519,11 +515,16 @@ contract LMCV {
      * intention that the protocol deficit is reversed by the amount of dPRIME raised when the auction concludes.
      * The amount of dPRIME raised via the auction is burnt when this function is called. As such, the total 
      * amount of dPRIME issued and protocol deficit is reduced by the same amount.
+     *
+     * This is a public external function, so can be called by anyone but only works if the caller has protocol
+     * deficit assigned to them. I.e. the protocol treasury account. This functino will only work if there
+     * is currently a protocol deficit and if the specified parameter for this function is less than or equal to
+     * the protocol deficit and the caller has a deficit assigned to them.
      */
     function deflate(uint256 rad) external {
         address u = msg.sender;
         protocolDeficit[u]      -= rad;
-        totalProtocoldeficit    -= rad;
+        totalProtocolDeficit    -= rad;
         dPrime[u]               -= rad;
         totalDPrime             -= rad;
 
@@ -536,14 +537,14 @@ contract LMCV {
      * this function does not increase the `normalisedDebt` balance. Any dPRIME created through this function
      * increases the aggregate LTV of the protocol and so is intended that any resulting increase in protocol
      * deficit be balanced be netted off by an increase in protocol surplus.
-
+     *
      * For example, if we were to pay interest on dPRIME deposits in V2 of the protocol then we would pay the 
      * interest via increasing protocol deficit. This deficit would be offset by the surplus dPRIME received
      * as users pay stability fees on their vaults.
      */
     function inflate(address debtReceiver, address dPrimeReceiver, uint256 rad) external auth {
         protocolDeficit[debtReceiver]   += rad;
-        totalProtocoldeficit            += rad;
+        totalProtocolDeficit            += rad;
         dPrime[dPrimeReceiver]          += rad;
         totalDPrime                     += rad;
 
@@ -577,7 +578,7 @@ contract LMCV {
      * This function checks that the present value of a vault's debt (normalised debt multiplied
      * by stability rate) is less than than the credit limit.
      */
-    function isWithinCreditLimit(address user, uint256 rate) private view returns (bool) {
+    function isWithinCreditLimit(address user, uint256 rate) public view returns (bool) {
         bytes32[] storage lockedList = lockedCollateralList[user];
         uint256 creditLimit             = 0; // [rad]
         uint256 leverTokenCreditLimit   = 0; // [rad]
@@ -617,6 +618,14 @@ contract LMCV {
     // Helpers
     //
 
+    /**
+     * Locked collateral list getts for the Liquidation contract.
+     */
+    function lockedCollateralListValues(address user) public view returns(bytes32[] memory) {
+        return lockedCollateralList[user];
+    }
+
+
     function either(bool x, bool y) internal pure returns (bool z) {
         assembly{ z := or(x, y)}
     }
@@ -626,5 +635,21 @@ contract LMCV {
         require(i < array.length, "Array out of bounds");
         array[i] = array[array.length-1];
         array.pop();
+    }
+
+    //
+    // Testing
+    //
+
+    function bytes32ToString(bytes32 _bytes32) public pure returns (string memory) {
+        uint8 i = 0;
+        while(i < 32 && _bytes32[i] != 0) {
+            i++;
+        }
+        bytes memory bytesArray = new bytes(i);
+        for (i = 0; i < 32 && _bytes32[i] != 0; i++) {
+            bytesArray[i] = _bytes32[i];
+        }
+        return string(bytesArray);
     }
 }

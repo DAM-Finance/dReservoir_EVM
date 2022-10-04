@@ -29,7 +29,9 @@ Take a look at this [high level flow diagram](docs/High-level%20protocol%20flows
 
 Contract specific documentation:
 
-**[LMCV.sol](contracts/LMCV.sol) - The main accounting system for the protocol**
+### LMCV
+
+**[LMCV.sol](contracts/lmcv/LMCV.sol) - The main accounting system for the protocol**
 
 * Keeps track of how much collateral each user has deposited with the platform.
 * Keeps track of how much collateral each user has committed to a vault.
@@ -39,46 +41,72 @@ Contract specific documentation:
 * Provides an API for moving unlocked collateral or dPRIME between accounts.
 * Admin interface for editing collateral types or and collateral information.
 
-**[dPrime.sol](contracts/dPrime.sol) - for minting, burning and moving tokenized dPRIME**
+**[dPrime.sol](contracts/lmcv/dPrime.sol) - for minting, burning and moving tokenized dPRIME**
 
 * A Standard ERC20 contract based upon dai.sol.
 
-**[CollateralJoin.sol](contracts/CollateralJoin.sol) - for depositing/withdrawing ERC20 tokens into the protocol**
+**[CollateralJoin.sol](contracts/lmcv/CollateralJoin.sol) - for depositing/withdrawing ERC20 tokens into the protocol**
 
 * Based upon the join contracts from MakerDAO.
 * Allows users to deposit or withdraw unlocked collateral. 
 
-**[CollateralJoinDecimals.sol](contracts/CollateralJoinDecimals.sol) - for depositing/withdrawing ERC20 tokens into the protocol**
+**[CollateralJoinDecimals.sol](contracts/lmcv/CollateralJoinDecimals.sol) - for depositing/withdrawing ERC20 tokens into the protocol**
 
 * As above but for stablecoins with a fewer number of precision digits.
 
-**[dPrimeJoin.sol](contracts/dPrimeJoin.sol) - for depositing/withdrawing dPRIME into the protocol**
+**[dPrimeJoin.sol](contracts/lmcv/dPrimeJoin.sol) - for depositing/withdrawing dPRIME into the protocol**
 
 * Based upon the DAI join contract from MakerDAO.
 * Allows users to deposit or withdraw unlocked dPRIME from the protocol. 
 
-**[PSM.sol](contracts/PSM.sol) - for minting/burning dPrime 1:1 via other accepted stablecoins**
+**[PSM.sol](contracts/lmcv/PSM.sol) - for minting/burning dPrime 1:1 via other accepted stablecoins**
 
 * Allows users to directly mint dPRIME 1:1 with other accepted stablecoins
 * Calls join/exit and loan/repay directly on the collateral join contracts and the LMCV
 * Optional mint and burn fee can be set
 * dPRIME minted via the PSM counts as collateral towards the user's vault
 
-**[WGLMR.sol](contracts/WGLMR.sol) - for wrapping the native token (Glimmer)**
+**[WGLMR.sol](contracts/lmcv/WGLMR.sol) - for wrapping the native token (Glimmer)**
 
 * Saves us from having a separate join contract for Glimmer.
 * Fairly standard design: deposit/withdraw/transfer/etc.
+
+**[Liquidation.sol](contracts/lmcv/Liquidation.sol) - for kicking off the vault liquidation process**
+
+* Based upon the MakerDAO "Cat.sol"
+* Admins for the Liquidation contract can specify an auction lot size - this is the maxmimum amount of dPRIME which can be raised in a single auction
+* Note that many auctions can happen in parallel though
+* If the vault size is less than the lot size then the whole vault will be liquidated, the amount to liquidate is the total normalized debt multiplied by the accumulated stability rate
+* If the vault size is greater than the lot size then the amount to liquidate is the lot size divided by the stability rate and divided by the liquidation penalty, the number we end up with after these divisions is an amount of normalized debt, when multiplied by the accumualted stabiltiy rate and the liquidation penalty, gets us to a dPRIME amount which is equal to the lot size.
+* The liquidation penalty can be set by the contract admin and is used as a deterrant to stop users willfully liquidating their vaults to potentially buy back the collateral at a discount. The penalty also does what it says on the tin, it's a punishment for being liquidated. The proceeds of the liquidation penalty go to the protocol treasury and are most liqkely used to indemnify teh protocol in case of bad debt losses.
+* The Liquidation contract transfers the necessary collateral to its account when `liquidate` is called. The amount transferred is a multiple of the `debtHaircut` to the total normalized debt. I.e. if the whole vault is liquidated because it's smaller than the lot size then all of the collateral is confiscated. If the vault is larger than the lot size then the same percentage of collateral is confiscated as normalized debt liquidated.
+* The last thing this `liquidate` does is start the auction process.
+
+**[AuctionHouse.sol](contracts/lmcv/AuctionHouse.sol) - auctions off collateral for dPRIME which is then burnt to offset the protocol deficit**
+
+* TBC. We probably need a long section on how the auction process works with diagrams so it's easily understandable.
+
+**[RatesUpdater.sol](contracts/lmcv/RatesUpdater.sol) - allows keepers to accrue interest on all vaults**
+
+**[PriceUpdater.sol](contracts/lmcv/PriceUpdater.sol) - allows keepers to update the spot price for a collateral type**
+
+**[OSM.sol](contracts/lmcv/OSM.sol) - "Oracle stability module" which introduces a delay before collateral prices are updated to aid in the deference against any potential oracle attack**
+
+**[ChainlinkClient.sol](contracts/lmcv/ChainlinkClient.sol) - A client for the Chainlink Oracle on Moonbeam**
+
+### Staking
+
+**[ddPrime.sol](contracts/staking/ddPrime.sol) - for minting, burning and moving ddPrime**
+
+**[ddPrimeJoin.sol](contracts/staking/ddPrimeJoin.sol) - for depositing and withdrawing ddPrime in the staking vault**
+
+**[RewardJoin.sol](contracts/staking/RewardJoin.sol) - for depositing and withdrawing reward tokens in the staking vault**
+
+**[StakeJoin.sol](contracts/staking/StakeJoin.sol) - for depositing and withdrawing the staking token in the staking vault**
+
+**[StakingVault.sol](contracts/staking/StakingVault.sol) - the staking vault accounting system**
 
 ## Limitations / future features
 
 1. In V1 no interest is payable on dPRIME deposits.
 2. In V1 there is no governance token and therefore no decentralised governance or protocol enforced bail-ins/ bail-outs in the case of excessive protocol deficit.
-
-## TODO
-
-1. Liquidation contract
-2. Auction contract
-3. Staking contract
-4. User facing proxy contract
-5. Interest rate contract
-6. Oracle price feed contracts
