@@ -174,6 +174,22 @@ describe("Testing LMCV", function () {
             await lmcv.setProtocolDebtCeiling(debtCeiling);
         });
 
+        it("Should break when not live", async function () {
+
+            await lmcv.setLoanAlive(0);
+
+            await expect(
+                userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr1.address)
+            ).to.be.revertedWith("LMCV/Loan paused");
+        });
+
+        it("Should always have archadmin", async function () {
+            await lmcv.setArchAdmin(addr1.address);
+
+            await expect(lmcv.setArchAdmin(addr1.address)).to.be.revertedWith("LMCVProxy/Must be ArchAdmin")
+            expect(await lmcv.ArchAdmin()).to.equal(addr1.address);
+        });
+
         it("Should behave correctly when given collateral", async function () {
             //Total value of collateral: $6000
             //Total loanable amount: $3000

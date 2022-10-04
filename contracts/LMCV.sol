@@ -246,17 +246,6 @@ contract LMCV {
         emit SpotUpdate(collateral, ray);
     }
 
-    function editCollateralList(bytes32 collateralName, bool accepted) external auth {
-        for (uint256 i = 0; i < CollateralList.length; i++) {
-            if(CollateralList[i] == collateralName){
-                deleteElement(CollateralList, i);
-            }
-        }
-        if(accepted){
-            CollateralList.push(collateralName);
-        }
-    }
-
     function editAcceptedCollateralType(
         bytes32 collateralName,
         uint256 _lockedAmountLimit,     // [wad] - Protocol Level

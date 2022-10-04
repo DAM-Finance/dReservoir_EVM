@@ -29,7 +29,7 @@ contract CollateralJoinDecimals {
     mapping(address => uint256) public wards;
 
     function setArchAdmin(address newArch) external auth {
-        require(ArchAdmin == msg.sender && newArch != address(0), "LMCVProxy/Must be ArchAdmin");
+        require(ArchAdmin == msg.sender && newArch != address(0), "CollateralJoinDec/Must be ArchAdmin");
         ArchAdmin = newArch;
         wards[ArchAdmin] = 1;
     }
@@ -62,7 +62,7 @@ contract CollateralJoinDecimals {
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event Cage();
+    event Cage(uint256 status);
 
     //
     // --- Modifiers ---
@@ -77,9 +77,9 @@ contract CollateralJoinDecimals {
     // --- Admin ---
     //
 
-    function cage() external auth {
-        live = 0;
-        emit Cage();
+    function cage(uint256 status) external auth {
+        live = status;
+        emit Cage(status);
     }
 
     //
@@ -111,6 +111,7 @@ contract CollateralJoinDecimals {
     }
 
     function exit(address guy, uint256 wad) external {
+        require(live == 1, "CollateralJoin/not-live");
         uint256 wad18 = wad * (10 ** (18 - dec));
         lmcv.pullCollateral(collateralName,  msg.sender, wad18);
         require(collateralContract.transfer(guy, wad), "CollateralJoin/failed-transfer");

@@ -145,6 +145,24 @@ describe("Testing LMCVProxy", function () {
                 userLMCVProxy.createLoan(collateralBytesList, [fwad("100"), fwad("200"), fwad("300")], fwad("1000"))
             ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
         });
+
+        it("Should break when not live", async function () {
+            await setupUser(addr1, ["10", "1000", "1000"]);
+            await userLMCV.approveMultiple([lmcvProxy.address, dPrimeJoin.address]);
+
+            await lmcvProxy.setLive(0);
+
+            await expect(
+                userLMCVProxy.createLoan(collateralBytesList, [fwad("100"), fwad("200"), fwad("300")], fwad("1000"))
+            ).to.be.revertedWith("LMCVProxy/not-live");
+        });
+
+        it("Should always have archadmin", async function () {
+            await lmcvProxy.setArchAdmin(addr1.address);
+
+            await expect(lmcvProxy.setArchAdmin(addr1.address)).to.be.revertedWith("LMCVProxy/Must be ArchAdmin")
+            expect(await lmcvProxy.ArchAdmin()).to.equal(addr1.address);
+        });
     });
 
     describe("repayLoan function testing", function () {

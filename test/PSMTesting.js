@@ -265,5 +265,71 @@ describe("Testing LMCV", function () {
             expect(await lmcv.totalDPrime()).to.equal(frad("1550"));
         });
     });
+
+    describe("ArchAdmin and Cage testing", function () {
+
+        it("Should break when not live", async function () {
+            await lmcv.setPSMAddress(psm.address, true);
+            await userDPrime.approve(psm.address, fray("100000"));
+            expect(await psm.collateralJoin()).to.equal(collateralJoin.address);
+            await collateralJoin.rely(psm.address);
+
+            await psm.setLive(0);
+
+            await expect(
+                userPSM.createDPrime(addr1.address, [USDCMockBytes],["10000000000000"])
+            ).to.be.revertedWith("PSM/not-live");
+        });
+
+        it("Should always have archadmin", async function () {
+            await expect(psm.deny(owner.address)).to.be.revertedWith("PSM/ArchAdmin cannot lose admin - update ArchAdmin to another address")
+
+            await psm.setArchAdmin(addr1.address);
+
+            await expect(psm.setArchAdmin(addr1.address)).to.be.revertedWith("PSM/Must be ArchAdmin")
+            expect(await psm.ArchAdmin()).to.equal(addr1.address);
+
+            
+        });
+
+        it("CollateralJoinDecimals should break when not live", async function () {
+            await lmcv.setPSMAddress(psm.address, true);
+            await userDPrime.approve(psm.address, fray("100000"));
+            expect(await psm.collateralJoin()).to.equal(collateralJoin.address);
+            await collateralJoin.rely(psm.address);
+
+            await collateralJoin.cage(0);
+
+            await expect(
+                userPSM.createDPrime(addr1.address, [USDCMockBytes],["10000000000000"])
+            ).to.be.revertedWith("CollateralJoin/not-live");
+        });
+
+        it("CollateralJoinDecimals should always have archadmin", async function () {
+            await expect(collateralJoin.deny(owner.address)).to.be.revertedWith("CollateralJoinDec/ArchAdmin cannot lose admin - update ArchAdmin to another address")
+            await collateralJoin.setArchAdmin(addr1.address);
+
+            await expect(collateralJoin.setArchAdmin(addr1.address)).to.be.revertedWith("CollateralJoinDec/Must be ArchAdmin")
+            expect(await collateralJoin.ArchAdmin()).to.equal(addr1.address);
+        });
+
+        it("CollateralJoin should break when not live", async function () {
+            let collatJoin2Connect = collatJoinTwo.connect(addr1);
+            await collatJoinTwo.cage(0);
+
+            await expect(
+                collatJoin2Connect.join(addr1.address, fwad("1000"))
+            ).to.be.revertedWith("CollateralJoin/not-live");
+        });
+
+        it("CollateralJoin should always have archadmin", async function () {
+            await expect(collatJoinTwo.deny(owner.address)).to.be.revertedWith("CollateralJoin/ArchAdmin cannot lose admin - update ArchAdmin to another address")
+            await collatJoinTwo.setArchAdmin(addr1.address);
+
+            await expect(collatJoinTwo.setArchAdmin(addr1.address)).to.be.revertedWith("CollateralJoin/Must be ArchAdmin")
+            expect(await collatJoinTwo.ArchAdmin()).to.equal(addr1.address);
+        });
+
+    });
 });
 
