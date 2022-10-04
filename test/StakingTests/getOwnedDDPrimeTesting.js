@@ -27,6 +27,7 @@ let stakeJoinFactory, stakeJoin;
 let userStakeJoin, userStakeJoin2, userStakeJoin3;
 let userSV, userSV2, userSV3;
 let collateralJoinFactory, collateralJoin, ddPrimeCollateralJoin;
+let lmcvProxy, lmcvProxyFactory;
 
 const MAX_INT = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 
@@ -55,6 +56,7 @@ describe("Testing checkDDPrimeOwnership", function () {
     before(async function () {
         ddPrimeFactory              = await ethers.getContractFactory("ddPrime");
         LMCVFactory                 = await ethers.getContractFactory("LMCV");
+        lmcvProxyFactory            = await ethers.getContractFactory("LMCVProxy");
         stakingVaultFactory         = await ethers.getContractFactory("StakingVault");
         ddPrimeJoinFactory          = await ethers.getContractFactory("ddPrimeJoin");
         tokenFactory                = await ethers.getContractFactory("MockTokenTwo");
@@ -68,6 +70,7 @@ describe("Testing checkDDPrimeOwnership", function () {
 
         ddPrime = await ddPrimeFactory.deploy();
         lmcv = await LMCVFactory.deploy();
+        lmcvProxy = await lmcvProxyFactory.deploy(lmcv.address);
         stakingVault = await stakingVaultFactory.deploy(ddPrimeBytes, ddPrime.address, lmcv.address);
         ddPrimeJoin = await ddPrimeJoinFactory.deploy(stakingVault.address, ddPrime.address);
 
@@ -78,10 +81,10 @@ describe("Testing checkDDPrimeOwnership", function () {
 
         await lmcv.setProtocolDebtCeiling(DEBT_CEILING);
 
-        collateralJoin  = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, blorpBytes, blorp.address);
+        collateralJoin  = await collateralJoinFactory.deploy(lmcv.address, lmcvProxy.address, blorpBytes, blorp.address);
         await lmcv.administrate(collateralJoin.address, 1);
 
-        ddPrimeCollateralJoin = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, ddPrimeBytes, ddPrime.address);
+        ddPrimeCollateralJoin = await collateralJoinFactory.deploy(lmcv.address, lmcvProxy.address, ddPrimeBytes, ddPrime.address);
         await lmcv.administrate(ddPrimeCollateralJoin.address, 1);
 
         let blorpConnect = blorp.connect(addr1);

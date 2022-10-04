@@ -255,7 +255,7 @@ contract LMCV {
         collateralData.creditRatio          = _creditRatio;
         collateralData.leveraged =          _leveraged;
 
-        if(CollateralData[collateral].leveraged){
+        if(collateralData.leveraged){
             require(collateralData.creditRatio <= RAY, "LMCV/Credit ratio cannot be higher than 100%");
         }
 

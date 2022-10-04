@@ -86,9 +86,9 @@ describe("AuctionHouse testing", function () {
         lmcv            = await LMCVFactory.deploy();
         lmcvProxy       = await lmcvProxyFactory.deploy(lmcv.address);
         dPrimeJoin      = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address, lmcvProxy.address);
-        fooJoin         = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, fooBytes, foo.address);
-        barJoin         = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, barBytes, bar.address);
-        bazJoin         = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, bazBytes, baz.address);
+        fooJoin         = await collateralJoinFactory.deploy(lmcv.address, lmcvProxy.address, fooBytes, foo.address);
+        barJoin         = await collateralJoinFactory.deploy(lmcv.address, lmcvProxy.address, barBytes, bar.address);
+        bazJoin         = await collateralJoinFactory.deploy(lmcv.address, lmcvProxy.address, bazBytes, baz.address);
         auctionHouse    = await auctionHouseFactory.deploy(lmcv.address);
         liquidator      = await liquidatorFactory.deploy(lmcv.address);
 
