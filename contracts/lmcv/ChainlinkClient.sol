@@ -17,12 +17,18 @@ contract ChainlinkClient {
      */
     function getLatestPrice() public view returns (int256) {
         (
-            /*uint80 roundID*/,
+            uint80 roundID,
             int256 price,
             /*uint startedAt*/,
-            /*uint timeStamp*/,
-            /*uint80 answeredInRound*/
+            uint timestamp,
+            uint80 answeredInRound
         ) = priceFeed.latestRoundData();
+
+        // Revert on any invalid data.
+        require(answeredInRound >= roundID, "ChainLinkClient/Stale price.");
+        require(price > 0, "ChainLinkClient/Invalid price.");
+        require(timestamp != 0, "ChainLinkClient/Round not complete.");
+
         return price;
     }
 }
