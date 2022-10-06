@@ -27,9 +27,26 @@ contract OSM {
     // --- Auth ---
     //
 
-    mapping (address => uint) public wards;
-    function rely(address usr) external auth { wards[usr] = 1; }
-    function deny(address usr) external auth { wards[usr] = 0; }
+    address public ArchAdmin;
+    mapping(address => uint256) public wards;
+
+    function setArchAdmin(address newArch) external auth {
+        require(ArchAdmin == msg.sender && newArch != address(0), "OSM/Must be ArchAdmin");
+        ArchAdmin = newArch;
+        wards[ArchAdmin] = 1;
+    }
+
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
+    }
+
+    function deny(address usr) external auth {
+        require(usr != ArchAdmin, "OSM/ArchAdmin cannot lose admin - update ArchAdmin to another address");
+        wards[usr] = 0;
+        emit Deny(usr);
+    }
+
     modifier auth { require(wards[msg.sender] == 1, "OSM/not-authorized"); _; }
 
     //
@@ -55,12 +72,15 @@ contract OSM {
 
     event ChangeOracleAddress(address indexed _oracleAddress);
     event ChangePokeTimeout(uint256 _pokeTimeout);
+    event Rely(address indexed usr);
+    event Deny(address indexed usr);
     event LogValue(uint256 val);
     event Stopped();
     event Started();
 
     constructor (address _oracleAddress) {
         require(_oracleAddress != address(0), "OSM/Address cannot be zero");
+        ArchAdmin = msg.sender;
         wards[msg.sender] = 1;
         oracleAddress = _oracleAddress;
     }

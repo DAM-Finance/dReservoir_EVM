@@ -15,7 +15,14 @@ contract AuctionHouse {
     // --- Auth ---
     //
 
+    address public ArchAdmin;
     mapping(address => uint256) public wards;
+
+    function setArchAdmin(address newArch) external auth {
+        require(ArchAdmin == msg.sender && newArch != address(0), "AuctionHouse/Must be ArchAdmin");
+        ArchAdmin = newArch;
+        wards[ArchAdmin] = 1;
+    }
 
     function rely(address usr) external auth {
         wards[usr] = 1;
@@ -23,6 +30,7 @@ contract AuctionHouse {
     }
 
     function deny(address usr) external auth {
+        require(usr != ArchAdmin, "AuctionHouse/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         wards[usr] = 0;
         emit Deny(usr);
     }
@@ -84,6 +92,7 @@ contract AuctionHouse {
     //
 
     constructor(address _lmcv) {
+        ArchAdmin = msg.sender;
         live = 1;
         wards[msg.sender] = 1;
         lmcv = LMCVLike(_lmcv);

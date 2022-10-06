@@ -23,6 +23,7 @@ contract StakingVault {
     // Authorisation.
     //
 
+    address public ArchAdmin;
     mapping (address => uint256) public admins;
     mapping (address => mapping (address => uint256))    public proxyApprovals;
 
@@ -91,6 +92,7 @@ contract StakingVault {
         ddPRIMEBytes        = _ddPRIMEBytes;        // bytes32 of ddPRIME in LMCV for lookup in locked collateral list
         ddPRIMEContract     = _ddPRIMEContract;     // Address of ddPRIME for balance lookup
         lmcv                = _lmcv;
+        ArchAdmin           = msg.sender;
         stakeLive           = 1;
         admins[msg.sender]  = 1;
     }
@@ -99,7 +101,14 @@ contract StakingVault {
     // Authorisation.
     //
 
+    function setArchAdmin(address newArch) external auth {
+        require(ArchAdmin == msg.sender && newArch != address(0), "StakingVault/Must be ArchAdmin");
+        ArchAdmin = newArch;
+        admins[ArchAdmin] = 1;
+    }
+
     function administrate(address admin, uint256 authorization) external auth {
+        require(admin != ArchAdmin || authorization == 1, "StakingVault/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         admins[admin] = authorization;
     }
 

@@ -25,9 +25,26 @@ contract RatesUpdater {
     // --- Auth ---
     //
 
-    mapping (address => uint) public wards;
-    function rely(address usr) external auth { wards[usr] = 1; }
-    function deny(address usr) external auth { wards[usr] = 0; }
+    address public ArchAdmin;
+    mapping(address => uint256) public wards;
+
+    function setArchAdmin(address newArch) external auth {
+        require(ArchAdmin == msg.sender && newArch != address(0), "RatesUpdater/Must be ArchAdmin");
+        ArchAdmin = newArch;
+        wards[ArchAdmin] = 1;
+    }
+
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
+    }
+
+    function deny(address usr) external auth {
+        require(usr != ArchAdmin, "RatesUpdater/ArchAdmin cannot lose admin - update ArchAdmin to another address");
+        wards[usr] = 0;
+        emit Deny(usr);
+    }
+
     modifier auth { require(wards[msg.sender] == 1, "RatesUpdater/not-authorized"); _; }
 
     //
@@ -43,6 +60,8 @@ contract RatesUpdater {
     //
 
     event SetStabilityRate(uint256 perSecondRate);
+    event Rely(address user);
+    event Deny(address user);
 
     //
     // --- Init ---
@@ -54,6 +73,7 @@ contract RatesUpdater {
      */
     constructor(address lmcvAddress) {
       require(lmcvAddress != address(0), "RatesUpdater/Address cannot be zero");
+      ArchAdmin           = msg.sender;
       wards[msg.sender]   = 1;
       lmcv                = LMCVLike(lmcvAddress);
       stabilityRate       = ONE;

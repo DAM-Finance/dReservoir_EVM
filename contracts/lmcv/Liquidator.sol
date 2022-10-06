@@ -57,7 +57,14 @@ contract Liquidator {
     // --- Auth ---
     //
 
+    address public ArchAdmin;
     mapping(address => uint256) public wards;
+
+    function setArchAdmin(address newArch) external auth {
+        require(ArchAdmin == msg.sender && newArch != address(0), "Liquidator/Must be ArchAdmin");
+        ArchAdmin = newArch;
+        wards[ArchAdmin] = 1;
+    }
 
     function rely(address usr) external auth {
         wards[usr] = 1;
@@ -65,6 +72,7 @@ contract Liquidator {
     }
 
     function deny(address usr) external auth {
+        require(usr != ArchAdmin, "Liquidator/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         wards[usr] = 0;
         emit Deny(usr);
     }
@@ -125,6 +133,7 @@ contract Liquidator {
     constructor(address _lmcv) {
         live = 1;
         wards[msg.sender] = 1;
+        ArchAdmin = msg.sender;
         lmcv = LMCVLike(_lmcv);
     }
 

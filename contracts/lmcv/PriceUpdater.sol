@@ -29,9 +29,25 @@ contract PriceUpdater {
     // --- Auth ---
     // 
 
-    mapping (address => uint) public wards;
-    function rely(address guy) external auth { wards[guy] = 1;  }
-    function deny(address guy) external auth { wards[guy] = 0; }
+    address public ArchAdmin;
+    mapping(address => uint256) public wards;
+
+    function setArchAdmin(address newArch) external auth {
+        require(ArchAdmin == msg.sender && newArch != address(0), "RatesUpdater/Must be ArchAdmin");
+        ArchAdmin = newArch;
+        wards[ArchAdmin] = 1;
+    }
+
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
+    }
+
+    function deny(address usr) external auth {
+        require(usr != ArchAdmin, "RatesUpdater/ArchAdmin cannot lose admin - update ArchAdmin to another address");
+        wards[usr] = 0;
+        emit Deny(usr);
+    }
     modifier auth {
         require(wards[msg.sender] == 1, "PriceUpdater/not-authorized");
         _;
@@ -54,10 +70,12 @@ contract PriceUpdater {
 
     event PriceUpdate(
         bytes32 collateral,
-        uint256 price              // [ray]
+        uint256 price
     );
     event Cage(uint256 live);
     event UpdateSource(address osm);
+    event Rely(address user);
+    event Deny(address user);
 
 
     // 
@@ -66,9 +84,10 @@ contract PriceUpdater {
 
     constructor(address vat_) {
         require(vat_ != address(0), "PriceUpdater/Address cannot be zero");
-        wards[msg.sender] = 1;
-        lmcv = LMCVLike(vat_);
-        live = 1;
+        ArchAdmin           = msg.sender;
+        wards[msg.sender]   = 1;
+        lmcv                = LMCVLike(vat_);
+        live                = 1;
     }
 
     //

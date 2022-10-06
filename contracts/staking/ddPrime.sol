@@ -5,6 +5,7 @@
 pragma solidity 0.8.7;
 
 contract ddPrime {
+    address public ArchAdmin;
     mapping (address => uint256) public admins;
 
     // --- ERC20 Data ---
@@ -35,6 +36,7 @@ contract ddPrime {
     }
 
     constructor() {
+        ArchAdmin = msg.sender;
         admins[msg.sender] = 1;
         emit Rely(msg.sender);
 
@@ -59,12 +61,19 @@ contract ddPrime {
     }
 
     // --- Administration ---
+    function setArchAdmin(address newArch) external auth {
+        require(ArchAdmin == msg.sender && newArch != address(0), "ddPrime/Must be ArchAdmin");
+        ArchAdmin = newArch;
+        admins[ArchAdmin] = 1;
+    }
+
     function rely(address usr) external auth {
         admins[usr] = 1;
         emit Rely(usr);
     }
 
     function deny(address usr) external auth {
+        require(usr != ArchAdmin, "ddPrime/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         admins[usr] = 0;
         emit Deny(usr);
     }

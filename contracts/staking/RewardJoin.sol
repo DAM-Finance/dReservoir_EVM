@@ -23,7 +23,14 @@ contract RewardJoin {
     // --- Auth ---
     //
 
+    address public ArchAdmin;
     mapping(address => uint256) public wards;
+
+    function setArchAdmin(address newArch) external auth {
+        require(ArchAdmin == msg.sender && newArch != address(0), "RewardJoin/Must be ArchAdmin");
+        ArchAdmin = newArch;
+        wards[ArchAdmin] = 1;
+    }
 
     function rely(address usr) external auth {
         wards[usr] = 1;
@@ -31,6 +38,7 @@ contract RewardJoin {
     }
 
     function deny(address usr) external auth {
+        require(usr != ArchAdmin, "RewardJoin/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         wards[usr] = 0;
         emit Deny(usr);
     }
@@ -78,6 +86,7 @@ contract RewardJoin {
 
     constructor(address stakingVault_, bytes32 collateralName_, address collateralContract_) {
         require(stakingVault_ != address(0) && collateralContract_ != address(0), "RewardJoin/Address cannot be zero");
+        ArchAdmin = msg.sender;
         wards[msg.sender] = 1;
         live = 1;
         stakingVault = StakingVaultLike(stakingVault_);
