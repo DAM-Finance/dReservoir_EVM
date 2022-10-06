@@ -59,7 +59,7 @@ contract RewardJoin {
     //
 
     modifier auth {
-        require(wards[msg.sender] == 1, "CollateralJoin/not-authorized");
+        require(wards[msg.sender] == 1, "RewardJoin/not-authorized");
         _;
     }
 
@@ -90,14 +90,14 @@ contract RewardJoin {
     //
 
     function join(uint256 wad) external {
-        require(live == 1, "CollateralJoin/not-live");
+        require(live == 1, "RewardJoin/not-live");
         require(collateralContract.transferFrom(msg.sender, address(this), wad), "RewardJoin/failed-transfer");
         stakingVault.pushRewards(collateralName, wad);
         emit Join(wad);
     }
 
     function exit(address usr, uint256 wad) external {
-        require(live == 1, "CollateralJoin/not-live");
+        require(live == 1, "RewardJoin/not-live");
         stakingVault.pullRewards(collateralName, msg.sender, wad);
         require(collateralContract.transfer(usr, wad), "RewardJoin/failed-transfer");
         emit Exit(usr, wad);

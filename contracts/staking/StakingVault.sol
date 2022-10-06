@@ -59,6 +59,7 @@ contract StakingVault {
     event PullStakingToken(address indexed user, uint256 amount);
     event Unstake(uint256 amount, address indexed user);
     event Stake(int256 amount, address indexed user);
+    event SetStakeAlive(uint256 status);
     event RewardSpotPrice(bytes32 indexed rewardToken, uint256 ray);
     event StakedMintRatio(uint256 ray);
     event StakedAmountLimit(uint256 wad);
@@ -75,12 +76,12 @@ contract StakingVault {
     address public ddPRIMEContract;
 
     modifier auth() {
-        require(admins[msg.sender] == 1, "LMCV/Not Authorized");
+        require(admins[msg.sender] == 1, "StakingVault/Not Authorized");
         _;
     }
 
     modifier stakeAlive() {
-        require(stakeLive == 1, "LMCV/Loan paused");
+        require(stakeLive == 1, "StakingVault/Loan paused");
         _;
     }
 
@@ -153,6 +154,11 @@ contract StakingVault {
     //
     // Protocol Admin
     //
+
+    function setStakeAlive(uint256 status) external auth {
+        stakeLive = status;
+        emit SetStakeAlive(status);
+    }
 
     function setStakedAmountLimit(uint256 wad) external auth {
         stakedAmountLimit = wad;
@@ -251,7 +257,7 @@ contract StakingVault {
 
     //This will be how accounts that are liquidated with ddPrime in them are recovered
     //This also implicitly forbids the transfer of your assets anywhere except LMCV and your own wallet
-    function liquidationWithdraw(address liquidator, address liquidated, uint256 rad) external {
+    function liquidationWithdraw(address liquidator, address liquidated, uint256 rad) external stakeAlive {
         require(approval(liquidator, msg.sender), "StakingVault/Owner must consent");
 
         //1. Check that liquidated does not own ddPrime they claim to

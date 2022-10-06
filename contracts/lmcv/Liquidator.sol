@@ -95,6 +95,7 @@ contract Liquidator {
         uint256 askingAmount,
         uint256 auctionId
     );
+    event Cage(uint256 status);
     event Rely(address user);
     event Deny(address user);
 
@@ -121,8 +122,9 @@ contract Liquidator {
     // --- Admin ---
     //
 
-    function cage() external auth {
-        live = 0;
+    function cage(uint256 status) external auth {
+        live = status;
+        emit Cage(status);
     }
 
     function setLiquidationPenalty(uint256 ray) external auth {

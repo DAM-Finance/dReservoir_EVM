@@ -57,7 +57,7 @@ contract StakeJoin {
     //
 
     modifier auth {
-        require(wards[msg.sender] == 1, "CollateralJoin/not-authorized");
+        require(wards[msg.sender] == 1, "StakeJoin/not-authorized");
         _;
     }
 
@@ -88,16 +88,16 @@ contract StakeJoin {
     //
 
     function join(address usr, uint256 wad) external {
-        require(live == 1, "CollateralJoin/not-live");
-        require(collateralContract.transferFrom(msg.sender, address(this), wad), "CollateralJoin/failed-transfer");
+        require(live == 1, "StakeJoin/not-live");
+        require(collateralContract.transferFrom(msg.sender, address(this), wad), "StakeJoin/failed-transfer");
         stakingVault.pushStakingToken(usr, wad);
         emit Join(usr, wad);
     }
 
     function exit(address usr, uint256 wad) external {
-        require(live == 1, "CollateralJoin/not-live");
+        require(live == 1, "StakeJoin/not-live");
         stakingVault.pullStakingToken(msg.sender, wad);
-        require(collateralContract.transfer(usr, wad), "CollateralJoin/failed-transfer");
+        require(collateralContract.transfer(usr, wad), "StakeJoin/failed-transfer");
         emit Exit(usr, wad);
     }
 }

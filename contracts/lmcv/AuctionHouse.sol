@@ -62,6 +62,7 @@ contract AuctionHouse {
     // --- Events ---
     //
 
+    event Cage(uint256 status);
     event Rely(address user);
     event Deny(address user);
 
@@ -88,8 +89,8 @@ contract AuctionHouse {
     // --- Admin ---
     //
 
-    function cage() external auth {
-        live = 0;
+    function cage(uint256 status) external auth {
+        live = status;
     }
 
     function setMinimumDebtBidIncrease(uint256 rad) external auth {
@@ -137,6 +138,7 @@ contract AuctionHouse {
         uint256 debtBid,
         uint256 minBid
     ) external auth returns (uint256 id) {
+        require(live == 1, "AuctionHouse/Not live");
         // Return the current ID and increment.
         id = ++auctionId;
 
@@ -167,6 +169,7 @@ contract AuctionHouse {
      * it would be expected that the highest bid will be lower than the asking amount.
      */
     function raise(uint256 id, uint256 bid) external {
+        require(live == 1, "AuctionHouse/Not live");
         // The liquidator contract is always the highest bidder for a new, valid auction.
         require(auctions[id].currentWinner != address(0), "AuctionHouse/Highest bidder not set");
         // No bids after bid expiry time, which by default is 3 hours after a bid is placed.
@@ -204,6 +207,7 @@ contract AuctionHouse {
      * user.
      */
     function converge(uint256 id, uint256 collateralBid) external {
+        require(live == 1, "AuctionHouse/Not live");
         // The liquidator contract is always the highest bidder for a new, valid auction.
         require(auctions[id].currentWinner != address(0), "AuctionHouse/Highest bidder not set");
         // No bids after bid expiry time, which by default is 3 hours after a bid is placed.
@@ -240,6 +244,7 @@ contract AuctionHouse {
      * mapping.
      */
     function end(uint256 id) external {
+        require(live == 1, "AuctionHouse/Not live");
         // The auction ends after the last bid and auction expiry is reached.
         require(
             auctions[id].bidExpiry != 0 && (auctions[id].bidExpiry < block.timestamp || auctions[id].auctionExpiry < block.timestamp), 
