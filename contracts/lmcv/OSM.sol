@@ -53,7 +53,11 @@ contract OSM {
     // --- Events ---
     //
 
+    event ChangeOracleAddress(address indexed _oracleAddress);
+    event ChangePokeTimeout(uint256 _pokeTimeout);
     event LogValue(uint256 val);
+    event Stopped();
+    event Started();
 
     constructor (address _oracleAddress) {
         require(_oracleAddress != address(0), "OSM/Address cannot be zero");
@@ -83,8 +87,8 @@ contract OSM {
     */ 
     uint256 public stopped;
     modifier stoppable { require(stopped == 0, "OSM/OSM is stopped"); _; }
-    function stop() external auth { stopped = 1; }
-    function start() external auth { stopped = 0; }
+    function stop() external auth { stopped = 1; emit Stopped(); }
+    function start() external auth { stopped = 0; emit Started(); }
 
     /**
      * Updates the address where the price oracle exists.
@@ -92,6 +96,7 @@ contract OSM {
     function changeOracleAddress(address _oracleAddress) external auth {
         require(_oracleAddress != address(0), "OSM/Cannot be zero address");
         oracleAddress = _oracleAddress;
+        emit ChangeOracleAddress(_oracleAddress);
     }
 
     /**
@@ -100,6 +105,7 @@ contract OSM {
     function changePokeTimeout(uint256 _pokeTimeout) external auth {
         require(_pokeTimeout > 0, "OSM/ts-is-zero");
         pokeTimeout = _pokeTimeout;
+        emit ChangePokeTimeout(_pokeTimeout);
     }
 
     //
@@ -113,6 +119,7 @@ contract OSM {
     function void() external auth {
         cur = nxt = Data(0, 0);
         stopped = 1;
+        emit Stopped();
     }
 
     /**

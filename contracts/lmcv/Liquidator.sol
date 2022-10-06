@@ -95,9 +95,19 @@ contract Liquidator {
         uint256 askingAmount,
         uint256 auctionId
     );
+    event SetMinimumAskingPriceVariables(
+        uint256 _collateralFactor, 
+        uint256 _debtFactor, 
+        uint256 _debtGrossUpFactor
+    );
+    event SetLiquidationPenalty(uint256 ray);
+    event SetAuctionHouse(address addr);
+    event SetLotSize(uint256 rad);
     event Cage(uint256 status);
     event Rely(address user);
     event Deny(address user);
+
+    
 
     //
     // --- Modifiers ---
@@ -129,10 +139,13 @@ contract Liquidator {
 
     function setLiquidationPenalty(uint256 ray) external auth {
         liquidationPenalty = ray;
+        emit SetLiquidationPenalty(ray);
     }
 
     function setLotSize(uint256 rad) external auth {
+        require(rad != 0, "Liquidator/Lot size cannot be 0");
         lotSize = rad;
+        emit SetLotSize(rad);
     }
 
     /**
@@ -146,6 +159,7 @@ contract Liquidator {
         collateralFactor    = _collateralFactor;
         debtFactor          = _debtFactor;
         debtGrossUpFactor   = _debtGrossUpFactor;
+        emit SetMinimumAskingPriceVariables(_collateralFactor, _debtFactor, _debtGrossUpFactor);
     }
 
     function setAuctionHouse(address addr) external auth {
@@ -153,6 +167,7 @@ contract Liquidator {
         lmcv.disapprove(address(auctionHouse));
         auctionHouse = AuctionHouseLike(addr);
         lmcv.approve(addr);
+        emit SetAuctionHouse(addr);
     }
 
     //

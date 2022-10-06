@@ -39,6 +39,12 @@ contract RatesUpdater {
     LMCVLike    public lmcv;            // LMCV contract
 
     //
+    // --- Events ---
+    //
+
+    event SetStabilityRate(uint256 perSecondRate);
+
+    //
     // --- Init ---
     //
 
@@ -100,8 +106,10 @@ contract RatesUpdater {
     // --- Administration ---
     //
 
+    //Per second rate
     function changeStabilityRate(uint256 _stabilityRate) external auth {
-        stabilityRate = _stabilityRate;
+      stabilityRate = _stabilityRate;
+      emit SetStabilityRate(_stabilityRate);
     }
 
     //
@@ -112,11 +120,11 @@ contract RatesUpdater {
      * Calculates the new accumualated rate and updates the LMCV. Can be called by anyone.
      */
     function accrueInterest() external returns (uint256 rate) {
-        require(block.timestamp >= lastAccrual, "RatesUpdater/invalid block.timestamp");
-        uint256 prevAccrualTime = lastAccrual;
-        lastAccrual = block.timestamp;
-        uint256 prev = lmcv.AccumulatedRate();
-        rate = _rmul(_rpow(stabilityRate, block.timestamp - prevAccrualTime, ONE), prev);
-        lmcv.updateRate(_diff(rate, prev));
+      require(block.timestamp >= lastAccrual, "RatesUpdater/invalid block.timestamp");
+      uint256 prevAccrualTime = lastAccrual;
+      lastAccrual = block.timestamp;
+      uint256 prev = lmcv.AccumulatedRate();
+      rate = _rmul(_rpow(stabilityRate, block.timestamp - prevAccrualTime, ONE), prev);
+      lmcv.updateRate(_diff(rate, prev));
     }
 }

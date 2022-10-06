@@ -65,6 +65,10 @@ contract AuctionHouse {
     event Cage(uint256 status);
     event Rely(address user);
     event Deny(address user);
+    event SetMinimumDebtBidIncrease(uint256 rad);
+    event SetMinimumCollateralBidDecrease(uint256 ray);
+    event SetBidExpiry(uint256 mins);
+    event SetAuctionExpiry(uint256 hrs);
 
     //
     // --- Modifiers ---
@@ -91,22 +95,27 @@ contract AuctionHouse {
 
     function cage(uint256 status) external auth {
         live = status;
+        emit Cage(status);
     }
 
     function setMinimumDebtBidIncrease(uint256 rad) external auth {
         minimumBidIncrease = rad;
+        emit SetMinimumDebtBidIncrease(rad);
     }
 
     function setMinimumCollateralBidDecrease(uint256 ray) external auth {
         minimumBidDecrease = ray;
+        emit SetMinimumCollateralBidDecrease(ray);
     }
 
     function setBidExpiry(uint256 mins) external auth {
         bidExpiry = 60 * mins;
+        emit SetBidExpiry(mins);
     }
 
     function setAuctionExpiry(uint256 hrs) external auth {
         auctionExpiry = 60 * 60 * hrs;
+        emit SetAuctionExpiry(hrs);
     }
 
     //

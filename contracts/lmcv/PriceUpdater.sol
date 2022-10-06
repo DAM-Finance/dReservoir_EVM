@@ -56,6 +56,9 @@ contract PriceUpdater {
         bytes32 collateral,
         uint256 price              // [ray]
     );
+    event Cage(uint256 live);
+    event UpdateSource(address osm);
+
 
     // 
     // --- Init ---
@@ -78,6 +81,7 @@ contract PriceUpdater {
     function updateSource(bytes32 collateral, address _osm) external auth {
         require(_osm != address(0), "PriceUpdater/Address cannot be zero");
         osms[collateral] = OSMLike(_osm);
+        emit UpdateSource(_osm);
     }
 
     /**
@@ -85,6 +89,7 @@ contract PriceUpdater {
      */
     function cage(uint256 _live) external auth {
         live = _live;
+        emit Cage(_live);
     }
 
     //
