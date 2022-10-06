@@ -19,13 +19,16 @@ contract ChainlinkClient {
         (
             uint80 roundID,
             int256 price,
-            uint startedAt,
-            uint timeStamp,
+            /*uint startedAt*/,
+            uint timestamp,
             uint80 answeredInRound
         ) = priceFeed.latestRoundData();
-        require(price > 0, "Price must be higher than 0");
-        require(timeStamp != 0, "Time stamp must not be 0");
-        require(answeredInRound >= roundID, "Must not be stale price");
+
+        // Revert on any invalid data.
+        require(answeredInRound >= roundID, "ChainLinkClient/Stale price.");
+        require(price > 0, "ChainLinkClient/Invalid price.");
+        require(timestamp != 0, "ChainLinkClient/Round not complete.");
+
         return price;
     }
 }
