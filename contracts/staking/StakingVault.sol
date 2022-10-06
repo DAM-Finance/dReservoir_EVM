@@ -120,7 +120,7 @@ contract StakingVault {
     // Math.
     //
 
-    uint256 constant RAY = 10 ** 27;
+    uint256 private constant RAY = 10 ** 27;
     // Can only be used sensibly with the following combination of units:
     // - `rmul(wad, ray) -> wad`
     // - `rmul(ray, ray) -> ray`

@@ -44,7 +44,7 @@ contract LMCVProxy {
     mapping (bytes32 => address)        public collateralContracts;
     mapping (bytes32 => address)        public collateralJoins;
 
-    uint256 constant RAY = 10 ** 27;
+    uint256 private constant RAY = 10 ** 27;
     address public lmcv;
     address public dPrimeJoin;
     address public dPrime;

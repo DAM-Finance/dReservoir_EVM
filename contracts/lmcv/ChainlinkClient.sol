@@ -16,7 +16,7 @@ contract ChainlinkClient {
     /**
      * Returns the latest price
      */
-    function getLatestPrice() public view returns (int256) {
+    function getLatestPrice() external view returns (int256) {
         (
             uint80 roundID,
             int256 price,

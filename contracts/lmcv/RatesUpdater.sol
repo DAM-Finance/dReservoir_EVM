@@ -28,15 +28,15 @@ contract RatesUpdater {
     mapping (address => uint) public wards;
     function rely(address usr) external auth { wards[usr] = 1; }
     function deny(address usr) external auth { wards[usr] = 0; }
-    modifier auth { require(wards[msg.sender] == 1, "Jug/not-authorized"); _; }
+    modifier auth { require(wards[msg.sender] == 1, "RatesUpdater/not-authorized"); _; }
 
     //
     // --- Data ---
     //
 
+    LMCVLike    public immutable lmcv;            // LMCV contract
     uint256     public stabilityRate;   // [ray] Stability rate as a per second compounding rate.
     uint256     public lastAccrual;     // [unix epoch time] Time of last accrual 
-    LMCVLike    public lmcv;            // LMCV contract
 
     //
     // --- Events ---

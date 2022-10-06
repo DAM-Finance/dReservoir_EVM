@@ -45,7 +45,7 @@ contract PriceUpdater {
 
     mapping (bytes32 => OSMLike) public osms;
 
-    LMCVLike    public lmcv;  // CDP Engine
+    LMCVLike    public immutable lmcv;  // CDP Engine
     uint256     public live;
 
     //

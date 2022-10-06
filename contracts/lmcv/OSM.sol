@@ -36,10 +36,10 @@ contract OSM {
     // -- Data ---
     //
 
-    address     public      oracleAddress;
-    uint256     constant    ONE_HOUR        = 3600;
-    uint256     public      pokeTimeout     = ONE_HOUR;
-    uint256     public      zzz;
+    address     public              oracleAddress;
+    uint256     private constant    ONE_HOUR        = 3600;
+    uint256     public              pokeTimeout     = ONE_HOUR;
+    uint256     public              zzz;
 
     struct Data {
         uint256 val;
