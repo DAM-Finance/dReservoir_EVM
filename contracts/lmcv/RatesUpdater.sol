@@ -47,10 +47,11 @@ contract RatesUpdater {
      * Rate must be set greater than one for iterest to accrue.
      */
     constructor(address lmcvAddress) {
-        wards[msg.sender]   = 1;
-        lmcv                = LMCVLike(lmcvAddress);
-        stabilityRate       = ONE;
-        lastAccrual         = block.timestamp;
+      require(lmcvAddress != address(0), "RatesUpdater/Address cannot be zero");
+      wards[msg.sender]   = 1;
+      lmcv                = LMCVLike(lmcvAddress);
+      stabilityRate       = ONE;
+      lastAccrual         = block.timestamp;
     }
 
     //

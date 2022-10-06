@@ -87,7 +87,7 @@ contract StakingVault {
 
     constructor(bytes32 _ddPRIMEBytes, address _ddPRIMEContract, address _lmcv) {
         require(_ddPRIMEContract != address(0), "StakingVault/dPrimeContract address cannot be zero");
-        require(_lmcv != address(0), "StakingVault/LMCV address cannot be zero");
+        require(_lmcv != address(0) && _ddPRIMEContract != address(0), "StakingVault/Address cannot be zero");
         ddPRIMEBytes        = _ddPRIMEBytes;        // bytes32 of ddPRIME in LMCV for lookup in locked collateral list
         ddPRIMEContract     = _ddPRIMEContract;     // Address of ddPRIME for balance lookup
         lmcv                = _lmcv;

@@ -149,6 +149,7 @@ contract Liquidator {
     }
 
     function setAuctionHouse(address addr) external auth {
+        require(addr != address(0), "Liquidator/Address cannot be zero");
         lmcv.disapprove(address(auctionHouse));
         auctionHouse = AuctionHouseLike(addr);
         lmcv.approve(addr);

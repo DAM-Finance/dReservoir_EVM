@@ -56,7 +56,7 @@ contract OSM {
     event LogValue(uint256 val);
 
     constructor (address _oracleAddress) {
-        require(_oracleAddress != address(0), "OSM/Oracle address cannot be zero");
+        require(_oracleAddress != address(0), "OSM/Address cannot be zero");
         wards[msg.sender] = 1;
         oracleAddress = _oracleAddress;
     }
@@ -90,6 +90,7 @@ contract OSM {
      * Updates the address where the price oracle exists.
      */
     function changeOracleAddress(address _oracleAddress) external auth {
+        require(_oracleAddress != address(0), "OSM/Cannot be zero address");
         oracleAddress = _oracleAddress;
     }
 

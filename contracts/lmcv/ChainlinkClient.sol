@@ -9,6 +9,7 @@ contract ChainlinkClient {
     AggregatorV3Interface internal priceFeed;
 
     constructor(address priceFeedAddress) {
+        require(priceFeedAddress != address(0), "ChainlinkClient/Address cannot be zero");
         priceFeed = AggregatorV3Interface(priceFeedAddress);
     }
 

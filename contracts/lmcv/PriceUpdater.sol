@@ -62,6 +62,7 @@ contract PriceUpdater {
     //
 
     constructor(address vat_) {
+        require(vat_ != address(0), "PriceUpdater/Address cannot be zero");
         wards[msg.sender] = 1;
         lmcv = LMCVLike(vat_);
         live = 1;
@@ -75,6 +76,7 @@ contract PriceUpdater {
      * Updates the oracle address for this collateral type. 
      */
     function updateSource(bytes32 collateral, address _osm) external auth {
+        require(_osm != address(0), "PriceUpdater/Address cannot be zero");
         osms[collateral] = OSMLike(_osm);
     }
 

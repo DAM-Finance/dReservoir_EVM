@@ -75,6 +75,7 @@ contract StakeJoin {
     //
 
     constructor(address stakingVault_, bytes32 collateralName_, address collateralContract_) {
+        require(stakingVault_ != address(0) && collateralContract_ != address(0), "StakeJoin/Address cannot be zero");
         wards[msg.sender] = 1;
         live = 1;
         stakingVault = StakingVaultLike(stakingVault_);
