@@ -34,7 +34,6 @@ contract LMCV {
         uint256 creditRatio;            // [ray] - ie. max 70% loaned out as dPrime.
         bool    leveraged;
     }
-    bytes32[] public CollateralList;
     mapping (bytes32 => Collateral)                     public CollateralData;
 
     //
