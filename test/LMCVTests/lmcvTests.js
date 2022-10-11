@@ -28,14 +28,16 @@ function pwad(bigNumber){ return bigNumber.div("1000000000000000000")}
 function pray(bigNumber){ return bigNumber.div("1000000000000000000000000000")} 
 function prad(bigNumber){ return bigNumber.div("1000000000000000000000000000000000000000000000")}
 
+const MAX_INT = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+
 async function setupUser(addr, amounts){
     let mockTokenConnect = mockToken.connect(addr);
     let mockToken2Connect = tokenTwo.connect(addr);
     let mockToken3Connect = tokenThree.connect(addr);
     
-    await mockTokenConnect.approve(collateralJoin.address);
-    await mockToken2Connect.approve(collatJoinTwo.address);
-    await mockToken3Connect.approve(collatJoinThree.address);
+    await mockTokenConnect.approve(collateralJoin.address, MAX_INT);
+    await mockToken2Connect.approve(collatJoinTwo.address, MAX_INT);
+    await mockToken3Connect.approve(collatJoinThree.address, MAX_INT);
 
     await mockTokenConnect.mint(fwad("1000"));
     await mockToken2Connect.mint(fwad("1000"));
@@ -57,7 +59,7 @@ describe("Testing LMCV", function () {
         dPrimeFactory = await ethers.getContractFactory("dPrime");
         LMCVFactory = await ethers.getContractFactory("LMCV");
         dPrimeJoinFactory = await ethers.getContractFactory("dPrimeJoin");
-        tokenFactory = await ethers.getContractFactory("MockTokenTwo");
+        tokenFactory = await ethers.getContractFactory("MockTokenFour");
         collateralJoinFactory = await ethers.getContractFactory("CollateralJoin");
         lmcvProxyFactory = await ethers.getContractFactory("LMCVProxy");
     });
@@ -65,7 +67,7 @@ describe("Testing LMCV", function () {
     beforeEach(async function () {
         [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners();
 
-        dPrime = await dPrimeFactory.deploy();
+        dPrime = await dPrimeFactory.deploy(ethers.constants.AddressZero);
         lmcv = await LMCVFactory.deploy();
         lmcvProxy = await lmcvProxyFactory.deploy(lmcv.address);
         dPrimeJoin = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address, lmcvProxy.address);

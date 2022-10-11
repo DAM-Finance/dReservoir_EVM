@@ -45,9 +45,9 @@ async function setupUser(user, amounts) {
     await barConnect.mint(fwad(amounts.at(1)));
     await bazConnect.mint(fwad(amounts.at(2)));
 
-    await fooConnect.approve(fooJoin.address);
-    await barConnect.approve(barJoin.address);
-    await bazConnect.approve(stakeJoin.address);
+    await fooConnect.approve(fooJoin.address, MAX_INT);
+    await barConnect.approve(barJoin.address, MAX_INT);
+    await bazConnect.approve(stakeJoin.address, MAX_INT);
 }
 
 
@@ -59,7 +59,7 @@ describe("Testing checkDDPrimeOwnership", function () {
         lmcvProxyFactory            = await ethers.getContractFactory("LMCVProxy");
         stakingVaultFactory         = await ethers.getContractFactory("StakingVault");
         ddPrimeJoinFactory          = await ethers.getContractFactory("ddPrimeJoin");
-        tokenFactory                = await ethers.getContractFactory("MockTokenTwo");
+        tokenFactory                = await ethers.getContractFactory("MockTokenFour");
         rewardJoinFactory           = await ethers.getContractFactory("RewardJoin");
         stakeJoinFactory            = await ethers.getContractFactory("StakeJoin");
         collateralJoinFactory       = await ethers.getContractFactory("CollateralJoin");
@@ -89,7 +89,7 @@ describe("Testing checkDDPrimeOwnership", function () {
 
         let blorpConnect = blorp.connect(addr1);
         await blorpConnect.mint(fwad("10000"));
-        await blorpConnect.approve(collateralJoin.address);
+        await blorpConnect.approve(collateralJoin.address, MAX_INT);
 
         let collatJoinConnect = collateralJoin.connect(addr1);
         await collatJoinConnect.join(addr1.address, fwad("10000"));
@@ -154,7 +154,7 @@ describe("Testing checkDDPrimeOwnership", function () {
 
         expect(await ddPrime.balanceOf(addr1.address)).to.equal(fwad("1000"));
 
-        //Set up ddPrime in LMCV
+        // //Set up ddPrime in LMCV
 
         let userDDPRIME = ddPrime.connect(addr1);
         await userDDPRIME.approve(ddPrimeCollateralJoin.address, MAX_INT);

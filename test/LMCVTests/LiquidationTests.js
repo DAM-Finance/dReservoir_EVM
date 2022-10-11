@@ -23,6 +23,8 @@ let liquidatorFactory, liquidator;
 let auctionHouseFactory, auctionHouse;
 let collateralJoinFactory, fooJoin, barJoin, bazJoin;
 
+const MAX_INT = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+
 // LMCV settings.
 let DEBT_CEILING = frad("50000");
 
@@ -36,9 +38,9 @@ async function setupUser(user, amounts) {
     await barConnect.mint(fwad("1000"));
     await bazConnect.mint(fwad("1000"));
     
-    await fooConnect.approve(fooJoin.address);
-    await barConnect.approve(barJoin.address);
-    await bazConnect.approve(bazJoin.address);
+    await fooConnect.approve(fooJoin.address, MAX_INT);
+    await barConnect.approve(barJoin.address, MAX_INT);
+    await bazConnect.approve(bazJoin.address, MAX_INT);
 
     let fooJoinConnect = fooJoin.connect(user);
     let barJoinConnect = barJoin.connect(user);
@@ -65,7 +67,7 @@ describe("Liquidation testing", function () {
         dPrimeFactory           = await ethers.getContractFactory("dPrime");
         LMCVFactory             = await ethers.getContractFactory("LMCV");
         dPrimeJoinFactory       = await ethers.getContractFactory("dPrimeJoin");
-        tokenFactory            = await ethers.getContractFactory("MockTokenTwo");
+        tokenFactory            = await ethers.getContractFactory("MockTokenFour");
         collateralJoinFactory   = await ethers.getContractFactory("CollateralJoin");
         liquidatorFactory       = await ethers.getContractFactory("Liquidator");
         auctionHouseFactory     = await ethers.getContractFactory("AuctionHouse");
@@ -82,7 +84,7 @@ describe("Liquidation testing", function () {
         baz = await tokenFactory.deploy("BAZ");
 
         // Deploy protocol contracts.
-        dPrime          = await dPrimeFactory.deploy();
+        dPrime          = await dPrimeFactory.deploy(ethers.constants.AddressZero);
         lmcv            = await LMCVFactory.deploy();
         lmcvProxy       = await lmcvProxyFactory.deploy(lmcv.address);
         dPrimeJoin      = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address, lmcvProxy.address);

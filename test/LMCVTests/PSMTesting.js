@@ -20,6 +20,8 @@ let mockToken2Bytes = ethers.utils.formatBytes32String("MOCKTOKENTWO");
 let tokenTwo;
 let collatJoinTwo;
 
+const MAX_INT = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+
 
 //Format as wad, ray, rad
 function fwad(wad){ return ethers.utils.parseEther(wad)}
@@ -35,7 +37,7 @@ async function setupUser(addr, amounts){
     let mockToken2Connect = tokenTwo.connect(addr);
     
     await mockTokenConnect.approve(collateralJoin.address);
-    await mockToken2Connect.approve(collatJoinTwo.address);
+    await mockToken2Connect.approve(collatJoinTwo.address, MAX_INT);
 
     await mockTokenConnect.mint(fwad(amounts.at(0)));
     await mockToken2Connect.mint(fwad(amounts.at(0)));
@@ -52,14 +54,14 @@ describe("Testing LMCV", function () {
         lmcvProxyFactory = await ethers.getContractFactory("LMCVProxy");
         psmFactory = await ethers.getContractFactory("PSM");
 
-        regularTokenFactory = await ethers.getContractFactory("MockTokenTwo");
+        regularTokenFactory = await ethers.getContractFactory("MockTokenFour");
         regularCollateralJoinFactory = await ethers.getContractFactory("CollateralJoin");
     });
 
     beforeEach(async function () {
         [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners();
 
-        dPrime = await dPrimeFactory.deploy();
+        dPrime = await dPrimeFactory.deploy(ethers.constants.AddressZero);
         lmcv = await LMCVFactory.deploy();
         lmcvProxy = await lmcvProxyFactory.deploy(lmcv.address);
         dPrimeJoin = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address, lmcvProxy.address);
@@ -122,9 +124,16 @@ describe("Testing LMCV", function () {
         });
 
         it("Should properly add collateral, loan, and exit with dPrime", async function () {
+
+            //Set PSM in LMCV for no fee or interest
             await lmcv.setPSMAddress(psm.address, true);
+
+            //Approve PSM from user perspective to transfer out
             await userDPrime.approve(psm.address, fray("100000"));
+
             expect(await psm.collateralJoin()).to.equal(collateralJoin.address);
+
+            //Auth needed on collatJoin so regular users can't deposit as PSM does
             await collateralJoin.rely(psm.address);
 
             expect(await USDCMock.balanceOf(addr1.address)).to.equal("4000000000000000000000")

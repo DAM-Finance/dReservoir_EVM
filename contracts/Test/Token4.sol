@@ -4,7 +4,7 @@
 
 pragma solidity ^0.8.7;
 
-contract MockTokenTwo {
+contract MockTokenFour {
     uint256                                           public  totalSupply;
     mapping (address => uint256)                      public  balanceOf;
     mapping (address => mapping (address => uint256)) public  allowance;
@@ -16,11 +16,7 @@ contract MockTokenTwo {
         symbol = symbol_;
     }
 
-    function approve(address guy) external returns (bool) {
-        return approve(guy, type(uint256).max);
-    }
-
-    function approve(address guy, uint256 wad) internal returns (bool) {
+    function approve(address guy, uint256 wad) public returns (bool) {
         allowance[msg.sender][guy] = wad;
 
         return true;

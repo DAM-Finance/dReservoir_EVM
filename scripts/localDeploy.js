@@ -30,21 +30,31 @@ async function setupUser(user, amounts) {
     let barConnect = bar.connect(user);
     let bazConnect = baz.connect(user);
 
+    console.log("minting tokens");
     await fooConnect.mint(fwad("1000"));
     await barConnect.mint(fwad("1000"));
     await bazConnect.mint(fwad("1000"));
 
+    console.log("approving joins");
     await fooConnect.approve(fooJoin.address, MAX_INT);
     await barConnect.approve(barJoin.address, MAX_INT);
     await bazConnect.approve(bazJoin.address, MAX_INT);
+
+    console.log("Approving lmcvProxy");
+    await fooConnect.approve(lmcvProxy.address, MAX_INT);
+    await barConnect.approve(lmcvProxy.address, MAX_INT);
+    await bazConnect.approve(lmcvProxy.address, MAX_INT);
 
     let fooJoinConnect = fooJoin.connect(user);
     let barJoinConnect = barJoin.connect(user);
     let bazJoinConnect = bazJoin.connect(user);
 
+    console.log("Doing regular joins");
+
     await fooJoinConnect.join(user.address, fwad(amounts.at(0)));
     await barJoinConnect.join(user.address, fwad(amounts.at(1)));
     await bazJoinConnect.join(user.address, fwad(amounts.at(2)));
+    console.log('Ending joins');
 }
 
 const NumType = Object.freeze({
@@ -96,38 +106,6 @@ async function newSetup(){
     console.log("bazJoin address:       ", bazJoin.address, "\n");
 }
 
-async function attach(){
-
-    const [deployer] = await ethers.getSigners();
-
-    lmcv = await LMCVFactory.attach("0x7501FBA3Bf51BB130093c879293B43b9760EDc87");
-    dPrime = await dPrimeFactory.attach("0xfaF2e8D5FDFdDA01C11b0B0FdC30D5C409BE2BA9");
-    lmcvProxy = await lmcvProxyFactory.attach("0x6961D457fA5DBc3968DFBeD0b2df2D0954332a01");
-    dPrimeJoin = await dPrimeJoinFactory.attach("0x1655Be14De8BaF69feA865a8De0e2Cbb20Be12a7");
-
-    foo = await tokenFactory.attach("0x2bEede8C40dd36146124E32C35F5D9EB0BCbEa2D")
-    bar = await tokenFactory.attach("0x69c3cF421d0B8b3E9cF0E8C99D3BA6894E028878")
-    baz = await tokenFactory.attach("0x6f8D44Aec671E83aAb5172a4FE16edEB66c25A93")
-
-    fooJoin = await collateralJoinFactory.attach("0xCdf8942EE3dC779074C116DcD04ff94EBEbA7FDe")
-    barJoin = await collateralJoinFactory.attach("0xd974027000be6885c4517DDbC4629b1ACEA54a6A")
-    bazJoin = await collateralJoinFactory.attach("0x5d9B8E21c0efD7C0C93c579128023ca810eeC73B")
-
-    console.log();
-    console.log("Deployer:              ", deployer.address);
-    console.log("dPrime address:        ", dPrime.address);
-    console.log("lmcv address:          ", lmcv.address);
-    console.log("dPrimeJoin address:    ", dPrimeJoin.address);
-    console.log("LMCVProxy address:     ", lmcvProxy.address, "\n");
-
-    console.log("foo address:           ", foo.address);
-    console.log("bar address:           ", bar.address);
-    console.log("baz address:           ", baz.address);
-    console.log("fooJoin address:       ", fooJoin.address);
-    console.log("barJoin address:       ", barJoin.address);
-    console.log("bazJoin address:       ", bazJoin.address, "\n");
-}
-
 async function setPerms(){
 
     console.log("Setting dPrime admin");
@@ -151,26 +129,26 @@ async function setPerms(){
     await lmcv.updateSpotPrice(fooBytes, fray("40"));
     await lmcv.updateSpotPrice(barBytes, fray("20"));
     await lmcv.updateSpotPrice(bazBytes, fray("10"));
-
-    
 }
 
 async function setUser(){
     console.log("Setting up user");
-    console.log(await setupUser(addr1, ["555", "666", "777"]));
+    await setupUser(addr1, ["555", "666", "777"]);
 }
 
 async function loan(){
     console.log("Loan");
     let userLMCV = lmcv.connect(addr1);
+    await userLMCV.approveMultiple([dPrimeJoin.address, lmcvProxy.address]);
     await userLMCV.loan([fooBytes, barBytes, bazBytes], [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr1.address);
 
+    console.log("dPrimeExit")
     let userDPrimeJoin = dPrimeJoin.connect(addr1);
-    await userLMCV.approveMultiple([userDPrimeJoin.address, lmcvProxy.address]);
     await userDPrimeJoin.exit(addr1.address, fwad("2000"));
 }
 
 async function setupCollateralLMCVProxy(){
+    console.log("Setting up editCollateral for LMCVProxy");
     await lmcvProxy.editCollateral(fooBytes, fooJoin.address, foo.address, MAX_INT);
     await lmcvProxy.editCollateral(barBytes, barJoin.address, bar.address, MAX_INT);
     await lmcvProxy.editCollateral(bazBytes, bazJoin.address, baz.address, MAX_INT);
@@ -180,28 +158,25 @@ async function setupCollateralLMCVProxy(){
 }
 
 async function test(){
-    // console.log(await foo.allowance(addr1.address, lmcvProxy.address));
-    // console.log(await foo.allowance(lmcvProxy.address, fooJoin.address));
+
+   
+    console.log("Setting up test function");
 
     let userLMCVProxy = lmcvProxy.connect(addr1);
     await userLMCVProxy.createLoan([fooBytes], [fwad("5")], fwad("10"));
+
+    console.log(await foo.allowance(addr1.address, lmcvProxy.address));
+    console.log(await foo.allowance(lmcvProxy.address, fooJoin.address));
 }
 
 // New setup
-// main()
-//     .then(() => newSetup())
-//     .then(() => process.exit(0))
-//     .catch((error) => {
-//         console.error(error);
-//         process.exit(1);
-//     });
-
-// Attach to exist contracts setup 
 main()
-    .then(() => attach())
-    // .then(() => setPerms())
-    // .then(() => test())
-    // .then(() => loan())
+    .then(() => newSetup())
+    .then(() => setPerms())
+    .then(() => setUser())
+    .then(() => loan())
+    .then(() => setupCollateralLMCVProxy())
+    .then(() => test())
     .then(() => process.exit(0))
     .catch((error) => {
         console.error(error);

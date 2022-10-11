@@ -16,9 +16,12 @@ let userDPrime, userDPrimeJoin;
 let userLMCV;
 let lmcvProxy, lmcvProxyFactory;
 
+const MAX_INT = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+
+
 async function setupUser(addr, amount){
     let mockTokenConnect = mockToken.connect(addr);
-    await mockTokenConnect.approve(collateralJoin.address);
+    await mockTokenConnect.approve(collateralJoin.address, MAX_INT);
     await mockTokenConnect.mint(fwad("1000"));
 
     let collatJoinConnect = collateralJoin.connect(addr);
@@ -33,7 +36,7 @@ describe("dPrimeJoin Testing", function () {
         [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
 
         dPrimeFactory = await ethers.getContractFactory("dPrime");
-        dPrime = await dPrimeFactory.deploy();
+        dPrime = await dPrimeFactory.deploy(ethers.constants.AddressZero);
 
         LMCVFactory = await ethers.getContractFactory("LMCV");
         lmcv = await LMCVFactory.deploy();
@@ -47,7 +50,7 @@ describe("dPrimeJoin Testing", function () {
         lmcvProxyFactory = await ethers.getContractFactory("LMCVProxy");
         lmcvProxy = await lmcvProxyFactory.deploy(lmcv.address);
 
-        tokenFactory = await ethers.getContractFactory("MockTokenTwo");
+        tokenFactory = await ethers.getContractFactory("MockTokenFour");
         mockToken = await tokenFactory.deploy("TSTR");
 
         collateralJoinFactory = await ethers.getContractFactory("CollateralJoin");
