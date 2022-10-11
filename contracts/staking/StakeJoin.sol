@@ -21,7 +21,14 @@ contract StakeJoin {
     // --- Auth ---
     //
 
+    address public ArchAdmin;
     mapping(address => uint256) public wards;
+
+    function setArchAdmin(address newArch) external auth {
+        require(ArchAdmin == msg.sender && newArch != address(0), "StakeJoin/Must be ArchAdmin");
+        ArchAdmin = newArch;
+        wards[ArchAdmin] = 1;
+    }
 
     function rely(address usr) external auth {
         wards[usr] = 1;
@@ -29,6 +36,7 @@ contract StakeJoin {
     }
 
     function deny(address usr) external auth {
+        require(usr != ArchAdmin, "StakeJoin/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         wards[usr] = 0;
         emit Deny(usr);
     }
@@ -48,7 +56,7 @@ contract StakeJoin {
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event Cage();
+    event Cage(uint256 status);
     event Join(address indexed usr, uint256 wad);
     event Exit(address indexed usr, uint256 wad);
 
@@ -57,7 +65,7 @@ contract StakeJoin {
     //
 
     modifier auth {
-        require(wards[msg.sender] == 1, "CollateralJoin/not-authorized");
+        require(wards[msg.sender] == 1, "StakeJoin/not-authorized");
         _;
     }
 
@@ -65,9 +73,9 @@ contract StakeJoin {
     // --- Admin ---
     //
 
-    function cage() external auth {
-        live = 0;
-        emit Cage();
+    function cage(uint256 status) external auth {
+        live = status;
+        emit Cage(status);
     }
 
     //
@@ -75,6 +83,8 @@ contract StakeJoin {
     //
 
     constructor(address stakingVault_, bytes32 collateralName_, address collateralContract_) {
+        require(stakingVault_ != address(0) && collateralContract_ != address(0), "StakeJoin/Address cannot be zero");
+        ArchAdmin = msg.sender;
         wards[msg.sender] = 1;
         live = 1;
         stakingVault = StakingVaultLike(stakingVault_);
@@ -88,16 +98,16 @@ contract StakeJoin {
     //
 
     function join(address usr, uint256 wad) external {
-        require(live == 1, "CollateralJoin/not-live");
-        require(collateralContract.transferFrom(msg.sender, address(this), wad), "CollateralJoin/failed-transfer");
+        require(live == 1, "StakeJoin/not-live");
+        require(collateralContract.transferFrom(msg.sender, address(this), wad), "StakeJoin/failed-transfer");
         stakingVault.pushStakingToken(usr, wad);
         emit Join(usr, wad);
     }
 
     function exit(address usr, uint256 wad) external {
-        require(live == 1, "CollateralJoin/not-live");
+        require(live == 1, "StakeJoin/not-live");
         stakingVault.pullStakingToken(msg.sender, wad);
-        require(collateralContract.transfer(usr, wad), "CollateralJoin/failed-transfer");
+        require(collateralContract.transfer(usr, wad), "StakeJoin/failed-transfer");
         emit Exit(usr, wad);
     }
 }

@@ -37,7 +37,7 @@ contract ddPrimeJoin {
     constructor(address _stakingVault, address _ddPrime) {
         require(_stakingVault != address(0x0)
             && _ddPrime != address(0x0),
-            "dPrimeJoin/Can't be zero address"
+            "ddPrimeJoin/Can't be zero address"
         );
         stakingVault = StakingVaultLike(_stakingVault);
         ddPrime = ddPrimeLike(_ddPrime);

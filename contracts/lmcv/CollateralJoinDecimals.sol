@@ -25,7 +25,14 @@ contract CollateralJoinDecimals {
     // --- Auth ---
     //
 
+    address public ArchAdmin;
     mapping(address => uint256) public wards;
+
+    function setArchAdmin(address newArch) external auth {
+        require(ArchAdmin == msg.sender && newArch != address(0), "CollateralJoinDec/Must be ArchAdmin");
+        ArchAdmin = newArch;
+        wards[ArchAdmin] = 1;
+    }
 
     function rely(address usr) external auth {
         wards[usr] = 1;
@@ -33,6 +40,7 @@ contract CollateralJoinDecimals {
     }
 
     function deny(address usr) external auth {
+        require(usr != ArchAdmin, "CollateralJoinDec/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         wards[usr] = 0;
         emit Deny(usr);
     }
@@ -54,7 +62,7 @@ contract CollateralJoinDecimals {
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event Cage();
+    event Cage(uint256 status);
 
     //
     // --- Modifiers ---
@@ -69,24 +77,26 @@ contract CollateralJoinDecimals {
     // --- Admin ---
     //
 
-    function cage() external auth {
-        live = 0;
-        emit Cage();
+    function cage(uint256 status) external auth {
+        live = status;
+        emit Cage(status);
     }
 
     //
     // --- Init ---
     //
     
-    constructor(address lmcv_, address _lmcvProxy, bytes32 collateralName_, address collateralContract_) {
+    constructor(address lmcv_, address lmcvProxy_, bytes32 collateralName_, address collateralContract_) {
+        require(lmcv_ != address(0x0) && lmcvProxy_ != address(0x0) && collateralContract_ != address(0x0), "CollateralJoinDec/Can't be zero address");
         collateralContract = CollateralLike(collateralContract_);
         dec = collateralContract.decimals();
         require(dec < 18, "CollateralJoin/decimals cannot be higher than 17");
+        ArchAdmin = msg.sender;
         wards[msg.sender] = 1;
         live = 1;
         lmcv = LMCVLike(lmcv_);
         collateralName = collateralName_;
-        lmcvProxy = _lmcvProxy;
+        lmcvProxy = lmcvProxy_;
     }
 
     //
@@ -101,6 +111,7 @@ contract CollateralJoinDecimals {
     }
 
     function exit(address guy, uint256 wad) external {
+        require(live == 1, "CollateralJoin/not-live");
         uint256 wad18 = wad * (10 ** (18 - dec));
         lmcv.pullCollateral(collateralName,  msg.sender, wad18);
         require(collateralContract.transfer(guy, wad), "CollateralJoin/failed-transfer");

@@ -23,6 +23,7 @@ contract StakingVault {
     // Authorisation.
     //
 
+    address public ArchAdmin;
     mapping (address => uint256) public admins;
     mapping (address => mapping (address => uint256))    public proxyApprovals;
 
@@ -59,6 +60,7 @@ contract StakingVault {
     event PullStakingToken(address indexed user, uint256 amount);
     event Unstake(uint256 amount, address indexed user);
     event Stake(int256 amount, address indexed user);
+    event SetStakeAlive(uint256 status);
     event RewardSpotPrice(bytes32 indexed rewardToken, uint256 ray);
     event StakedMintRatio(uint256 ray);
     event StakedAmountLimit(uint256 wad);
@@ -75,21 +77,22 @@ contract StakingVault {
     address public ddPRIMEContract;
 
     modifier auth() {
-        require(admins[msg.sender] == 1, "LMCV/Not Authorized");
+        require(admins[msg.sender] == 1, "StakingVault/Not Authorized");
         _;
     }
 
     modifier stakeAlive() {
-        require(stakeLive == 1, "LMCV/Loan paused");
+        require(stakeLive == 1, "StakingVault/Loan paused");
         _;
     }
 
     constructor(bytes32 _ddPRIMEBytes, address _ddPRIMEContract, address _lmcv) {
         require(_ddPRIMEContract != address(0), "StakingVault/dPrimeContract address cannot be zero");
-        require(_lmcv != address(0), "StakingVault/LMCV address cannot be zero");
+        require(_lmcv != address(0) && _ddPRIMEContract != address(0), "StakingVault/Address cannot be zero");
         ddPRIMEBytes        = _ddPRIMEBytes;        // bytes32 of ddPRIME in LMCV for lookup in locked collateral list
         ddPRIMEContract     = _ddPRIMEContract;     // Address of ddPRIME for balance lookup
         lmcv                = _lmcv;
+        ArchAdmin           = msg.sender;
         stakeLive           = 1;
         admins[msg.sender]  = 1;
     }
@@ -98,7 +101,14 @@ contract StakingVault {
     // Authorisation.
     //
 
+    function setArchAdmin(address newArch) external auth {
+        require(ArchAdmin == msg.sender && newArch != address(0), "StakingVault/Must be ArchAdmin");
+        ArchAdmin = newArch;
+        admins[ArchAdmin] = 1;
+    }
+
     function administrate(address admin, uint256 authorization) external auth {
+        require(admin != ArchAdmin || authorization == 1, "StakingVault/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         admins[admin] = authorization;
     }
 
@@ -119,7 +129,7 @@ contract StakingVault {
     // Math.
     //
 
-    uint256 constant RAY = 10 ** 27;
+    uint256 private constant RAY = 10 ** 27;
     // Can only be used sensibly with the following combination of units:
     // - `rmul(wad, ray) -> wad`
     // - `rmul(ray, ray) -> ray`
@@ -153,6 +163,11 @@ contract StakingVault {
     //
     // Protocol Admin
     //
+
+    function setStakeAlive(uint256 status) external auth {
+        stakeLive = status;
+        emit SetStakeAlive(status);
+    }
 
     function setStakedAmountLimit(uint256 wad) external auth {
         stakedAmountLimit = wad;
@@ -198,6 +213,7 @@ contract StakingVault {
     }
 
     function pullStakingToken(address user, uint256 wad) external auth {
+        require(unlockedStakeable[user] >= wad, "StakingVault/Insufficient unlocked stakeable token to pull");
         unlockedStakeable[user] -= wad;
         emit PullStakingToken(user, wad);
     }
@@ -219,6 +235,7 @@ contract StakingVault {
     
     function pullRewards(bytes32 rewardToken, address usr, uint256 wad) external auth {
         RewardTokenData storage tokenData = RewardData[rewardToken];
+        require(withdrawableRewards[usr][rewardToken] >= wad, "StakingVault/Insufficient withdrawable rewards to pull");
         withdrawableRewards[usr][rewardToken]   -= wad;
         tokenData.totalRewardAmount             -= wad;
         emit PullRewards(rewardToken, usr, wad);
@@ -237,7 +254,7 @@ contract StakingVault {
         unlockedStakeable[user]     = _sub(unlockedStakeable[user], wad);
         lockedStakeable[user]       = _add(lockedStakeable[user], wad);
         stakedAmount                = _add(stakedAmount, wad);
-        require(stakedAmount <= stakedAmountLimit, "StakingVault/Cannot be over staked token limit");
+        require(stakedAmount <= stakedAmountLimit || wad < 0, "StakingVault/Cannot be over staked token limit");
 
         //2. Set reward debts for each token based on current time and staked amount
         _payRewards(user, user, prevStakedAmount);
@@ -251,7 +268,7 @@ contract StakingVault {
 
     //This will be how accounts that are liquidated with ddPrime in them are recovered
     //This also implicitly forbids the transfer of your assets anywhere except LMCV and your own wallet
-    function liquidationWithdraw(address liquidator, address liquidated, uint256 rad) external {
+    function liquidationWithdraw(address liquidator, address liquidated, uint256 rad) external stakeAlive {
         require(approval(liquidator, msg.sender), "StakingVault/Owner must consent");
 
         //1. Check that liquidated does not own ddPrime they claim to
@@ -260,6 +277,7 @@ contract StakingVault {
         uint256 prevStakedAmount         = lockedStakeable[liquidated]; //[wad]
 
         //2. Take ddPrime from liquidator's account to repay
+        require(ddPrime[liquidator] >= rad, "StakingVault/Insufficient ddPrime to liquidate");
         ddPrime[liquidator]             -= rad;
         totalDDPrime                    -= rad;
 

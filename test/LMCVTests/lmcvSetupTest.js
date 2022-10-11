@@ -72,15 +72,13 @@ describe("Testing Setup for functions", function () {
 
         tokenFactory = await ethers.getContractFactory("MockTokenFour");
         mockToken = await tokenFactory.deploy("TSTR");
-
-        collateralJoinFactory = await ethers.getContractFactory("CollateralJoin");
-        collateralJoin = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, mockTokenBytes, mockToken.address);
-
         tokenTwo = await tokenFactory.deploy("TST2");
         tokenThree = await tokenFactory.deploy("TST3");
 
-        collatJoinTwo = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, mockToken2Bytes, tokenTwo.address);
-        collatJoinThree = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, mockToken3Bytes, tokenThree.address);
+        collateralJoinFactory = await ethers.getContractFactory("CollateralJoin");
+        collateralJoin = await collateralJoinFactory.deploy(lmcv.address, "0x6961D457fA5DBc3968DFBeD0b2df2D0954332a01", mockTokenBytes, mockToken.address);
+        collatJoinTwo = await collateralJoinFactory.deploy(lmcv.address, "0x6961D457fA5DBc3968DFBeD0b2df2D0954332a01", mockToken2Bytes, tokenTwo.address);
+        collatJoinThree = await collateralJoinFactory.deploy(lmcv.address, "0x6961D457fA5DBc3968DFBeD0b2df2D0954332a01", mockToken3Bytes, tokenThree.address);
 
         await lmcv.administrate(collateralJoin.address, 1);
         await lmcv.administrate(collatJoinTwo.address, 1);
@@ -99,21 +97,6 @@ describe("Testing Setup for functions", function () {
         expect(amount2.toString()).to.equal("666000000000000000000");
         let amount3 = await lmcv.unlockedCollateral(addr1.address, mockToken3Bytes);
         expect(amount3.toString()).to.equal("777000000000000000000");
-    });
-
-    it("should set up collateral list", async function () {
-        await lmcv.editCollateralList(mockTokenBytes, true, 0);
-        await lmcv.editCollateralList(mockToken2Bytes, true, 0);
-        await lmcv.editCollateralList(mockToken3Bytes, true, 0);
-
-        expect(await lmcv.CollateralList(0)).to.equal(mockTokenBytes);
-        expect(await lmcv.CollateralList(1)).to.equal(mockToken2Bytes);
-        expect(await lmcv.CollateralList(2)).to.equal(mockToken3Bytes);
-    });
-
-    it("should not let non-auth set up collateral list", async function () {
-        let addr1LMCV = await lmcv.connect(addr1);
-        await expect(addr1LMCV.editCollateralList(mockTokenBytes, true, 0)).to.be.revertedWith("LMCV/Not Authorized");
     });
 
     it("should set up collateralType mapping", async function () {

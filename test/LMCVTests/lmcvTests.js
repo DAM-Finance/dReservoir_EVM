@@ -74,13 +74,13 @@ describe("Testing LMCV", function () {
 
         mockToken = await tokenFactory.deploy("TSTR");
 
-        collateralJoin = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, mockTokenBytes, mockToken.address);
+        collateralJoin = await collateralJoinFactory.deploy(lmcv.address, "0x6961D457fA5DBc3968DFBeD0b2df2D0954332a01", mockTokenBytes, mockToken.address);
 
         tokenTwo = await tokenFactory.deploy("TST2");
         tokenThree = await tokenFactory.deploy("TST3");
 
-        collatJoinTwo = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, mockToken2Bytes, tokenTwo.address);
-        collatJoinThree = await collateralJoinFactory.deploy(lmcv.address, ethers.constants.AddressZero, mockToken3Bytes, tokenThree.address);
+        collatJoinTwo = await collateralJoinFactory.deploy(lmcv.address, "0x6961D457fA5DBc3968DFBeD0b2df2D0954332a01", mockToken2Bytes, tokenTwo.address);
+        collatJoinThree = await collateralJoinFactory.deploy(lmcv.address, "0x6961D457fA5DBc3968DFBeD0b2df2D0954332a01", mockToken3Bytes, tokenThree.address);
 
         await lmcv.administrate(collateralJoin.address, 1);
         await lmcv.administrate(collatJoinTwo.address, 1);
@@ -114,6 +114,12 @@ describe("Testing LMCV", function () {
         let inconsequentialAmounts = [fwad("50"), fwad("50"), fwad("50")];
         beforeEach(async function () {
             userLMCV = await lmcv.connect(addr1);
+        });
+
+        it("Cannot have no admin on LMCV", async function () {
+            await expect(
+                lmcv.administrate(owner.address, 0)
+            ).to.be.revertedWith("LMCV/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         });
 
         it("Cannot lock more collateral than available unlocked balance", async function () {
@@ -168,6 +174,22 @@ describe("Testing LMCV", function () {
                 userLMCV.loan(collateralBytesList, inconsequentialAmounts, fwad("51"), addr1.address)
             ).to.be.revertedWith("LMCV/Cannot extend past protocol debt ceiling");
             await lmcv.setProtocolDebtCeiling(debtCeiling);
+        });
+
+        it("Should break when not live", async function () {
+
+            await lmcv.setLoanAlive(0);
+
+            await expect(
+                userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr1.address)
+            ).to.be.revertedWith("LMCV/Loan paused");
+        });
+
+        it("Should always have archadmin", async function () {
+            await lmcv.setArchAdmin(addr1.address);
+
+            await expect(lmcv.setArchAdmin(addr1.address)).to.be.revertedWith("LMCVProxy/Must be ArchAdmin")
+            expect(await lmcv.ArchAdmin()).to.equal(addr1.address);
         });
 
         it("Should behave correctly when given collateral", async function () {
@@ -513,7 +535,20 @@ describe("Testing LMCV", function () {
             // //repay a collateral amount
             await expect(
                 userLMCV.repay(collateralBytesList, [fwad("0"), fwad("100"), fwad("200")], fwad("601"), addr1.address)
-            ).to.be.revertedWith("VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)");
+            ).to.be.revertedWith("LMCV/Insufficient dPrime to repay");
+        });
+
+        it("Lever tokens only - previous division by 0 in isWithinCreditLimit", async function () {
+
+            let collateralData = await lmcv.CollateralData(mockTokenBytes);
+            await lmcv.editLeverageStatus(mockTokenBytes, true);
+
+            collateralData = await lmcv.CollateralData(mockTokenBytes);
+            expect(collateralData['leveraged']).to.be.true;
+
+            // max loan = 50 * 40 * 0.5 = 1000
+            await expect(userLMCV.loan([mockTokenBytes], [fwad("50")], fwad("1100"), addr1.address))
+                .to.be.revertedWith("LMCV/Exceeded portfolio credit limit");
         });
     });
 

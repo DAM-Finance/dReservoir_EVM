@@ -9,6 +9,7 @@ import "../L0/IOFT.sol";
 import "../L0/OFTCore.sol";
 
 contract dPrime is OFTCore, IOFT {
+    address public ArchAdmin;
     mapping (address => uint256) public admins;
 
     // --- ERC20 Data ---
@@ -42,6 +43,7 @@ contract dPrime is OFTCore, IOFT {
     constructor(address _lzEndpoint) OFTCore(_lzEndpoint) {
         live = 1;
         admins[msg.sender] = 1;
+        ArchAdmin = msg.sender;
         emit Rely(msg.sender);
 
         deploymentChainId = block.chainid;
@@ -65,12 +67,20 @@ contract dPrime is OFTCore, IOFT {
     }
 
     // --- Administration ---
+
+    function setArchAdmin(address newArch) external auth {
+        require(ArchAdmin == msg.sender && newArch != address(0), "dPrime/Must be ArchAdmin");
+        ArchAdmin = newArch;
+        admins[ArchAdmin] = 1;
+    }
+
     function rely(address usr) external auth {
         admins[usr] = 1;
         emit Rely(usr);
     }
 
     function deny(address usr) external auth {
+        require(usr != ArchAdmin, "dPrime/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         admins[usr] = 0;
         emit Deny(usr);
     }
@@ -151,7 +161,7 @@ contract dPrime is OFTCore, IOFT {
     }
 
     function increaseAllowance(address spender, uint256 addedValue) external returns (bool) {
-        
+
         uint256 newValue = allowance[msg.sender][spender] + addedValue;
         allowance[msg.sender][spender] = newValue;
 

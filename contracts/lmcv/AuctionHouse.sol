@@ -15,7 +15,14 @@ contract AuctionHouse {
     // --- Auth ---
     //
 
+    address public ArchAdmin;
     mapping(address => uint256) public wards;
+
+    function setArchAdmin(address newArch) external auth {
+        require(ArchAdmin == msg.sender && newArch != address(0), "AuctionHouse/Must be ArchAdmin");
+        ArchAdmin = newArch;
+        wards[ArchAdmin] = 1;
+    }
 
     function rely(address usr) external auth {
         wards[usr] = 1;
@@ -23,6 +30,7 @@ contract AuctionHouse {
     }
 
     function deny(address usr) external auth {
+        require(usr != ArchAdmin, "AuctionHouse/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         wards[usr] = 0;
         emit Deny(usr);
     }
@@ -62,8 +70,13 @@ contract AuctionHouse {
     // --- Events ---
     //
 
+    event Cage(uint256 status);
     event Rely(address user);
     event Deny(address user);
+    event SetMinimumDebtBidIncrease(uint256 rad);
+    event SetMinimumCollateralBidDecrease(uint256 ray);
+    event SetBidExpiry(uint256 mins);
+    event SetAuctionExpiry(uint256 hrs);
 
     //
     // --- Modifiers ---
@@ -79,6 +92,7 @@ contract AuctionHouse {
     //
 
     constructor(address _lmcv) {
+        ArchAdmin = msg.sender;
         live = 1;
         wards[msg.sender] = 1;
         lmcv = LMCVLike(_lmcv);
@@ -88,24 +102,29 @@ contract AuctionHouse {
     // --- Admin ---
     //
 
-    function cage() external auth {
-        live = 0;
+    function cage(uint256 status) external auth {
+        live = status;
+        emit Cage(status);
     }
 
     function setMinimumDebtBidIncrease(uint256 rad) external auth {
         minimumBidIncrease = rad;
+        emit SetMinimumDebtBidIncrease(rad);
     }
 
     function setMinimumCollateralBidDecrease(uint256 ray) external auth {
         minimumBidDecrease = ray;
+        emit SetMinimumCollateralBidDecrease(ray);
     }
 
     function setBidExpiry(uint256 mins) external auth {
         bidExpiry = 60 * mins;
+        emit SetBidExpiry(mins);
     }
 
     function setAuctionExpiry(uint256 hrs) external auth {
         auctionExpiry = 60 * 60 * hrs;
+        emit SetAuctionExpiry(hrs);
     }
 
     //
@@ -137,6 +156,7 @@ contract AuctionHouse {
         uint256 debtBid,
         uint256 minBid
     ) external auth returns (uint256 id) {
+        require(live == 1, "AuctionHouse/Not live");
         // Return the current ID and increment.
         id = ++auctionId;
 
@@ -167,6 +187,7 @@ contract AuctionHouse {
      * it would be expected that the highest bid will be lower than the asking amount.
      */
     function raise(uint256 id, uint256 bid) external {
+        require(live == 1, "AuctionHouse/Not live");
         // The liquidator contract is always the highest bidder for a new, valid auction.
         require(auctions[id].currentWinner != address(0), "AuctionHouse/Highest bidder not set");
         // No bids after bid expiry time, which by default is 3 hours after a bid is placed.
@@ -204,6 +225,7 @@ contract AuctionHouse {
      * user.
      */
     function converge(uint256 id, uint256 collateralBid) external {
+        require(live == 1, "AuctionHouse/Not live");
         // The liquidator contract is always the highest bidder for a new, valid auction.
         require(auctions[id].currentWinner != address(0), "AuctionHouse/Highest bidder not set");
         // No bids after bid expiry time, which by default is 3 hours after a bid is placed.
@@ -240,6 +262,7 @@ contract AuctionHouse {
      * mapping.
      */
     function end(uint256 id) external {
+        require(live == 1, "AuctionHouse/Not live");
         // The auction ends after the last bid and auction expiry is reached.
         require(
             auctions[id].bidExpiry != 0 && (auctions[id].bidExpiry < block.timestamp || auctions[id].auctionExpiry < block.timestamp), 

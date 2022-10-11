@@ -58,7 +58,14 @@ contract PSM {
     // --- Auth ---
     //
 
+    address public ArchAdmin;
     mapping(address => uint256) public wards;
+
+    function setArchAdmin(address newArch) external auth {
+        require(ArchAdmin == msg.sender && newArch != address(0), "PSM/Must be ArchAdmin");
+        ArchAdmin = newArch;
+        wards[ArchAdmin] = 1;
+    }
 
     function rely(address usr) external auth {
         wards[usr] = 1;
@@ -66,6 +73,7 @@ contract PSM {
     }
 
     function deny(address usr) external auth {
+        require(usr != ArchAdmin, "PSM/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         wards[usr] = 0;
         emit Deny(usr);
     }
@@ -84,14 +92,16 @@ contract PSM {
 
     uint256             immutable internal  to18ConversionFactor;
 
-    uint256                                 mintFee;        //[ray]
-    uint256                                 repayFee;       //[ray]
+    uint256                       public    mintFee;        //[ray]
+    uint256                       public    repayFee;       //[ray]
+    uint256                       public    live;
 
     //
     // --- Events ---
     //
 
     event MintRepayFee(uint256 MintRay, uint256 RepayRay);
+    event Cage(uint256 status);
     event Rely(address user);
     event Deny(address user);
 
@@ -104,12 +114,20 @@ contract PSM {
         _; 
     }
 
+    modifier alive {
+        require(live == 1, "PSM/not-live");
+        _;
+    }
+
     //
     // --- Init ---
     //
 
     constructor(address collateralJoin_, address dPrimeJoin_, address treasury_) {
+        require(collateralJoin_ != address(0x0) && dPrimeJoin_ != address(0x0) && treasury_ != address(0x0), "PSM/Can't be zero address");
         wards[msg.sender] = 1;
+        live = 1;
+        ArchAdmin = msg.sender;
         emit Rely(msg.sender);
         CollateralJoinLike collateralJoin__ = collateralJoin = CollateralJoinLike(collateralJoin_);
         dPrimeJoinLike dPrimeJoin__ = dPrimeJoin = dPrimeJoinLike(dPrimeJoin_);
@@ -138,9 +156,15 @@ contract PSM {
     //
 
     function setMintRepayFees(uint256 mintRay, uint256 repayRay) external auth {
+        require(mintRay < RAY && repayRay < RAY, "PSM/Fees must be less than 100%");
         mintFee = mintRay;
         repayFee = repayRay;
         emit MintRepayFee(mintRay, repayRay);
+    }
+
+    function setLive(uint256 status) external auth {
+        live = status;
+        emit Cage(status);
     }
 
     function approve(address usr) external auth {
@@ -155,7 +179,7 @@ contract PSM {
     // --- User's functions ---
     //
 
-    function createDPrime(address usr, bytes32[] memory collateral, uint256[] memory collatAmount) external {
+    function createDPrime(address usr, bytes32[] memory collateral, uint256[] memory collatAmount) external alive {
         require(collateral.length == 1 && collatAmount.length == 1 && collateral[0] == collateralName, "PSM/Incorrect setup");
         uint256 collatAmount18 = collatAmount[0] * to18ConversionFactor; // [wad]
         uint256 fee = _rmul(collatAmount18, mintFee); // rmul(wad, ray) = wad
@@ -170,7 +194,7 @@ contract PSM {
         dPrimeJoin.exit(usr, dPrimeAmt);
     }
 
-    function getCollateral(address usr, bytes32[] memory collateral, uint256[] memory collatAmount) external {
+    function getCollateral(address usr, bytes32[] memory collateral, uint256[] memory collatAmount) external alive {
         require(collateral.length == 1 && collatAmount.length == 1 && collateral[0] == collateralName, "PSM/Incorrect setup");
         uint256 collatAmount18 = collatAmount[0] * to18ConversionFactor;
         uint256 fee = _rmul(collatAmount18, repayFee); // rmul(wad, ray) = wad

@@ -16,6 +16,8 @@ contract LMCV {
     // Authorisation.
     //
 
+    address public ArchAdmin;
+
     mapping (address => uint256) public admins;
     mapping (address => bool)    public PSMAddresses;
     mapping (address => mapping (address => uint256))    public proxyApprovals;
@@ -32,7 +34,6 @@ contract LMCV {
         uint256 creditRatio;            // [ray] - ie. max 70% loaned out as dPrime.
         bool    leveraged;
     }
-    bytes32[] public CollateralList;
     mapping (bytes32 => Collateral)                     public CollateralData;
 
     //
@@ -114,6 +115,7 @@ contract LMCV {
     constructor() {
         AccumulatedRate = RAY;
         loanLive = 1;
+        ArchAdmin = msg.sender;
         admins[msg.sender] = 1;
         Treasury = msg.sender;
     }
@@ -123,7 +125,14 @@ contract LMCV {
     //
 
     function administrate(address admin, uint256 authorization) external auth {
+        require(admin != ArchAdmin || authorization == 1, "LMCV/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         admins[admin] = authorization;
+    }
+
+    function setArchAdmin(address newArch) external auth {
+        require(ArchAdmin == msg.sender && newArch != address(0), "LMCVProxy/Must be ArchAdmin");
+        ArchAdmin = newArch;
+        admins[ArchAdmin] = 1;
     }
 
     function approveMultiple(address[] memory users) external {
@@ -217,6 +226,9 @@ contract LMCV {
 
     function editCreditRatio(bytes32 collateral, uint256 ray) external auth {
         CollateralData[collateral].creditRatio = ray;
+        if(CollateralData[collateral].leveraged){
+            require(CollateralData[collateral].creditRatio <= RAY, "LMCV/Credit ratio cannot be higher than 100%");
+        }
         emit CreditRatio(collateral, ray);
     }
 
@@ -227,14 +239,6 @@ contract LMCV {
     function updateSpotPrice(bytes32 collateral, uint256 ray) external auth {
         CollateralData[collateral].spotPrice = ray;
         emit SpotUpdate(collateral, ray);
-    }
-
-    function editCollateralList(bytes32 collateralName, bool accepted, uint256 position) external auth {
-        if(accepted){
-            CollateralList.push(collateralName);
-        }else{
-            deleteElement(CollateralList, position);
-        }
     }
 
     function editAcceptedCollateralType(
@@ -248,7 +252,11 @@ contract LMCV {
         collateralData.lockedAmountLimit    = _lockedAmountLimit;
         collateralData.dustLevel            = _dustLevel;
         collateralData.creditRatio          = _creditRatio;
-        collateralData.leveraged = _leveraged;
+        collateralData.leveraged            = _leveraged;
+
+        if(collateralData.leveraged){
+            require(collateralData.creditRatio <= RAY, "LMCV/Credit ratio cannot be higher than 100%");
+        }
 
         CollateralData[collateralName] = collateralData;
         emit EditAcceptedCollateralType(collateralName, _lockedAmountLimit, _dustLevel, _creditRatio,  _leveraged);
@@ -264,12 +272,14 @@ contract LMCV {
     }
 
     function pullCollateral(bytes32 collat, address user, uint256 wad) external auth {
+        require(unlockedCollateral[user][collat] >= wad, "LMCV/Insufficient unlocked collateral for user to pull");
         unlockedCollateral[user][collat] -= wad;
         emit PullCollateral(collat, user, wad);
     }
 
     function moveCollateral(bytes32 collat, address src, address dst, uint256 wad) external {
         require(approval(src, msg.sender), "LMCV/collateral move not allowed");
+        require(unlockedCollateral[src][collat] >= wad, "LMCV/Insufficient unlocked collateral for user to move");
         unlockedCollateral[src][collat] -= wad;
         unlockedCollateral[dst][collat] += wad;
         emit MoveCollateral(collat, src, dst, wad);
@@ -281,6 +291,7 @@ contract LMCV {
 
     function moveDPrime(address src, address dst, uint256 rad) external {
         require(approval(src, msg.sender), "LMCV/dPrime move not allowed");
+        require(dPrime[src] >= rad, "LMCV/Insufficient dPrime to move");
         dPrime[src] -= rad;
         dPrime[dst] += rad;
         emit MoveDPrime(src, dst, rad);
@@ -305,8 +316,8 @@ contract LMCV {
      * happening. Regardless, we think the semantics still make sense.
      */
     function loan(
-        bytes32[] memory collateralList,        // List of collateral identifiers.
-        uint256[] memory collateralChange,      // List of collateral change amounts.   [wad]
+        bytes32[] calldata collateralList,        // List of collateral identifiers.
+        uint256[] calldata collateralChange,      // List of collateral change amounts.   [wad]
         uint256 normalizedDebtChange,           // Debt change in t=0 terms.            [wad]
         address user                            // Address of the user's vault.
     ) external loanAlive {
@@ -378,8 +389,8 @@ contract LMCV {
     //    decreases.
     // 3. A combination of the above.
     function repay(
-        bytes32[] memory collateralList,        // List of collateral identifiers.
-        uint256[] memory collateralChange,      // List of collateral amount changes.   [wad]
+        bytes32[] calldata collateralList,        // List of collateral identifiers.
+        uint256[] calldata collateralChange,      // List of collateral amount changes.   [wad]
         uint256 normalizedDebtChange,           // Debt change in t=0 terms.            [wad]
         address user                            // Address of the user's vault.
     ) external loanAlive {
@@ -395,6 +406,7 @@ contract LMCV {
 
         // 1. Update debt balances.
         //@Roger first thing we should be doing is setting owed debts correct
+        require(dPrime[user] >= normalizedDebtChange * rateMult, "LMCV/Insufficient dPrime to repay");
         dPrime[user]            -= normalizedDebtChange * rateMult;
         totalDPrime             -= normalizedDebtChange * rateMult;
         normalizedDebt[user]    -= normalizedDebtChange;
@@ -405,6 +417,7 @@ contract LMCV {
             Collateral storage collateralData = CollateralData[collateralList[i]];
 
             // Debit locked collateral amount and credit unlocked collateral amount.
+            require(lockedCollateral[user][collateralList[i]] >= collateralChange[i], "LMCV/User does not have enough locked collateral to unlock amount specified");
             uint256 newLockedCollateralAmount   = lockedCollateral[user][collateralList[i]]     -= collateralChange[i];
             uint256 newUnlockedCollateralAmount = unlockedCollateral[user][collateralList[i]]   += collateralChange[i];
 
@@ -506,14 +519,15 @@ contract LMCV {
      * intention that the protocol deficit is reversed by the amount of dPRIME raised when the auction concludes.
      * The amount of dPRIME raised via the auction is burnt when this function is called. As such, the total 
      * amount of dPRIME issued and protocol deficit is reduced by the same amount.
-     * 
-     * This is a public external function, so can be called by anyone but only works if the caller has protocol 
+     *
+     * This is a public external function, so can be called by anyone but only works if the caller has protocol
      * deficit assigned to them. I.e. the protocol treasury account. This functino will only work if there
      * is currently a protocol deficit and if the specified parameter for this function is less than or equal to
      * the protocol deficit and the caller has a deficit assigned to them.
      */
     function deflate(uint256 rad) external {
         address u = msg.sender;
+        require(dPrime[u] >= rad, "LMCV/Insufficient dPrime to deflate");
         protocolDeficit[u]      -= rad;
         totalProtocolDeficit    -= rad;
         dPrime[u]               -= rad;
@@ -593,12 +607,14 @@ contract LMCV {
 
         // If only leverage tokens exist, just return their credit limit
         // Keep credit ratio low on levered tokens (60% or lower) to incentivize having non levered collateral in the vault
-        if(noLeverageTotal == 0 && leverageTotal > 0 && leverTokenCreditLimit >= normalizedDebt[user] * rate){
-            return true;
+        if(noLeverageTotal == 0 && leverageTotal > 0){
+            if(leverTokenCreditLimit >= normalizedDebt[user] * rate){
+                return true;
+            }
+            return false;
         }
 
         uint256 leverageMultiple = noLeverageTotal == 0 && leverageTotal == 0 ? RAY : RAY + leverageTotal / noLeverageTotal;
-
         if (_rmul(creditLimit, leverageMultiple) >= (normalizedDebt[user] * rate)) {
             return true;
         }
