@@ -272,12 +272,14 @@ contract LMCV {
     }
 
     function pullCollateral(bytes32 collat, address user, uint256 wad) external auth {
+        require(unlockedCollateral[user][collat] >= wad, "LMCV/Insufficient unlocked collateral for user to pull");
         unlockedCollateral[user][collat] -= wad;
         emit PullCollateral(collat, user, wad);
     }
 
     function moveCollateral(bytes32 collat, address src, address dst, uint256 wad) external {
         require(approval(src, msg.sender), "LMCV/collateral move not allowed");
+        require(unlockedCollateral[src][collat] >= wad, "LMCV/Insufficient unlocked collateral for user to move");
         unlockedCollateral[src][collat] -= wad;
         unlockedCollateral[dst][collat] += wad;
         emit MoveCollateral(collat, src, dst, wad);
@@ -289,6 +291,7 @@ contract LMCV {
 
     function moveDPrime(address src, address dst, uint256 rad) external {
         require(approval(src, msg.sender), "LMCV/dPrime move not allowed");
+        require(dPrime[src] >= rad, "LMCV/Insufficient dPrime to move");
         dPrime[src] -= rad;
         dPrime[dst] += rad;
         emit MoveDPrime(src, dst, rad);
@@ -403,6 +406,7 @@ contract LMCV {
 
         // 1. Update debt balances.
         //@Roger first thing we should be doing is setting owed debts correct
+        require(dPrime[user] >= normalizedDebtChange * rateMult, "LMCV/Insufficient dPrime to repay");
         dPrime[user]            -= normalizedDebtChange * rateMult;
         totalDPrime             -= normalizedDebtChange * rateMult;
         normalizedDebt[user]    -= normalizedDebtChange;
@@ -413,6 +417,7 @@ contract LMCV {
             Collateral storage collateralData = CollateralData[collateralList[i]];
 
             // Debit locked collateral amount and credit unlocked collateral amount.
+            require(lockedCollateral[user][collateralList[i]] >= collateralChange[i], "LMCV/User does not have enough locked collateral to unlock amount specified");
             uint256 newLockedCollateralAmount   = lockedCollateral[user][collateralList[i]]     -= collateralChange[i];
             uint256 newUnlockedCollateralAmount = unlockedCollateral[user][collateralList[i]]   += collateralChange[i];
 
@@ -522,6 +527,7 @@ contract LMCV {
      */
     function deflate(uint256 rad) external {
         address u = msg.sender;
+        require(dPrime[u] >= rad, "LMCV/Insufficient dPrime to deflate");
         protocolDeficit[u]      -= rad;
         totalProtocolDeficit    -= rad;
         dPrime[u]               -= rad;

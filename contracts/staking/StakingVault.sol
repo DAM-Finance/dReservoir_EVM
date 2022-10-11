@@ -213,6 +213,7 @@ contract StakingVault {
     }
 
     function pullStakingToken(address user, uint256 wad) external auth {
+        require(unlockedStakeable[user] >= wad, "StakingVault/Insufficient unlocked stakeable token to pull");
         unlockedStakeable[user] -= wad;
         emit PullStakingToken(user, wad);
     }
@@ -234,6 +235,7 @@ contract StakingVault {
     
     function pullRewards(bytes32 rewardToken, address usr, uint256 wad) external auth {
         RewardTokenData storage tokenData = RewardData[rewardToken];
+        require(withdrawableRewards[usr][rewardToken] >= wad, "StakingVault/Insufficient withdrawable rewards to pull");
         withdrawableRewards[usr][rewardToken]   -= wad;
         tokenData.totalRewardAmount             -= wad;
         emit PullRewards(rewardToken, usr, wad);
@@ -275,6 +277,7 @@ contract StakingVault {
         uint256 prevStakedAmount         = lockedStakeable[liquidated]; //[wad]
 
         //2. Take ddPrime from liquidator's account to repay
+        require(ddPrime[liquidator] >= rad, "StakingVault/Insufficient ddPrime to liquidate");
         ddPrime[liquidator]             -= rad;
         totalDDPrime                    -= rad;
 

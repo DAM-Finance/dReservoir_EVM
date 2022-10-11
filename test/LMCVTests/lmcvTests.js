@@ -533,7 +533,7 @@ describe("Testing LMCV", function () {
             // //repay a collateral amount
             await expect(
                 userLMCV.repay(collateralBytesList, [fwad("0"), fwad("100"), fwad("200")], fwad("601"), addr1.address)
-            ).to.be.revertedWith("VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)");
+            ).to.be.revertedWith("LMCV/Insufficient dPrime to repay");
         });
 
         it("Lever tokens only - previous division by 0 in isWithinCreditLimit", async function () {
