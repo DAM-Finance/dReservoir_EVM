@@ -535,6 +535,19 @@ describe("Testing LMCV", function () {
                 userLMCV.repay(collateralBytesList, [fwad("0"), fwad("100"), fwad("200")], fwad("601"), addr1.address)
             ).to.be.revertedWith("VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)");
         });
+
+        it("Lever tokens only - previous division by 0 in isWithinCreditLimit", async function () {
+
+            let collateralData = await lmcv.CollateralData(mockTokenBytes);
+            await lmcv.editLeverageStatus(mockTokenBytes, true);
+
+            collateralData = await lmcv.CollateralData(mockTokenBytes);
+            expect(collateralData['leveraged']).to.be.true;
+
+            // max loan = 50 * 40 * 0.5 = 1000
+            await expect(userLMCV.loan([mockTokenBytes], [fwad("50")], fwad("1100"), addr1.address))
+                .to.be.revertedWith("LMCV/Exceeded portfolio credit limit");
+        });
     });
 
     describe("Mint Fee testing", function () {

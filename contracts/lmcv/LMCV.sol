@@ -602,12 +602,14 @@ contract LMCV {
 
         // If only leverage tokens exist, just return their credit limit
         // Keep credit ratio low on levered tokens (60% or lower) to incentivize having non levered collateral in the vault
-        if(noLeverageTotal == 0 && leverageTotal > 0 && leverTokenCreditLimit >= normalizedDebt[user] * rate){
-            return true;
+        if(noLeverageTotal == 0 && leverageTotal > 0){
+            if(leverTokenCreditLimit >= normalizedDebt[user] * rate){
+                return true;
+            }
+            return false;
         }
 
         uint256 leverageMultiple = noLeverageTotal == 0 && leverageTotal == 0 ? RAY : RAY + leverageTotal / noLeverageTotal;
-
         if (_rmul(creditLimit, leverageMultiple) >= (normalizedDebt[user] * rate)) {
             return true;
         }
