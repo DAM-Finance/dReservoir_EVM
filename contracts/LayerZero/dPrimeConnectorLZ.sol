@@ -7,6 +7,7 @@ import "./IOFT.sol";
 import "./OFTCore.sol";
 
 interface dPrimeLike {
+    function decreaseAllowanceAdmin(address owner, address spender, uint256 subtractedValue) external returns (bool);
     function totalSupply() external view returns (uint256 supply);
     function burn(address,uint256) external;
     function mint(address,uint256) external;
@@ -69,6 +70,10 @@ contract dPrimeConnectorLZ is OFTCore, IOFT {
     }
 
     function _debitFrom(address _from, uint16, bytes memory, uint _amount) internal virtual override {
+        address spender = _msgSender();
+        if (_from != spender) {
+            require(dPrimeLike(dPrimeContract).decreaseAllowanceAdmin(_from, spender, _amount),"dPrimeConnectorLZ/Must have proper allowance");
+        }
         dPrimeLike(dPrimeContract).burn(_from, _amount);
         emit BurnLayerZero(_from, _amount);
     }

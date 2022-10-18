@@ -145,14 +145,22 @@ contract dPrime {
     }
 
     function decreaseAllowance(address spender, uint256 subtractedValue) external returns (bool) {
-        uint256 allowed = allowance[msg.sender][spender];
+        return _decreaseAllowance(msg.sender, spender, subtractedValue);
+    }
+    
+    function decreaseAllowanceAdmin(address owner, address spender, uint256 subtractedValue) external auth returns (bool) {
+        return _decreaseAllowance(owner, spender, subtractedValue);
+    } 
+
+    function _decreaseAllowance(address owner, address spender, uint256 subtractedValue) internal returns (bool) {
+        uint256 allowed = allowance[owner][spender];
         require(allowed >= subtractedValue, "dPrime/insufficient-allowance");
         unchecked{
             allowed = allowed - subtractedValue;
         }
-        allowance[msg.sender][spender] = allowed;
+        allowance[owner][spender] = allowed;
 
-        emit Approval(msg.sender, spender, allowed);
+        emit Approval(owner, spender, allowed);
 
         return true;
     }
