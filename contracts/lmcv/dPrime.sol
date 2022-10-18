@@ -14,7 +14,6 @@ contract dPrime {
     string  public constant version  = "1";
     uint8   public constant decimals = 18;
     uint256 public totalSupply;
-    uint256 public live;
 
     mapping (address => uint256)                      public balanceOf;
     mapping (address => mapping (address => uint256)) public allowance;
@@ -37,7 +36,6 @@ contract dPrime {
     }
 
     constructor() {
-        live = 1;
         admins[msg.sender] = 1;
         ArchAdmin = msg.sender;
         emit Rely(msg.sender);
@@ -79,10 +77,6 @@ contract dPrime {
         require(usr != ArchAdmin, "dPrime/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         admins[usr] = 0;
         emit Deny(usr);
-    }
-
-    function cage(uint256 _live) external auth {
-        live = _live;
     }
 
     // --- ERC20 Mutations ---

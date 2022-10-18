@@ -32,6 +32,11 @@ contract dPrimeConnectorLZ is OFTCore, IOFT {
         _;
     }
 
+    modifier alive {
+        require(live == 1, "PSM/not-live");
+        _;
+    }
+
     constructor(address _lzEndpoint, address _dPrimeContract) OFTCore(_lzEndpoint) {
         dPrimeContract = _dPrimeContract;
         live = 1;
@@ -69,7 +74,7 @@ contract dPrimeConnectorLZ is OFTCore, IOFT {
         return dPrimeLike(dPrimeContract).totalSupply();
     }
 
-    function _debitFrom(address _from, uint16, bytes memory, uint _amount) internal virtual override {
+    function _debitFrom(address _from, uint16, bytes memory, uint _amount) internal virtual override alive {
         address spender = _msgSender();
         if (_from != spender) {
             require(dPrimeLike(dPrimeContract).decreaseAllowanceAdmin(_from, spender, _amount),"dPrimeConnectorLZ/Must have proper allowance");
@@ -78,7 +83,7 @@ contract dPrimeConnectorLZ is OFTCore, IOFT {
         emit BurnLayerZero(_from, _amount);
     }
 
-    function _creditTo(uint16, address _toAddress, uint _amount) internal virtual override {
+    function _creditTo(uint16, address _toAddress, uint _amount) internal virtual override alive {
         dPrimeLike(dPrimeContract).mint(_toAddress, _amount);
         emit MintLayerZero(_toAddress, _amount);
     }
