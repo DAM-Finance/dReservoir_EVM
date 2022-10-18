@@ -23,6 +23,8 @@ contract dPrimeConnectorLZ is OFTCore, IOFT {
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
+    event MintLayerZero(address indexed from, uint256 amount);
+    event BurnLayerZero(address indexed from, uint256 amount);
 
     modifier auth {
         require(admins[msg.sender] == 1, "dPrimeConnectorLZ/not-authorized");
@@ -68,9 +70,11 @@ contract dPrimeConnectorLZ is OFTCore, IOFT {
 
     function _debitFrom(address _from, uint16, bytes memory, uint _amount) internal virtual override {
         dPrimeLike(dPrimeContract).burn(_from, _amount);
+        emit BurnLayerZero(_from, _amount);
     }
 
     function _creditTo(uint16, address _toAddress, uint _amount) internal virtual override {
         dPrimeLike(dPrimeContract).mint(_toAddress, _amount);
+        emit MintLayerZero(_toAddress, _amount);
     }
 }
