@@ -2,8 +2,8 @@
 
 pragma solidity 0.8.7;
 
-import "../../L0/interfaces/ILayerZeroReceiver.sol";
-import "../../L0/interfaces/ILayerZeroEndpoint.sol";
+import "../../LayerZero/interfaces/ILayerZeroReceiver.sol";
+import "../../LayerZero/interfaces/ILayerZeroEndpoint.sol";
 import "./ILayerZeroMessagingLibrary.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";

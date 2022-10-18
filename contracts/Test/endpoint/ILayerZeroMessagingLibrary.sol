@@ -2,7 +2,7 @@
 
 pragma solidity >=0.7.0;
 
-import "../../L0/interfaces/ILayerZeroUserApplicationConfig.sol";
+import "../../LayerZero/interfaces/ILayerZeroUserApplicationConfig.sol";
 
 interface ILayerZeroMessagingLibrary {
     // send(), messages will be inflight.
