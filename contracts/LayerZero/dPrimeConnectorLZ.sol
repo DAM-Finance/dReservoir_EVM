@@ -13,7 +13,6 @@ interface dPrimeLike {
     function mint(address,uint256) external;
 }
 
-// override decimal() function is needed
 contract dPrimeConnectorLZ is OFTCore, IOFT {
 
     address public ArchAdmin;
