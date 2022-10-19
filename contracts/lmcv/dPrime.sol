@@ -2,7 +2,7 @@
 
 /// dPrime.sol -- dPrime token
 
-pragma solidity 0.8.7;
+pragma solidity 0.8.12;
 
 contract dPrime {
     address public ArchAdmin;

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.7;
+pragma solidity 0.8.12;
 
 import {Router} from "@hyperlane-xyz/app/contracts/Router.sol";
+import "../dependencies/AuthAdmin.sol";
 
 interface dPrimeLike {
     function decreaseAllowanceAdmin(address owner, address spender, uint256 subtractedValue) external returns (bool);
@@ -15,19 +16,13 @@ interface dPrimeLike {
  * @author Abacus Works
  * @dev Supply on each chain is not constant but the aggregate supply across all chains is.
  */
-contract dPrimeConnectorHyperlane is Router {
-
-    address public ArchAdmin;
-    mapping (address => uint256) public admins;
+contract dPrimeConnectorHyperlane is Router, AuthAdmin("dPrimeConnectorHyperlane") {
 
     // Origin chain -> recipient address -> nonce -> amount
     mapping (uint32 => mapping(address => mapping(uint256 => uint256))) failedMessages;
     address public dPrimeContract;
-    uint256 public live;
     uint256 public nonce;
 
-    event Rely(address indexed usr);
-    event Deny(address indexed usr);
     event Cage(uint256 status);
 
     /**
@@ -68,16 +63,6 @@ contract dPrimeConnectorHyperlane is Router {
         uint256 amount
     );
 
-    modifier auth {
-        require(admins[msg.sender] == 1, "dPrimeConnectorHyperlane/not-authorized");
-        _;
-    }
-
-    modifier alive {
-        require(live == 1, "dPrimeConnectorHyperlane/not-live");
-        _;
-    }
-
     /**
      * @notice Initializes the Hyperlane router, ERC20 metadata, and mints initial supply to deployer.
      * @param _abacusConnectionManager The address of the connection manager contract.
@@ -96,31 +81,6 @@ contract dPrimeConnectorHyperlane is Router {
         _setInterchainGasPaymaster(_interchainGasPaymaster);
 
         dPrimeContract = _dPrimeContract;
-        live = 1;
-        admins[msg.sender] = 1;
-        ArchAdmin = msg.sender;
-    }
-
-    function setArchAdmin(address newArch) external auth {
-        require(ArchAdmin == msg.sender && newArch != address(0), "dPrimeConnectorHyperlane/Must be ArchAdmin");
-        ArchAdmin = newArch;
-        admins[ArchAdmin] = 1;
-    }
-
-    function rely(address usr) external auth {
-        admins[usr] = 1;
-        emit Rely(usr);
-    }
-
-    function deny(address usr) external auth {
-        require(usr != ArchAdmin, "dPrimeConnectorHyperlane/ArchAdmin cannot lose admin - update ArchAdmin to another address");
-        admins[usr] = 0;
-        emit Deny(usr);
-    }
-
-    function cage(uint256 _live) external auth {
-        live = _live;
-        emit Cage(_live);
     }
 
     /**
