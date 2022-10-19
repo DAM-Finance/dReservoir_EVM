@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.2;
 
-import "./IOFTCore.sol";
+import "@layerzerolabs/solidity-examples/contracts/token/oft/IOFTCore.sol";
 
 /**
  * @dev Interface of the OFT standard

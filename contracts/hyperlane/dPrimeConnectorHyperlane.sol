@@ -20,11 +20,15 @@ contract dPrimeConnectorHyperlane is Router {
     address public ArchAdmin;
     mapping (address => uint256) public admins;
 
+    // Origin chain -> recipient address -> nonce -> amount
+    mapping (uint32 => mapping(address => mapping(uint256 => uint256))) failedMessages;
     address public dPrimeContract;
     uint256 public live;
+    uint256 public nonce;
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
+    event Cage(uint256 status);
 
     /**
      * @dev Emitted on `transferRemote` when a transfer message is dispatched.
@@ -50,13 +54,27 @@ contract dPrimeConnectorHyperlane is Router {
         uint256 amount
     );
 
+    /**
+     * @dev Emitted on `_handle` when a transfer message has failed.
+     * @param origin The identifier of the origin chain.
+     * @param recipient The address of the recipient on the destination chain.
+     * @param nonce The nonce of the message to avoid overwrites
+     * @param amount The amount of tokens to be minted on the destination chain.
+     */
+    event FailedTransferRemote(
+        uint32 indexed origin,
+        address indexed recipient,
+        uint256 nonce,
+        uint256 amount
+    );
+
     modifier auth {
-        require(admins[msg.sender] == 1, "dPrimeConnectorLZ/not-authorized");
+        require(admins[msg.sender] == 1, "dPrimeConnectorHyperlane/not-authorized");
         _;
     }
 
     modifier alive {
-        require(live == 1, "PSM/not-live");
+        require(live == 1, "dPrimeConnectorHyperlane/not-live");
         _;
     }
 
@@ -84,7 +102,7 @@ contract dPrimeConnectorHyperlane is Router {
     }
 
     function setArchAdmin(address newArch) external auth {
-        require(ArchAdmin == msg.sender && newArch != address(0), "dPrimeConnectorLZ/Must be ArchAdmin");
+        require(ArchAdmin == msg.sender && newArch != address(0), "dPrimeConnectorHyperlane/Must be ArchAdmin");
         ArchAdmin = newArch;
         admins[ArchAdmin] = 1;
     }
@@ -95,13 +113,14 @@ contract dPrimeConnectorHyperlane is Router {
     }
 
     function deny(address usr) external auth {
-        require(usr != ArchAdmin, "dPrimeConnectorLZ/ArchAdmin cannot lose admin - update ArchAdmin to another address");
+        require(usr != ArchAdmin, "dPrimeConnectorHyperlane/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         admins[usr] = 0;
         emit Deny(usr);
     }
 
     function cage(uint256 _live) external auth {
         live = _live;
+        emit Cage(_live);
     }
 
     /**
@@ -138,11 +157,43 @@ contract dPrimeConnectorHyperlane is Router {
         bytes32,
         bytes memory _message
     ) internal override alive {
+
         (address recipient, uint256 amount) = abi.decode(
             _message,
             (address, uint256)
         );
-        dPrimeLike(dPrimeContract).mint(recipient, amount);
-        emit ReceivedTransferRemote(_origin, recipient, amount);
+
+        try dPrimeLike(dPrimeContract).mint(recipient, amount) {
+            emit ReceivedTransferRemote(_origin, recipient, amount);
+        } catch {
+            failedMessages[_origin][recipient][nonce] = amount;
+            emit FailedTransferRemote(_origin, recipient, nonce, amount);
+        }
+        nonce++;
+    }
+
+    /**
+     * @dev Retries previous failed mints.
+     * @dev Emits `ReceivedTransferRemote` event on the destination chain.
+     * @param _origin The identifier of the origin chain.
+     * @param _recipient The address of the recipient on receiving chain.
+     */
+    function retry(uint32 _origin, address _recipient, uint256 _nonce) external {
+        uint256 amount = failedMessages[_origin][_recipient][_nonce];
+
+        try dPrimeLike(dPrimeContract).mint(_recipient, amount) {
+            emit ReceivedTransferRemote(_origin, _recipient, amount);
+        } catch {
+            emit FailedTransferRemote(_origin, _recipient, nonce, amount);
+        }
+    }
+
+    /**
+     * @notice Register the address of a Router contract for the same Application on a remote chain
+     * @param _domain The domain of the remote Application Router
+     * @param _router The address of the remote Application Router
+     */
+    function enrollRemoteRouter(uint32 _domain, bytes32 _router) external override auth {
+        _enrollRemoteRouter(_domain, _router);
     }
 }

@@ -3,10 +3,10 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "@layerzerolabs/solidity-examples/contracts/token/oft/OFTCore.sol";
 import "./IOFT.sol";
-import "./OFTCore.sol";
 
-interface dPrimeLike {
+interface dPrimeLike { 
     function decreaseAllowanceAdmin(address owner, address spender, uint256 subtractedValue) external returns (bool);
     function totalSupply() external view returns (uint256 supply);
     function burn(address,uint256) external;
@@ -86,4 +86,6 @@ contract dPrimeConnectorLZ is OFTCore, IOFT {
         dPrimeLike(dPrimeContract).mint(_toAddress, _amount);
         emit MintLayerZero(_toAddress, _amount);
     }
+
+    
 }

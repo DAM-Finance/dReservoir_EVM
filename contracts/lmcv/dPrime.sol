@@ -14,6 +14,7 @@ contract dPrime {
     string  public constant version  = "1";
     uint8   public constant decimals = 18;
     uint256 public totalSupply;
+    uint256 public live;
 
     mapping (address => uint256)                      public balanceOf;
     mapping (address => mapping (address => uint256)) public allowance;
@@ -24,6 +25,7 @@ contract dPrime {
     event Deny(address indexed usr);
     event Approval(address indexed owner, address indexed spender, uint256 value);
     event Transfer(address indexed from, address indexed to, uint256 value);
+    event Cage(uint256 status);
 
     // --- EIP712 niceties ---
     uint256 public immutable deploymentChainId;
@@ -35,7 +37,13 @@ contract dPrime {
         _;
     }
 
+    modifier alive {
+        require(live == 1, "dPrime/not-live");
+        _;
+    }
+
     constructor() {
+        live = 1;
         admins[msg.sender] = 1;
         ArchAdmin = msg.sender;
         emit Rely(msg.sender);
@@ -79,8 +87,13 @@ contract dPrime {
         emit Deny(usr);
     }
 
+    function cage(uint256 _live) external auth {
+        live = _live;
+        emit Cage(_live);
+    }
+
     // --- ERC20 Mutations ---
-    function transfer(address to, uint256 value) external returns (bool) {
+    function transfer(address to, uint256 value) external alive returns (bool) {
         require(to != address(0) && to != address(this), "dPrime/invalid-address");
         uint256 balance = balanceOf[msg.sender];
         require(balance >= value, "dPrime/insufficient-balance");
@@ -95,7 +108,7 @@ contract dPrime {
         return true;
     }
 
-    function transferFrom(address from, address to, uint256 value) external returns (bool) {
+    function transferFrom(address from, address to, uint256 value) external alive returns (bool) {
         require(to != address(0) && to != address(this), "dPrime/invalid-address");
         uint256 balance = balanceOf[from];
         require(balance >= value, "dPrime/insufficient-balance");
@@ -160,7 +173,7 @@ contract dPrime {
     }
 
     // --- Mint/Burn ---
-    function mint(address to, uint256 value) external auth {
+    function mint(address to, uint256 value) external auth alive {
         require(to != address(0) && to != address(this), "dPrime/invalid-address");
         unchecked {
             balanceOf[to] = balanceOf[to] + value; // note: we don't need an overflow check here b/c balanceOf[to] <= totalSupply and there is an overflow check below
@@ -170,7 +183,7 @@ contract dPrime {
         emit Transfer(address(0), to, value);
     }
 
-    function burn(address from, uint256 value) external {
+    function burn(address from, uint256 value) external alive {
         uint256 balance = balanceOf[from];
         require(balance >= value, "dPrime/insufficient-balance");
 

@@ -4,6 +4,7 @@ pragma solidity 0.8.7;
 
 interface dPrimeLike {
     function deny(address) external;
+    function cage(uint256) external;
 }
 
 contract dPrimeGuardian {
@@ -48,8 +49,12 @@ contract dPrimeGuardian {
         emit Deny(usr);
     }
 
-    function haltConnector(bytes32 pipeName) external auth {
+    function removeConnectorAdmin(bytes32 pipeName) external auth {
         dPrimeLike(dPrimeContract).deny(pipeAddresses[pipeName]);
         emit HaltedPipe(pipeName);
+    }
+
+    function cageDPrime() external auth {
+        dPrimeLike(dPrimeContract).cage(0);
     }
 }
