@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pragma solidity >=0.8.7;
+pragma solidity >=0.8.12;
 
 interface OracleLike {
     function peek() external returns (uint256, bool);

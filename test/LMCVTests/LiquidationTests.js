@@ -84,7 +84,7 @@ describe("Liquidation testing", function () {
         baz = await tokenFactory.deploy("BAZ");
 
         // Deploy protocol contracts.
-        dPrime          = await dPrimeFactory.deploy(ethers.constants.AddressZero);
+        dPrime          = await dPrimeFactory.deploy();
         lmcv            = await LMCVFactory.deploy();
         lmcvProxy       = await lmcvProxyFactory.deploy(lmcv.address);
         dPrimeJoin      = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address, lmcvProxy.address);
