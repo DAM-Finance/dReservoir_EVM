@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.12;
 
-import "../dependencies/AuthAdmin.sol";
+import "./dependencies/AuthAdmin.sol";
 
 interface dPrimeLike {
     function deny(address) external;
