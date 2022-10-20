@@ -19,7 +19,7 @@ contract AuthAdmin {
     }
 
     modifier alive {
-        require(live == 1, "PSM/not-live");
+        require(live == 1, string.concat(parentContractName, "/not-live"));
         _;
     }
 
