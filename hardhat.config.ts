@@ -8,6 +8,7 @@ import 'solidity-coverage';
 import 'hardhat-deploy-tenderly';
 import {node_url, accounts, addForkConfiguration} from './utils/network';
 import './tasks/teleport.ts'
+import '@nomicfoundation/hardhat-chai-matchers';
 
 const config: HardhatUserConfig = {
 	solidity: {

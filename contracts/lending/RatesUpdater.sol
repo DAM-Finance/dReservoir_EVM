@@ -25,18 +25,43 @@ contract RatesUpdater {
     // --- Auth ---
     //
 
-    mapping (address => uint) public wards;
-    function rely(address usr) external auth { wards[usr] = 1; }
-    function deny(address usr) external auth { wards[usr] = 0; }
-    modifier auth { require(wards[msg.sender] == 1, "Jug/not-authorized"); _; }
+    address public ArchAdmin;
+    mapping(address => uint256) public wards;
+
+    function setArchAdmin(address newArch) external auth {
+        require(ArchAdmin == msg.sender && newArch != address(0), "RatesUpdater/Must be ArchAdmin");
+        ArchAdmin = newArch;
+        wards[ArchAdmin] = 1;
+    }
+
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
+    }
+
+    function deny(address usr) external auth {
+        require(usr != ArchAdmin, "RatesUpdater/ArchAdmin cannot lose admin - update ArchAdmin to another address");
+        wards[usr] = 0;
+        emit Deny(usr);
+    }
+
+    modifier auth { require(wards[msg.sender] == 1, "RatesUpdater/not-authorized"); _; }
 
     //
     // --- Data ---
     //
 
+    LMCVLike    public immutable lmcv;            // LMCV contract
     uint256     public stabilityRate;   // [ray] Stability rate as a per second compounding rate.
     uint256     public lastAccrual;     // [unix epoch time] Time of last accrual 
-    LMCVLike    public lmcv;            // LMCV contract
+
+    //
+    // --- Events ---
+    //
+
+    event SetStabilityRate(uint256 perSecondRate);
+    event Rely(address user);
+    event Deny(address user);
 
     //
     // --- Init ---
@@ -47,10 +72,12 @@ contract RatesUpdater {
      * Rate must be set greater than one for iterest to accrue.
      */
     constructor(address lmcvAddress) {
-        wards[msg.sender]   = 1;
-        lmcv                = LMCVLike(lmcvAddress);
-        stabilityRate       = ONE;
-        lastAccrual         = block.timestamp;
+      require(lmcvAddress != address(0), "RatesUpdater/Address cannot be zero");
+      ArchAdmin           = msg.sender;
+      wards[msg.sender]   = 1;
+      lmcv                = LMCVLike(lmcvAddress);
+      stabilityRate       = ONE;
+      lastAccrual         = block.timestamp;
     }
 
     //
@@ -99,8 +126,10 @@ contract RatesUpdater {
     // --- Administration ---
     //
 
+    //Per second rate
     function changeStabilityRate(uint256 _stabilityRate) external auth {
-        stabilityRate = _stabilityRate;
+      stabilityRate = _stabilityRate;
+      emit SetStabilityRate(_stabilityRate);
     }
 
     //
@@ -111,11 +140,11 @@ contract RatesUpdater {
      * Calculates the new accumualated rate and updates the LMCV. Can be called by anyone.
      */
     function accrueInterest() external returns (uint256 rate) {
-        require(block.timestamp >= lastAccrual, "RatesUpdater/invalid block.timestamp");
-        uint256 prevAccrualTime = lastAccrual;
-        lastAccrual = block.timestamp;
-        uint256 prev = lmcv.AccumulatedRate();
-        rate = _rmul(_rpow(stabilityRate, block.timestamp - prevAccrualTime, ONE), prev);
-        lmcv.updateRate(_diff(rate, prev));
+      require(block.timestamp >= lastAccrual, "RatesUpdater/invalid block.timestamp");
+      uint256 prevAccrualTime = lastAccrual;
+      lastAccrual = block.timestamp;
+      uint256 prev = lmcv.AccumulatedRate();
+      rate = _rmul(_rpow(stabilityRate, block.timestamp - prevAccrualTime, ONE), prev);
+      lmcv.updateRate(_diff(rate, prev));
     }
 }
