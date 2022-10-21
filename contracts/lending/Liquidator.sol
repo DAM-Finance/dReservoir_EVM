@@ -57,14 +57,7 @@ contract Liquidator {
     // --- Auth ---
     //
 
-    address public ArchAdmin;
     mapping(address => uint256) public wards;
-
-    function setArchAdmin(address newArch) external auth {
-        require(ArchAdmin == msg.sender && newArch != address(0), "Liquidator/Must be ArchAdmin");
-        ArchAdmin = newArch;
-        wards[ArchAdmin] = 1;
-    }
 
     function rely(address usr) external auth {
         wards[usr] = 1;
@@ -72,7 +65,6 @@ contract Liquidator {
     }
 
     function deny(address usr) external auth {
-        require(usr != ArchAdmin, "Liquidator/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         wards[usr] = 0;
         emit Deny(usr);
     }
@@ -103,19 +95,8 @@ contract Liquidator {
         uint256 askingAmount,
         uint256 auctionId
     );
-    event SetMinimumAskingPriceVariables(
-        uint256 _collateralFactor, 
-        uint256 _debtFactor, 
-        uint256 _debtGrossUpFactor
-    );
-    event SetLiquidationPenalty(uint256 ray);
-    event SetAuctionHouse(address addr);
-    event SetLotSize(uint256 rad);
-    event Cage(uint256 status);
     event Rely(address user);
     event Deny(address user);
-
-    
 
     //
     // --- Modifiers ---
@@ -133,7 +114,6 @@ contract Liquidator {
     constructor(address _lmcv) {
         live = 1;
         wards[msg.sender] = 1;
-        ArchAdmin = msg.sender;
         lmcv = LMCVLike(_lmcv);
     }
 
@@ -141,20 +121,16 @@ contract Liquidator {
     // --- Admin ---
     //
 
-    function cage(uint256 status) external auth {
-        live = status;
-        emit Cage(status);
+    function cage() external auth {
+        live = 0;
     }
 
     function setLiquidationPenalty(uint256 ray) external auth {
         liquidationPenalty = ray;
-        emit SetLiquidationPenalty(ray);
     }
 
     function setLotSize(uint256 rad) external auth {
-        require(rad != 0, "Liquidator/Lot size cannot be 0");
         lotSize = rad;
-        emit SetLotSize(rad);
     }
 
     /**
@@ -168,15 +144,12 @@ contract Liquidator {
         collateralFactor    = _collateralFactor;
         debtFactor          = _debtFactor;
         debtGrossUpFactor   = _debtGrossUpFactor;
-        emit SetMinimumAskingPriceVariables(_collateralFactor, _debtFactor, _debtGrossUpFactor);
     }
 
     function setAuctionHouse(address addr) external auth {
-        require(addr != address(0), "Liquidator/Address cannot be zero");
         lmcv.disapprove(address(auctionHouse));
         auctionHouse = AuctionHouseLike(addr);
         lmcv.approve(addr);
-        emit SetAuctionHouse(addr);
     }
 
     //

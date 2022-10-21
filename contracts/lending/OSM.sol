@@ -27,36 +27,19 @@ contract OSM {
     // --- Auth ---
     //
 
-    address public ArchAdmin;
-    mapping(address => uint256) public wards;
-
-    function setArchAdmin(address newArch) external auth {
-        require(ArchAdmin == msg.sender && newArch != address(0), "OSM/Must be ArchAdmin");
-        ArchAdmin = newArch;
-        wards[ArchAdmin] = 1;
-    }
-
-    function rely(address usr) external auth {
-        wards[usr] = 1;
-        emit Rely(usr);
-    }
-
-    function deny(address usr) external auth {
-        require(usr != ArchAdmin, "OSM/ArchAdmin cannot lose admin - update ArchAdmin to another address");
-        wards[usr] = 0;
-        emit Deny(usr);
-    }
-
+    mapping (address => uint) public wards;
+    function rely(address usr) external auth { wards[usr] = 1; }
+    function deny(address usr) external auth { wards[usr] = 0; }
     modifier auth { require(wards[msg.sender] == 1, "OSM/not-authorized"); _; }
 
     //
     // -- Data ---
     //
 
-    address     public              oracleAddress;
-    uint256     private constant    ONE_HOUR        = 3600;
-    uint256     public              pokeTimeout     = ONE_HOUR;
-    uint256     public              zzz;
+    address     public      oracleAddress;
+    uint256     constant    ONE_HOUR        = 3600;
+    uint256     public      pokeTimeout     = ONE_HOUR;
+    uint256     public      zzz;
 
     struct Data {
         uint256 val;
@@ -70,17 +53,10 @@ contract OSM {
     // --- Events ---
     //
 
-    event ChangeOracleAddress(address indexed _oracleAddress);
-    event ChangePokeTimeout(uint256 _pokeTimeout);
-    event Rely(address indexed usr);
-    event Deny(address indexed usr);
     event LogValue(uint256 val);
-    event Stopped();
-    event Started();
 
     constructor (address _oracleAddress) {
-        require(_oracleAddress != address(0), "OSM/Address cannot be zero");
-        ArchAdmin = msg.sender;
+        require(_oracleAddress != address(0), "OSM/Oracle address cannot be zero");
         wards[msg.sender] = 1;
         oracleAddress = _oracleAddress;
     }
@@ -107,16 +83,14 @@ contract OSM {
     */ 
     uint256 public stopped;
     modifier stoppable { require(stopped == 0, "OSM/OSM is stopped"); _; }
-    function stop() external auth { stopped = 1; emit Stopped(); }
-    function start() external auth { stopped = 0; emit Started(); }
+    function stop() external auth { stopped = 1; }
+    function start() external auth { stopped = 0; }
 
     /**
      * Updates the address where the price oracle exists.
      */
     function changeOracleAddress(address _oracleAddress) external auth {
-        require(_oracleAddress != address(0), "OSM/Cannot be zero address");
         oracleAddress = _oracleAddress;
-        emit ChangeOracleAddress(_oracleAddress);
     }
 
     /**
@@ -125,7 +99,6 @@ contract OSM {
     function changePokeTimeout(uint256 _pokeTimeout) external auth {
         require(_pokeTimeout > 0, "OSM/ts-is-zero");
         pokeTimeout = _pokeTimeout;
-        emit ChangePokeTimeout(_pokeTimeout);
     }
 
     //
@@ -139,7 +112,6 @@ contract OSM {
     function void() external auth {
         cur = nxt = Data(0, 0);
         stopped = 1;
-        emit Stopped();
     }
 
     /**

@@ -9,14 +9,13 @@ contract ChainlinkClient {
     AggregatorV3Interface internal priceFeed;
 
     constructor(address priceFeedAddress) {
-        require(priceFeedAddress != address(0), "ChainlinkClient/Address cannot be zero");
         priceFeed = AggregatorV3Interface(priceFeedAddress);
     }
 
     /**
      * Returns the latest price
      */
-    function getLatestPrice() external view returns (int256) {
+    function getLatestPrice() public view returns (int256) {
         (
             uint80 roundID,
             int256 price,
