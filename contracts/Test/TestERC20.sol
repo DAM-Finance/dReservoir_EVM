@@ -12,4 +12,8 @@ contract TestERC20 is ERC20 {
     function mint(address _account, uint256 _quantity) external {
         _mint(_account, _quantity);
     }
+
+    function decimals() public view virtual override returns (uint8) {
+        return 16;
+    }
 }
