@@ -1,4 +1,6 @@
 const { ethers } = require("hardhat");
+const MAX_INT = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+
 
 //Format as wad, ray, rad
 function fwad(wad) { return ethers.utils.parseEther(wad) }
@@ -52,11 +54,29 @@ async function setTrustedRemote(){
     console.log(result);
 }
 
+async function check(){
+    console.log(addr1);
+    console.log(await moonbaseDPRIME.admins(moonbaseHyperlane.address));
+    console.log(await moonbaseDPRIME.allowance(addr1.address, moonbaseHyperlane.address));
+}
+
+async function authConnector(){
+    let tx = await moonbaseDPRIME.rely(moonbaseHyperlane.address);
+    console.log(tx);
+}
+
+async function approveMax(){
+    userDPrime = await moonbaseDPRIME.connect(addr1);
+    let txwait = await (await userDPrime.approve(moonbaseHyperlane.address, MAX_INT)).wait()
+    console.log("Done approval")
+
+}
+
 
 main()
     .then(() => attach())
-    // .then(() => init())
-    .then(() => setTrustedRemote())
+    // .then(() => authConnector())
+    .then(() => check())
     .then(() => process.exit(0))
     .catch((error) => {
         console.error(error);

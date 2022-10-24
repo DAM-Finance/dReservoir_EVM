@@ -56,7 +56,7 @@ async function attach(){
 }
 
 async function init() {
-    let res = await goerliHyperlane.initialize("0xD356C996277eFb7f75Ee8bd61b31cC781A12F54f", "0x44b764045BfDC68517e10e783E69B376cef196B2", goerliDPRIME.address);
+    let res = await goerliHyperlane.initialize("0x01812D60958798695391dacF092BAc4a715B1718", "0x44b764045BfDC68517e10e783E69B376cef196B2", goerliDPRIME.address);
 }
 
 async function mint(){
@@ -66,14 +66,32 @@ async function mint(){
 
 async function setTrustedRemote(){
     console.log("Setting remote");
-    let result = await goerliHyperlane.enrollRemoteRouter("1836002657", ethers.utils.hexZeroPad("0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512", 32));
+    let result = await goerliHyperlane.enrollRemoteRouter("1836002657", ethers.utils.hexZeroPad("0x4886474FAE7FA56145B8fFf1bF2C4FB65611e757", 32));
     console.log(result);
+}
+
+async function authConnector(){
+    let tx = await goerliDPRIME.rely(goerliHyperlane.address);
+    console.log(tx);
 }
 
 async function approveMax(){
     userDPrime = await goerliDPRIME.connect(addr1);
     let txwait = await (await userDPrime.approve(goerliHyperlane.address, MAX_INT)).wait()
     console.log("Done approval")
+
+}
+
+async function check(){
+    console.log(addr1);
+    console.log(await goerliDPRIME.admins(goerliHyperlane.address));
+    console.log(await goerliDPRIME.allowance(addr1.address, goerliHyperlane.address));
+    console.log(await goerliHyperlane.routers("0x6d6f2d61"));
+    
+}
+
+async function setConnectionManager(){
+    let tx = await goerliHyperlane.setAbacusConnectionManager("0x01812D60958798695391dacF092BAc4a715B1718");
 }
 
 async function sendRemote(){
@@ -81,7 +99,7 @@ async function sendRemote(){
 
     userConnector = await goerliHyperlane.connect(addr1);
 
-    let tx = await userConnector.transferRemote("1836002657", "0x7B92eD00d96DfaFA1dF6E5531F1D502AaBF4834e", fwad("100"), {value: toMoonbasePayment})
+    let tx = await userConnector.transferRemote("0x6d6f2d61", "0x7B92eD00d96DfaFA1dF6E5531F1D502AaBF4834e", fwad("100"), {value: toMoonbasePayment});
     let txwait = await tx.wait();
     console.log(txwait);
 }
