@@ -55,10 +55,10 @@ async function attach(){
     dPrime          = await dPrimeFactory.attach("0x935C486825FE0C433259Ad9D9b4Bb3D46ADbb239");
     lmcvProxy       = await lmcvProxyFactory.attach("0x4eA2CaA1eb20A211c6d926287b6b39D0E002fCf6");
     dPrimeJoin      = await dPrimeJoinFactory.attach("0xe852e10f66c089c3685826620f337a6E8aB2FCE5");
-    usdcJoin        = await collateralJoinDecFactory.attach("0x75396167802c8719A85571c37240c3E16B2007c2");
+    usdcJoin        = await collateralJoinDecFactory.attach("0xDaf0C8585d57eADBAC974b4dcF6AEE5862FF3d31");
     lzPipe          = await LZPipeFactory.attach("0xDC93a8cA7486e97a1ae969266898777526221bA4")
     hyperlanePipe   = await hyperlanePipeFactory.attach("0x215e8a9b5C4397a069B9D6e4b81c1b60898a2E8d")
-    psm             = await psmFactory.attach("0x00D8b21256d979ACB348c2022C8Bf9B37418D3Dc");
+    psm             = await psmFactory.attach("0x8bE2b54A86ADd13b141c778Fd785653A5a381d3E");
 
     console.log();
     console.log("Deployer:              ", deployer.address);
