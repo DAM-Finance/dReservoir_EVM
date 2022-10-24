@@ -72,7 +72,7 @@ contract dPrimeConnectorHyperlane is Router, AuthAdmin("dPrimeConnectorHyperlane
         address _abacusConnectionManager,
         address _interchainGasPaymaster,
         address _dPrimeContract
-    ) external initializer {
+    ) external initializer auth {
         // Set ownable to sender
         _transferOwnership(msg.sender);
         // Set ACM contract address
