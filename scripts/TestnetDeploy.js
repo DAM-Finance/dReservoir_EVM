@@ -106,13 +106,22 @@ async function setPerms(){
 }
 
 async function setupRemoteRouters(){
-    //TODO for LZ and Hyperlane
+    let LZPipeAddress = process.env['LZPIPE_MOONBASE'];
+    let HyperlanePipeAddress = process.env['HYPERLANEPIPE_MOONBASE'];
+
+    console.log("Hyperlane remote");
+    let resultHL = await hyperlanePipe.enrollRemoteRouter("0x6d6f2d61", ethers.utils.hexZeroPad(HyperlanePipeAddress, 32));
+    console.log(resultHL);
+    
+    console.log("LZ Remote")
+    let resultLZ = await lzPipe.setTrustedRemote("10126", LZPipeAddress);
+    console.log(resultLZ);
 }
 
 // Attach to exist contracts setup 
 main()
     .then(() => attach())
-    // .then(() => setPerms())
+    .then(() => setupRemoteRouters())
     .then(() => process.exit(0))
     .catch((error) => {
         console.error(error);
