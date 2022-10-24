@@ -15,7 +15,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 	// USDC address.
 	const usdcAddress = process.env['USDC_ADDRESS_GOERLI'];
-	const usdcBytes = ethers.utils.formatBytes32String("USDC");
+	const usdcBytes = ethers.utils.formatBytes32String("PSM-USDC");
 
 	// ----------
 	// Layer Zero
