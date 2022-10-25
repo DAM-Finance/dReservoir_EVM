@@ -102,10 +102,28 @@ async function setupRemoteRouters(){
     console.log(resultLZ);
 }
 
+async function secondSetup(){
+    let LZPipeMB = process.env['LZPIPE_MOONBASE'];
+    let LZPIPEGoerli = process.env['LZPIPE_GOERLI'];
+
+    let pathPacked = ethers.utils.solidityPack(["bytes20", "bytes20"], [LZPipeMB, LZPIPEGoerli]);
+    console.log(pathPacked);
+
+    console.log("LZ Remote")
+    let resultLZ = await lzPipe.setTrustedRemoteAddress("10121", LZPIPEGoerli);
+    console.log(resultLZ);
+
+    console.log("LZ Remote2 ")
+    let resultLZ2 = await lzPipe.setTrustedRemote("10126", pathPacked);
+    console.log(resultLZ2);
+
+
+}
+
 // Attach to exist contracts setup 
 main()
     .then(() => attach())
-    .then(() => setupRemoteRouters())
+    .then(() => secondSetup())
     .then(() => process.exit(0))
     .catch((error) => {
         console.error(error);

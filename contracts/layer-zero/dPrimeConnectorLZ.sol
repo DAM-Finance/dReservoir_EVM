@@ -51,4 +51,9 @@ contract dPrimeConnectorLZ is OFTCore, IOFT, AuthAdmin("dPrimeConnectorLZ") {
         trustedRemoteLookup[_srcChainId] = _path;
         emit SetTrustedRemote(_srcChainId, _path);
     }
+    
+    function setTrustedRemoteAddressAuth(uint16 _remoteChainId, bytes calldata _remoteAddress) external auth {
+        trustedRemoteLookup[_remoteChainId] = abi.encodePacked(_remoteAddress, address(this));
+        emit SetTrustedRemoteAddress(_remoteChainId, _remoteAddress);
+    }
 }

@@ -72,69 +72,16 @@ async function attach(){
     console.log("LMCVProxy address:     ", lmcvProxy.address, "\n");
 }
 
-async function setPerms(){
 
-    console.log("Setting dPrime admin");
-    await lmcv.administrate(dPrimeJoin.address, 1);
-    await dPrime.rely(dPrimeJoin.address);
 
-    console.log("Setting debt ceiling");
-    await lmcv.setProtocolDebtCeiling(MAX_INT);
+async function testingPSM(){
+    let res = await usdcJoin.wards(psm.address);
+    console.log(res);
 
-    console.log("Setting collateral type PSM-USDC");
-    await lmcv.editAcceptedCollateralType(USDCBytes, MAX_INT, fwad("1"), fray("1"), false);
-
-    console.log("Setting spot price PSM-USDC");
-    await lmcv.updateSpotPrice(USDCBytes, fray("1"));
-
-    console.log("Setting LMCVProxy admin");
-    await lmcvProxy.setDPrimeJoin(dPrimeJoin.address);
-    await lmcvProxy.setDPrime(dPrime.address);
-
-    console.log("Setting dPrime pipes admin");
-    await dPrime.rely(lzPipe.address);
-    await dPrime.rely(hyperlanePipe.address);
-
-    console.log("Setting PSM on LMCV");
-    await lmcv.setPSMAddress(psm.address, true);
-
-    console.log("Setting PSM on USDCJoin");
-    await usdcJoin.rely(psm.address);
-
-    console.log("Initialization hyperlane pipe");
-    await hyperlanePipe.initialize(goerliConnectionManager, goerliInterchainGasMaster, dPrime.address);
-
-    console.log("LMCV USDCJoin setup");
-    await lmcv.administrate(usdcJoin.address, 1);
-}
-
-async function setupRemoteRouters(){
-    let LZPipeAddress = process.env['LZPIPE_MOONBASE'];
-    let HyperlanePipeAddress = process.env['HYPERLANEPIPE_MOONBASE'];
-
-    console.log("Hyperlane remote");
-    let resultHL = await hyperlanePipe.enrollRemoteRouter("0x6d6f2d61", ethers.utils.hexZeroPad(HyperlanePipeAddress, 32));
-    console.log(resultHL);
-    
-    console.log("LZ Remote")
-    let resultLZ = await lzPipe.setTrustedRemote("10126", LZPipeAddress);
-    console.log(resultLZ);
-}
-
-async function secondSetup(){
-    let LZPipeMB = process.env['LZPIPE_MOONBASE'];
-    let LZPIPEGoerli = process.env['LZPIPE_GOERLI'];
-
-    let pathPacked = ethers.utils.solidityPack(["bytes20", "bytes20"], [LZPIPEGoerli, LZPipeMB]);
-    console.log(pathPacked);
-
-    console.log("LZ Remote")
-    let resultLZ = await lzPipe.setTrustedRemoteAddress("10126", LZPipeMB);
-    console.log(resultLZ);
-
-    console.log("LZ Remote2 ")
-    let resultLZ2 = await lzPipe.setTrustedRemote("10121", pathPacked);
-    console.log(resultLZ2);
+    console.log(await psm.lmcv());
+    console.log(await psm.collateralJoin());
+    console.log(await psm.dPrime());
+    console.log(await psm.dPrimeJoin());
 
 
 }
@@ -142,8 +89,7 @@ async function secondSetup(){
 // Attach to exist contracts setup 
 main()
     .then(() => attach())
-    // .then(() => setPerms())
-    // .then(() => secondSetup())
+    .then(() => testingPSM())
     .then(() => process.exit(0))
     .catch((error) => {
         console.error(error);
