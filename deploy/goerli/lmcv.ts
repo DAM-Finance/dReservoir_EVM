@@ -83,6 +83,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 	const dPrimeConnectorLZAddress = dPrimeConnectorLZ.receipt?.contractAddress;
 
+	// HYPERLANE PIPE
+
+	const HyperlanePipe = await deploy('dPrimeConnectorHyperlane', {		
+		from: deployer,
+		args: [],
+		log: true,
+		autoMine: true
+	});
+
+	const HyperlanePipeAddress = HyperlanePipe.receipt?.contractAddress;
+
 	// dPrime Join.
 
 	const dPrimeJoin = await deploy('dPrimeJoin', {
@@ -228,12 +239,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 	// 	dPrimeConnectorLZOneAddress, LZEndpointMockOneAddress
 	// )
 
-	await execute(
-		"dPrimeConnectorLZ",
-		{from: deployer, log: true},
-		"setTrustedRemoteAddress",
-		chainIdTwo, dPrimeConnectorLZTwoAddress
-	)
+	// await execute(
+	// 	"dPrimeConnectorLZ",
+	// 	{from: deployer, log: true},
+	// 	"setTrustedRemoteAddress",
+	// 	chainIdTwo, dPrimeConnectorLZTwoAddress
+	// )
 
 	console.log("✅ Deployment successful.")
 };

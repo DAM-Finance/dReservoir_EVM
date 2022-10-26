@@ -24,10 +24,34 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 	const dPrime = await deploy('dPrime', {
 		from: deployer,
-		args: [layerZeroEndpointAddress],
+		args: [],
 		log: true,
 		autoMine: true
 	});
+
+	const dPrimeAddress = dPrime.receipt?.contractAddress;
+
+	// LZ PIPE
+
+	const LZPipe = await deploy('dPrimeConnectorLZ', {		
+		from: deployer,
+		args: [layerZeroEndpointAddress, dPrimeAddress],
+		log: true,
+		autoMine: true
+	});
+
+	const LZPipeAddress = LZPipe.receipt?.contractAddress;
+
+	// HYPERLANE PIPE
+
+	const HyperlanePipe = await deploy('dPrimeConnectorHyperlane', {		
+		from: deployer,
+		args: [],
+		log: true,
+		autoMine: true
+	});
+
+	const HyperlanePipeAddress = HyperlanePipe.receipt?.contractAddress;
 };
 export default func;
 func.tags = ['LMCV'];

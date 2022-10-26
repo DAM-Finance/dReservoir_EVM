@@ -7,6 +7,7 @@ import '@typechain/hardhat';
 import 'solidity-coverage';
 import 'hardhat-deploy-tenderly';
 import {node_url, accounts, addForkConfiguration} from './utils/network';
+import '@nomicfoundation/hardhat-chai-matchers';
 import './tasks/dprime_teleport.ts'
 import './tasks/dprime_swap.ts'
 import './tasks/dprime_balance.ts'

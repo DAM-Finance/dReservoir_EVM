@@ -107,7 +107,7 @@ describe("dPrimeJoin Testing", function () {
         expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
         expect(await lmcv.dPrime(addr1.address)).to.equal(frad("1880"));
 
-        await expect(userDPrimeJoin.exit(addr1.address, fwad("1901"))).to.be.revertedWith("VM Exception while processing transaction:");
+        await expect(userDPrimeJoin.exit(addr1.address, fwad("1901"))).to.be.revertedWith("LMCV/Insufficient dPrime to move");
     });
 
     it("User cannot deposit dPrime with insufficient balance", async function () {
