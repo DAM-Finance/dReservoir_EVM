@@ -308,69 +308,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 		chainIdOne, dPrimeConnectorLZOneAddress
 	)
 
-	// -----------
-	// Set up user
-	// -----------
-
-	// Mint some USDC for the user and check the balance.
-
-	await execute(
-		"USDC", 
-		{from: deployer, log: true},
-		"mint",
-		user, fwad("1000000")
-	);
-
-	const usdcContract = await hre.ethers.getContractAt("TestERC20", usdcAddress as string);
-	console.log("User USDC balance: ", ethers.utils.formatEther(await usdcContract.balanceOf(user)));
-
-	// Approvals for USDC.
-
-	await execute(
-		"USDC", 
-		{from: user, log: true},
-		"approve",
-		usdcJoinAddress, fwad("1000000")
-	);
-
-	// Execute PSM swap.
-
-	await execute(
-		"PSM", 
-		{from: user, log: true},
-		"createDPrime",
-		user,
-		[usdcBytes],
-		[fwad("1000")]
-	);
-
-	// Check balances.
-
-	console.log("User USDC balance: ", ethers.utils.formatEther(await usdcContract.balanceOf(user)));
-	const dPrimeContract = await hre.ethers.getContractAt("dPrime", dPrimeOneAddress as string);
-	console.log("User dPrime balance: ", ethers.utils.formatEther(await dPrimeContract.balanceOf(user)));
-
-	// Teleport.
-
-	const dPrimeConnectorOne = await hre.ethers.getContractAt("dPrimeConnectorLZ", dPrimeConnectorLZOneAddress as string);
-	const fee = await dPrimeConnectorOne.estimateSendFee(chainIdTwo, user, fwad("100"), false, []);
-
-	await execute(
-		"dPrimeConnectorLZOne", 
-		{from: user, log: true, value: fee.nativeFee},
-		"sendFrom",
-		user,						// User address.
-		chainIdTwo,					// Destination chain Id.
-		user,						// To address.
-		fwad("1000"),				// Amount.
-		user,						// Refund address.
-		user,						// Payment address.
-		[]
-	);
-
-	const dPrimeContractTwo = await hre.ethers.getContractAt("dPrime", dPrimeTwoAddress as string);
-	console.log("User dPrimeTwo balance: ", ethers.utils.formatEther(await dPrimeContractTwo.balanceOf(user)));
-	console.log("User dPrime balance: ", ethers.utils.formatEther(await dPrimeContract.balanceOf(user)));
+	console.log("✅ Deployment successful.")
 };
 export default func;
 func.tags = ['LMCV'];

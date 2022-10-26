@@ -7,7 +7,12 @@ import '@typechain/hardhat';
 import 'solidity-coverage';
 import 'hardhat-deploy-tenderly';
 import {node_url, accounts, addForkConfiguration} from './utils/network';
-import './tasks/teleport.ts'
+import './tasks/dprime_teleport.ts'
+import './tasks/dprime_swap.ts'
+import './tasks/dprime_balance.ts'
+import './tasks/usdc_mint.ts'
+import './tasks/usdc_balance.ts'
+import './tasks/eth_balance.ts'
 
 const config: HardhatUserConfig = {
 	solidity: {
@@ -38,7 +43,7 @@ const config: HardhatUserConfig = {
 		localhost: {
 			url: node_url('localhost'),
 			accounts: accounts(),
-			deploy: ['deploy/local/']
+			deploy: ['deploy/localhost/']
 		},
 		goerli: {
 			url: node_url('goerli'),
