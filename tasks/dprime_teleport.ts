@@ -6,7 +6,7 @@ function fwad(wad: string) {
 	return ethers.utils.parseEther(wad); 
 }
 
-task("teleport", "teleports dPrime from one chain to another")
+task("dprime_teleport", "teleports dPrime from one chain to another")
   .addParam("amount", "The amount of dPrime to teleport")
   .addParam("sourceChainId", "The source chain id")
   .addParam("destChainId", "The destination chain id")
