@@ -26,7 +26,7 @@ task("dprime_swap", "teleports dPrime from one chain to another")
 		"USDC", 
 		{from: taskArgs.user, log: true},
 		"approve",
-		usdcJoinAddress, fwad(taskArgs.amount)
+		usdcJoinAddress, ethers.utils.parseUnits(taskArgs.amount, 6)	// USDC has 6 decimal places.
 	);
 
 	// Execute PSM swap.
@@ -39,7 +39,7 @@ task("dprime_swap", "teleports dPrime from one chain to another")
 		"createDPrime",
 		taskArgs.user,
 		[usdcBytes],
-		[fwad(String(taskArgs.amount/100))]		// Decimals for USDC is 16, not 18.
+		[ethers.utils.parseUnits(taskArgs.amount, 6).toString()]
 	);
 
 	console.log("✅ Swap successful.")

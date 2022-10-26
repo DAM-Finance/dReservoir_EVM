@@ -14,6 +14,6 @@ task("usdc_balance", "gets the USDC balance for an account")
 		"balanceOf",
 		taskArgs.user
 	);
-
-	console.log(`User ${taskArgs.user.substring(0, 10)} USDC balance:`, ethers.utils.formatEther(result));
+	
+	console.log(`User ${taskArgs.user.substring(0, 10)} USDC balance:`, ethers.utils.formatUnits(result.toString(), 6));
 });
