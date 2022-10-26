@@ -64,7 +64,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 	const dPrime = await deploy('dPrime', {
 		from: deployer,
-		args: [layerZeroEndpointAddress],
+		args: [],
 		log: true,
 		autoMine: true
 	});
