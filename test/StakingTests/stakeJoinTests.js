@@ -123,7 +123,7 @@ describe("Testing RewardJoins", function () {
     it("Overflow removal fails", async function () {
         let userStakeJoin = stakeJoin.connect(addr1);
         await userStakeJoin.join(addr1.address, fwad("1000"));
-        await expect(userStakeJoin.exit(fwad("5000"))).to.be.reverted;
+        await expect(userStakeJoin.exit(addr1.address, fwad("5000"))).to.be.revertedWith("StakingVault/Insufficient unlocked stakeable token to pull");
     });
 
 });

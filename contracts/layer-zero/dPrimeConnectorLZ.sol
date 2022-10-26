@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.12;
+pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@layerzerolabs/solidity-examples/contracts/token/oft/OFTCore.sol";
@@ -50,5 +50,10 @@ contract dPrimeConnectorLZ is OFTCore, IOFT, AuthAdmin("dPrimeConnectorLZ") {
     function setTrustedRemoteAuth(uint16 _srcChainId, bytes calldata _path) external auth {
         trustedRemoteLookup[_srcChainId] = _path;
         emit SetTrustedRemote(_srcChainId, _path);
+    }
+    
+    function setTrustedRemoteAddressAuth(uint16 _remoteChainId, bytes calldata _remoteAddress) external auth {
+        trustedRemoteLookup[_remoteChainId] = abi.encodePacked(_remoteAddress, address(this));
+        emit SetTrustedRemoteAddress(_remoteChainId, _remoteAddress);
     }
 }

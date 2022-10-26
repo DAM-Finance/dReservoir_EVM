@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.12;
+pragma solidity ^0.8.7;
 
 import {Router} from "@hyperlane-xyz/app/contracts/Router.sol";
 import "../dependencies/AuthAdmin.sol";

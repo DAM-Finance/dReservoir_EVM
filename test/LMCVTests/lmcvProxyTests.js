@@ -49,7 +49,7 @@ describe("Testing LMCVProxy", function () {
         dPrimeFactory = await ethers.getContractFactory("dPrime");
         LMCVFactory = await ethers.getContractFactory("LMCV");
         dPrimeJoinFactory = await ethers.getContractFactory("dPrimeJoin");
-        tokenFactory = await ethers.getContractFactory("TestERC20");
+        tokenFactory = await ethers.getContractFactory("TestERC20TWO");
         collateralJoinFactory = await ethers.getContractFactory("CollateralJoin");
         lmcvProxyFactory = await ethers.getContractFactory("LMCVProxy");
     });
