@@ -1,7 +1,6 @@
 import 'dotenv/config';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
-import { ethers } from 'ethers';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 	const {deployments, getNamedAccounts} = hre;
@@ -15,6 +14,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 	// LayerZero End-Point address.
 	const layerZeroEndpointAddress = process.env['LAYER_ZERO_ENDPOINT_MOONBASE'];
+	if (!layerZeroEndpointAddress) {
+		throw new Error("Please set LAYER_ZERO_ENDPOINT_MOONBASE in a .env file");
+	}
 
 	// ------
 	// dPRIME
@@ -31,7 +33,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 	const dPrimeAddress = dPrime.receipt?.contractAddress;
 
-	// LZ PIPE
+	// Layer Zero
 
 	const LZPipe = await deploy('dPrimeConnectorLZ', {		
 		from: deployer,
@@ -42,7 +44,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 	const LZPipeAddress = LZPipe.receipt?.contractAddress;
 
-	// HYPERLANE PIPE
+	// Hyperlane
 
 	const HyperlanePipe = await deploy('dPrimeConnectorHyperlane', {		
 		from: deployer,
@@ -52,6 +54,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 	});
 
 	const HyperlanePipeAddress = HyperlanePipe.receipt?.contractAddress;
+
+	console.log("✅ Deployment successful.")
 };
 export default func;
 func.tags = ['LMCV'];
