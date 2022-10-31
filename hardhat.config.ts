@@ -15,6 +15,7 @@ import './tasks/usdc_mint.ts'
 import './tasks/usdc_balance.ts'
 import './tasks/eth_balance.ts'
 import './tasks/setup_contracts_goerli.ts'
+import './tasks/setup_contracts_moonbase.ts'
 
 const config: HardhatUserConfig = {
 	solidity: {
