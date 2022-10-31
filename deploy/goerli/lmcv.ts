@@ -2,37 +2,40 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 import { ethers } from 'ethers';
 
-function fwad(wad: string) { 
-	return ethers.utils.parseEther(wad) 
-}
-
-function fray(ray: string) { 
-	return ethers.utils.parseEther(ray).mul("1000000000") 
-}
-
-function frad(rad: string) { 
-	return ethers.utils.parseEther(rad).mul("1000000000000000000000000000") 
-}
-
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 	const {deployments, getNamedAccounts} = hre;
 	const {deploy} = deployments;
-	const {execute} = deployments;
 	const {deployer, treasury, user} = await getNamedAccounts();
+
+	// LayerZero End-Point address.
+	const layerZeroEndpointAddress: string | undefined = process.env['LAYER_ZERO_ENDPOINT_GOERLI'];
+	if (!layerZeroEndpointAddress) {
+		throw new Error("Please set LAYER_ZERO_ENDPOINT_GOERLI in a .env file");
+	}
+
+	// USDC PSM Bytes.
+	const usdcPsmSymbol: string | undefined = process.env['USDC_PSM_SYMBOL'];
+	if (!usdcPsmSymbol) {
+		throw new Error("Please set USDC_PSM_SYMBOL in a .env file");
+	}
+	const usdcPsmBytes = ethers.utils.formatBytes32String(usdcPsmSymbol);
 
 	// ----------
 	// Collateral
 	// ----------
 
-	const usdcAddress = process.env['USDC_ADDRESS_GOERLI'];
-	const usdcBytes = ethers.utils.formatBytes32String("USDC");	
+	let usdcName 	= ethers.utils.formatBytes32String("USD Coin");
+	let usdcSymbol 	= ethers.utils.formatBytes32String("USDC");
 
-	// ----------
-	// Layer Zero
-	// ----------
+	const usdc = await deploy('USDC', {
+		from: deployer,
+		args: [usdcName, usdcSymbol],
+		log: true,
+		autoMine: true,
+		contract: "TestERC20"
+	});
 
-	// LayerZero End-Point address.
-	const layerZeroEndpointAddress = process.env['LAYER_ZERO_ENDPOINT_GOERLI'];
+	const usdcAddress = usdc.receipt?.contractAddress;
 
 	// ----
 	// LMCV
@@ -83,16 +86,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 	const dPrimeConnectorLZAddress = dPrimeConnectorLZ.receipt?.contractAddress;
 
-	// HYPERLANE PIPE
+	// dPrime connector hyperlane
 
-	const HyperlanePipe = await deploy('dPrimeConnectorHyperlane', {		
+	const dPrimeConnectorHyperlane = await deploy('dPrimeConnectorHyperlane', {		
 		from: deployer,
 		args: [],
 		log: true,
 		autoMine: true
 	});
 
-	const HyperlanePipeAddress = HyperlanePipe.receipt?.contractAddress;
+	const dPrimeConnectorHyperlaneAddress = dPrimeConnectorHyperlane.receipt?.contractAddress;
 
 	// dPrime Join.
 
@@ -107,11 +110,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 	// USDC Join
 
-	const usdcJoin = await deploy('CollateralJoinDecimals', {		
+	const usdcJoin = await deploy('usdcJoin', {		
 		from: deployer,
-		args: [lmcvAddress, lmcvProxyAddress, usdcBytes, usdcAddress],
+		args: [lmcvAddress, lmcvProxyAddress, usdcPsmBytes, usdcAddress],
 		log: true,
-		autoMine: true
+		autoMine: true,
+		contract: "CollateralJoinDecimals"
 	});
 
 	const usdcJoinAddress = usdcJoin.receipt?.contractAddress;
@@ -128,125 +132,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 	const usdcPsmAddress = usdcPsm.receipt?.contractAddress;
 
-	// ------------
-	// Setup dPRIME
-	// ------------
-
-	await execute(
-		"dPrime",
-		{from: deployer, log: true},
-		"rely",
-		dPrimeJoinAddress
-	)
-
-	await execute(
-		"dPrime",
-		{from: deployer, log: true},
-		"rely",
-		dPrimeConnectorLZAddress
-	)
-
-	// ---------------
-	// Setup LMCVProxy
-	// ---------------
-
-	await execute(
-		"LMCVProxy",
-		{from: deployer, log: true},
-		"setDPrimeJoin",
-		dPrimeJoinAddress
-	)
-
-	await execute(
-		"LMCVProxy",
-		{from: deployer, log: true},
-		"setDPrime",
-		dPrimeAddress
-	)
-
-	// ----------
-	// Setup LMCV
-	// ----------
-
-	await execute(
-		"LMCV",
-		{from: deployer, log: true},
-		"administrate",
-		dPrimeJoinAddress, 1
-	)
-
-	await execute(
-		"LMCV",
-		{from: deployer, log: true},
-		"administrate",
-		usdcJoinAddress, 1
-	)
-
-	await execute(
-		"LMCV",
-		{from: deployer, log: true},
-		"setProtocolDebtCeiling",
-		frad("5000000")
-	)
-
-	await execute(
-		"LMCV",
-		{from: deployer, log: true},
-		"editAcceptedCollateralType",
-		usdcBytes, fwad("1000000"), fwad("1"), fray("1"), false
-	)
-
-	await execute(
-		"LMCV",
-		{from: deployer, log: true},
-		"updateSpotPrice",
-		usdcBytes, fray("1")
-	)
-
-	// ---------
-	// Setup PSM
-	// ---------
-
-	await execute(
-		"LMCV",
-		{from: deployer, log: true},
-		"setPSMAddress",
-		usdcPsmAddress, true
-	)
-
-	await execute(
-		"CollateralJoinDecimals",
-		{from: deployer, log: true},
-		"rely",
-		usdcPsmAddress
-	)
-
-	// ----------------
-	// Set up endpoints
-	// ----------------
-
-	// await execute(
-	// 	"LZEndPointMockOne",
-	// 	{from: deployer, log: true},
-	// 	"setDestLzEndpoint",
-	// 	dPrimeConnectorLZTwoAddress, LZEndpointMockTwoAddress
-	// )
-
-	// await execute(
-	// 	"LZEndPointMockTwo",
-	// 	{from: deployer, log: true},
-	// 	"setDestLzEndpoint",
-	// 	dPrimeConnectorLZOneAddress, LZEndpointMockOneAddress
-	// )
-
-	// await execute(
-	// 	"dPrimeConnectorLZ",
-	// 	{from: deployer, log: true},
-	// 	"setTrustedRemoteAddress",
-	// 	chainIdTwo, dPrimeConnectorLZTwoAddress
-	// )
-
 	console.log("✅ Deployment successful.")
 };
+
 export default func;
 func.tags = ['LMCV'];
