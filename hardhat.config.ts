@@ -14,6 +14,7 @@ import './tasks/dprime_balance.ts'
 import './tasks/usdc_mint.ts'
 import './tasks/usdc_balance.ts'
 import './tasks/eth_balance.ts'
+import './tasks/setup_contracts_goerli.ts'
 
 const config: HardhatUserConfig = {
 	solidity: {
