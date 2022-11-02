@@ -6,28 +6,29 @@ function fwad(wad: string) {
 	return ethers.utils.parseEther(wad); 
 }
 
-let usdcBytes = ethers.utils.formatBytes32String("USDC");	
+let usdcBytes = ethers.utils.formatBytes32String("PSM-USDC");	
 
 task("dprime_swap", "teleports dPrime from one chain to another")
   .addParam("amount", "The amount of dPrime to swap")
   .addParam("user", "The user's address to send from")
   .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
 	const {deployments, getNamedAccounts} = hre;
-	const {execute, read} = deployments;
-	const {deployer, treasury, user} = await getNamedAccounts();
+	const {execute} = deployments;
 
-	const usdcJoinAddress = await (await deployments.get("CollateralJoinDecimals")).address;
+	const usdcJoinAddress = await (await deployments.get("usdcJoin")).address;
 
 	// Provide approval.
 
-	console.log("Approving USDCJoin...");
+	// console.log("Approving USDCJoin...");
 
-	const approveResult = await execute(
-		"USDC", 
-		{from: taskArgs.user, log: true},
-		"approve",
-		usdcJoinAddress, ethers.utils.parseUnits(taskArgs.amount, 6)	// USDC has 6 decimal places.
-	);
+	// const approveResult = await execute(
+	// 	"USDC", 
+	// 	{from: taskArgs.user, log: true},
+	// 	"approve",
+	// 	usdcJoinAddress, ethers.utils.parseUnits(taskArgs.amount, 6)	// USDC has 6 decimal places.
+	// );
+
+	// console.log("Approve successful: ", approveResult.transactionHash);
 
 	// Execute PSM swap.
 
@@ -42,7 +43,7 @@ task("dprime_swap", "teleports dPrime from one chain to another")
 		[ethers.utils.parseUnits(taskArgs.amount, 6).toString()]
 	);
 
-	console.log("✅ Swap successful.")
+	console.log("✅ Swap successful: ", swapResult.transactionHash);
 
 	await hre.run("dprime_balance", {user: taskArgs.user});
 	await hre.run("usdc_balance", {user: taskArgs.user});

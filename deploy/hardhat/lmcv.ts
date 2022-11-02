@@ -153,11 +153,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 	// USDC Join
 
-	const usdcJoin = await deploy('CollateralJoinDecimals', {		
+	const usdcJoin = await deploy('UsdcJoin', {		
 		from: deployer,
 		args: [lmcvAddress, lmcvProxyAddress, usdcBytes, usdcAddress],
 		log: true,
-		autoMine: true
+		autoMine: true,
+		contract: 'CollateralJoinDecimals'
 	});
 
 	const usdcJoinAddress = usdcJoin.receipt?.contractAddress;
@@ -270,7 +271,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 	)
 
 	await execute(
-		"CollateralJoinDecimals",
+		"UsdcJoin",
 		{from: deployer, log: true},
 		"rely",
 		usdcPsmAddress
