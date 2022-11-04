@@ -22,6 +22,10 @@ contract dPrimeGuardian is AuthAdmin("dPrimeGuardian") {
         dPrimeContract = _dPrimeContract;
     }
 
+    function setPipeAddresses(bytes32 pipeName, address pipeAddress) external auth {
+        pipeAddresses[pipeName] = pipeAddress;
+    }
+
     function removeConnectorAdmin(bytes32 pipeName) external auth {
         dPrimeLike(dPrimeContract).deny(pipeAddresses[pipeName]);
         emit HaltedPipe(pipeName);
