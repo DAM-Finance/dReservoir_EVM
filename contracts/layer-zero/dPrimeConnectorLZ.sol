@@ -11,7 +11,7 @@ interface dPrimeLike {
     function decreaseAllowanceAdmin(address owner, address spender, uint256 subtractedValue) external returns (bool);
     function totalSupply() external view returns (uint256 supply);
     function burn(address,uint256) external;
-    function mint(address,uint256) external;
+    function mintAndDelay(address,uint256) external;
 }
 
 contract dPrimeConnectorLZ is OFTCore, IOFT, AuthAdmin("dPrimeConnectorLZ") {
@@ -43,7 +43,7 @@ contract dPrimeConnectorLZ is OFTCore, IOFT, AuthAdmin("dPrimeConnectorLZ") {
     }
 
     function _creditTo(uint16 _srcChainId, address _toAddress, uint _amount) internal virtual override alive {
-        dPrimeLike(dPrimeContract).mint(_toAddress, _amount);
+        dPrimeLike(dPrimeContract).mintAndDelay(_toAddress, _amount);
         emit MintLayerZero(_toAddress, _amount, _srcChainId);
     }
 
