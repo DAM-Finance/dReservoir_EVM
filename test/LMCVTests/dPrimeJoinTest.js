@@ -31,29 +31,32 @@ async function setupUser(addr, amount){
     await userDPrime.approve(dPrimeJoin.address, fwad("10000"));
 }
 
-describe("dPrimeJoin Testing", function () {
+async function mineNBlocks(n) {
+    for (let index = 0; index < n; index++) {
+      await ethers.provider.send('evm_mine');
+    }
+  }
+
+describe("dPrime Testing", function () {
+
+    before(async function () {
+        dPrimeFactory = await ethers.getContractFactory("dPrime");
+        LMCVFactory = await ethers.getContractFactory("LMCV");
+        dPrimeJoinFactory = await ethers.getContractFactory("dPrimeJoin");
+        tokenFactory = await ethers.getContractFactory("MockTokenFour");
+        collateralJoinFactory = await ethers.getContractFactory("CollateralJoin");
+        lmcvProxyFactory = await ethers.getContractFactory("LMCVProxy");
+    });
+
     beforeEach(async function () {
         [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
 
-        dPrimeFactory = await ethers.getContractFactory("dPrime");
         dPrime = await dPrimeFactory.deploy();
-
-        LMCVFactory = await ethers.getContractFactory("LMCV");
         lmcv = await LMCVFactory.deploy();
-
-        lmcvProxyFactory = await ethers.getContractFactory("LMCVProxy");
         lmcvProxy = await lmcvProxyFactory.deploy(lmcv.address);
-
-        dPrimeJoinFactory = await ethers.getContractFactory("dPrimeJoin");
         dPrimeJoin = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address, lmcvProxy.address);
-
-        lmcvProxyFactory = await ethers.getContractFactory("LMCVProxy");
         lmcvProxy = await lmcvProxyFactory.deploy(lmcv.address);
-
-        tokenFactory = await ethers.getContractFactory("MockTokenFour");
         mockToken = await tokenFactory.deploy("TSTR");
-
-        collateralJoinFactory = await ethers.getContractFactory("CollateralJoin");
         collateralJoin = await collateralJoinFactory.deploy(lmcv.address, lmcvProxy.address, mockTokenBytes, mockToken.address);
 
         await lmcv.administrate(collateralJoin.address, 1);
@@ -84,91 +87,121 @@ describe("dPrimeJoin Testing", function () {
         userTwoDPrimeJoin = dPrimeJoin.connect(addr2);
     });
 
-    it("Should let user withdraw dPrime after loan has been called correctly", async function () {
-        await userLMCV.loan([mockTokenBytes], [fwad("500")], fwad("2000"), addr1.address);
-        expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
+    describe("dPrimeJoin Testing", function () {
 
-        await userLMCV.approveMultiple([userDPrimeJoin.address]);
-        await userDPrimeJoin.exit(addr1.address, fwad("100"));
+        it("Should let user withdraw dPrime after loan has been called correctly", async function () {
+            await userLMCV.loan([mockTokenBytes], [fwad("500")], fwad("2000"), addr1.address);
+            expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
 
-        expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
-        expect(await lmcv.dPrime(addr1.address)).to.equal(frad("1880"));
-        expect(await dPrime.balanceOf(addr1.address)).to.equal(fwad("100"));
-        expect(await lmcv.dPrime(owner.address)).to.equal(frad("20"));
+            await userLMCV.approveMultiple([userDPrimeJoin.address]);
+            await userDPrimeJoin.exit(addr1.address, fwad("100"));
+
+            expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
+            expect(await lmcv.dPrime(addr1.address)).to.equal(frad("1880"));
+            expect(await dPrime.balanceOf(addr1.address)).to.equal(fwad("100"));
+            expect(await lmcv.dPrime(owner.address)).to.equal(frad("20"));
+        });
+
+        it("Should not let user withdraw dPrime greater than specified in normalizedDebt * AccumulatedRate", async function () {
+            await userLMCV.loan([mockTokenBytes], [fwad("500")], fwad("2000"), addr1.address);
+            expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
+
+            await userLMCV.approveMultiple([userDPrimeJoin.address]);
+            await userDPrimeJoin.exit(addr1.address, fwad("100"));
+
+            expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
+            expect(await lmcv.dPrime(addr1.address)).to.equal(frad("1880"));
+
+            await expect(userDPrimeJoin.exit(addr1.address, fwad("1901"))).to.be.revertedWith("LMCV/Insufficient dPrime to move");
+        });
+
+        it("User cannot deposit dPrime with insufficient balance", async function () {
+            await userLMCV.loan([mockTokenBytes], [fwad("500")], fwad("2000"), addr1.address);
+            await userTwoLMCV.loan([mockTokenBytes], [fwad("500")], fwad("2000"), addr2.address);
+            expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
+
+            await userLMCV.approveMultiple([userDPrimeJoin.address]);
+            await userDPrimeJoin.exit(addr1.address, fwad("1000"));
+
+            await userTwoLMCV.approveMultiple([userDPrimeJoin.address]);
+            await userTwoDPrimeJoin.exit(addr2.address, fwad("1000"));
+
+            expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
+            expect(await lmcv.dPrime(addr1.address)).to.equal(frad("980"));
+
+            // Fails because a fee was taken upon calling `userDPrimeJoin.exit`.
+            await expect(userDPrimeJoin.join(addr1.address, fwad("1001"))).to.be.revertedWith("dPrime/insufficient-balance");
+        });
+
+        it("User can re-deposit a portion of their withdrawn dPRIME", async function () {
+            await userLMCV.loan([mockTokenBytes], [fwad("500")], fwad("2000"), addr1.address);
+            expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
+
+            await userLMCV.approveMultiple([userDPrimeJoin.address]);
+            await userDPrimeJoin.exit(addr1.address, fwad("1000"));
+            expect(await lmcv.dPrime(addr1.address)).to.equal(frad("980"));
+
+            await userDPrimeJoin.join(addr1.address, fwad("500"));
+            expect(await lmcv.dPrime(addr1.address)).to.equal(frad("1480"));
+        });
+
+        it("User receives dPRIME externally and re-deposits", async function () {
+            await userLMCV.approveMultiple([userDPrimeJoin.address]);
+            await userTwoLMCV.approveMultiple([userTwoDPrimeJoin.address]);
+
+            await userLMCV.loan([mockTokenBytes], [fwad("500")], fwad("2000"), addr1.address);
+            expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
+            expect(await lmcv.dPrime(addr1.address)).to.equal(frad("1980"));
+
+            await userTwoLMCV.loan([mockTokenBytes], [fwad("500")], fwad("2000"), addr2.address);
+            expect(await lmcv.normalizedDebt(addr2.address)).to.equal(fwad("2000"));
+            expect(await lmcv.dPrime(addr2.address)).to.equal(frad("1980"));
+
+            await userDPrimeJoin.exit(addr1.address, fwad("1000"));
+            expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
+            expect(await lmcv.dPrime(addr1.address)).to.equal(frad("980"));
+
+            await userTwoDPrimeJoin.exit(addr2.address, fwad("1000"));
+            expect(await lmcv.normalizedDebt(addr2.address)).to.equal(fwad("2000"));
+            expect(await lmcv.dPrime(addr2.address)).to.equal(frad("980"));
+
+            //transfer to user1 then user 1 repays fully
+            userTwoDPrime = dPrime.connect(addr2);
+
+            await userTwoDPrime.transfer(addr1.address, fwad("500"));
+            expect(await dPrime.balanceOf(addr1.address)).to.equal(fwad("1500"));
+            expect(await dPrime.balanceOf(addr2.address)).to.equal(fwad("500"));
+
+            await userDPrimeJoin.join(addr1.address, fwad("1500"));
+            expect(await lmcv.dPrime(addr1.address)).to.equal(frad("2480"));
+        });
     });
 
-    it("Should not let user withdraw dPrime greater than specified in normalizedDebt * AccumulatedRate", async function () {
-        await userLMCV.loan([mockTokenBytes], [fwad("500")], fwad("2000"), addr1.address);
-        expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
+    describe("dPrime Mint Testing", function () {
 
-        await userLMCV.approveMultiple([userDPrimeJoin.address]);
-        await userDPrimeJoin.exit(addr1.address, fwad("100"));
+        it("Should prevent user from transferring dPrime until n amount of blocks after mintAndDelay is called", async function () {
+            const blockwait = 6;
+            userDPrime = dPrime.connect(addr1);
+            user2DPrime = dPrime.connect(addr2);
 
-        expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
-        expect(await lmcv.dPrime(addr1.address)).to.equal(frad("1880"));
+            await userDPrime.approve(addr2.address, MAX_INT);
 
-        await expect(userDPrimeJoin.exit(addr1.address, fwad("1901"))).to.be.revertedWith("LMCV/Insufficient dPrime to move");
+            await dPrime.setTransferBlockWait(blockwait);
+
+            let txresult = await dPrime.mintAndDelay(addr1.address, fwad("1000"));
+            expect(await dPrime.balanceOf(addr1.address)).to.equal(fwad("1000"));
+            expect(await dPrime.transferBlockRelease(addr1.address)).to.equal(txresult.blockNumber + blockwait);
+
+            await expect(userDPrime.transfer(addr2.address, fwad("100"))).to.be.revertedWith("dPrime/transfer too soon after cross-chain mint");
+            await expect(user2DPrime.transferFrom(addr1.address, addr2.address, fwad("100"))).to.be.revertedWith("dPrime/transfer too soon after cross-chain mint");
+
+            await mineNBlocks(blockwait);
+
+            await userDPrime.transfer(addr2.address, fwad("100"));
+            expect(await dPrime.balanceOf(addr2.address)).to.equal(fwad("100"));
+
+            await user2DPrime.transferFrom(addr1.address, addr2.address, fwad("100"));
+            expect(await dPrime.balanceOf(addr2.address)).to.equal(fwad("200"));
+        });
     });
-
-    it("User cannot deposit dPrime with insufficient balance", async function () {
-        await userLMCV.loan([mockTokenBytes], [fwad("500")], fwad("2000"), addr1.address);
-        await userTwoLMCV.loan([mockTokenBytes], [fwad("500")], fwad("2000"), addr2.address);
-        expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
-
-        await userLMCV.approveMultiple([userDPrimeJoin.address]);
-        await userDPrimeJoin.exit(addr1.address, fwad("1000"));
-
-        await userTwoLMCV.approveMultiple([userDPrimeJoin.address]);
-        await userTwoDPrimeJoin.exit(addr2.address, fwad("1000"));
-
-        expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
-        expect(await lmcv.dPrime(addr1.address)).to.equal(frad("980"));
-
-        // Fails because a fee was taken upon calling `userDPrimeJoin.exit`.
-        await expect(userDPrimeJoin.join(addr1.address, fwad("1001"))).to.be.revertedWith("dPrime/insufficient-balance");
-    });
-
-    it("User can re-deposit a portion of their withdrawn dPRIME", async function () {
-        await userLMCV.loan([mockTokenBytes], [fwad("500")], fwad("2000"), addr1.address);
-        expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
-
-        await userLMCV.approveMultiple([userDPrimeJoin.address]);
-        await userDPrimeJoin.exit(addr1.address, fwad("1000"));
-        expect(await lmcv.dPrime(addr1.address)).to.equal(frad("980"));
-
-        await userDPrimeJoin.join(addr1.address, fwad("500"));
-        expect(await lmcv.dPrime(addr1.address)).to.equal(frad("1480"));
-    });
-
-    it("User receives dPRIME externally and re-deposits", async function () {
-        await userLMCV.approveMultiple([userDPrimeJoin.address]);
-        await userTwoLMCV.approveMultiple([userTwoDPrimeJoin.address]);
-
-        await userLMCV.loan([mockTokenBytes], [fwad("500")], fwad("2000"), addr1.address);
-        expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
-        expect(await lmcv.dPrime(addr1.address)).to.equal(frad("1980"));
-
-        await userTwoLMCV.loan([mockTokenBytes], [fwad("500")], fwad("2000"), addr2.address);
-        expect(await lmcv.normalizedDebt(addr2.address)).to.equal(fwad("2000"));
-        expect(await lmcv.dPrime(addr2.address)).to.equal(frad("1980"));
-
-        await userDPrimeJoin.exit(addr1.address, fwad("1000"));
-        expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
-        expect(await lmcv.dPrime(addr1.address)).to.equal(frad("980"));
-
-        await userTwoDPrimeJoin.exit(addr2.address, fwad("1000"));
-        expect(await lmcv.normalizedDebt(addr2.address)).to.equal(fwad("2000"));
-        expect(await lmcv.dPrime(addr2.address)).to.equal(frad("980"));
-
-        //transfer to user1 then user 1 repays fully
-        userTwoDPrime = dPrime.connect(addr2);
-
-        await userTwoDPrime.transfer(addr1.address, fwad("500"));
-        expect(await dPrime.balanceOf(addr1.address)).to.equal(fwad("1500"));
-        expect(await dPrime.balanceOf(addr2.address)).to.equal(fwad("500"));
-
-        await userDPrimeJoin.join(addr1.address, fwad("1500"));
-        expect(await lmcv.dPrime(addr1.address)).to.equal(frad("2480"));
-    });
-
 });

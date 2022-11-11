@@ -15,17 +15,21 @@ contract dPrime {
     uint8   public constant decimals = 18;
     uint256 public totalSupply;
     uint256 public live;
+    uint256 public transferBlockWait;      //Amount of blocks to wait before user can transfer dPrime after minting cross-chain
 
-    mapping (address => uint256)                      public balanceOf;
-    mapping (address => mapping (address => uint256)) public allowance;
-    mapping (address => uint256)                      public nonces;
+    mapping (address => uint256)                        public balanceOf;
+    mapping (address => mapping (address => uint256))   public allowance;
+    mapping (address => uint256)                        public nonces;
+    mapping (address => uint256)                        public transferBlockRelease;    //Block number after which user is able to transfer dPrime
 
     // --- Events ---
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event Approval(address indexed owner, address indexed spender, uint256 value);
     event Transfer(address indexed from, address indexed to, uint256 value);
+    event TransferBlockWait(uint256 blockWait);
     event Cage(uint256 status);
+    
 
     // --- EIP712 niceties ---
     uint256 public immutable deploymentChainId;
@@ -92,9 +96,15 @@ contract dPrime {
         emit Cage(_live);
     }
 
+    function setTransferBlockWait(uint256 num) external auth {
+        transferBlockWait = num;
+        emit TransferBlockWait(transferBlockWait);
+    }
+
     // --- ERC20 Mutations ---
     function transfer(address to, uint256 value) external alive returns (bool) {
         require(to != address(0) && to != address(this), "dPrime/invalid-address");
+        require(block.number > transferBlockRelease[msg.sender], "dPrime/transfer too soon after cross-chain mint");
         uint256 balance = balanceOf[msg.sender];
         require(balance >= value, "dPrime/insufficient-balance");
 
@@ -110,6 +120,7 @@ contract dPrime {
 
     function transferFrom(address from, address to, uint256 value) external alive returns (bool) {
         require(to != address(0) && to != address(this), "dPrime/invalid-address");
+        require(block.number > transferBlockRelease[from], "dPrime/transfer too soon after cross-chain mint");
         uint256 balance = balanceOf[from];
         require(balance >= value, "dPrime/insufficient-balance");
 
@@ -173,7 +184,16 @@ contract dPrime {
     }
 
     // --- Mint/Burn ---
-    function mint(address to, uint256 value) external auth alive {
+    function mint(address to, uint256 value) external auth {
+        _mint(to, value);
+    }
+
+    function mintAndDelay(address to, uint256 value) external auth {
+        transferBlockRelease[to] = block.number + transferBlockWait;
+        _mint(to, value);
+    }
+
+    function _mint(address to, uint256 value) internal alive {
         require(to != address(0) && to != address(this), "dPrime/invalid-address");
         unchecked {
             balanceOf[to] = balanceOf[to] + value; // note: we don't need an overflow check here b/c balanceOf[to] <= totalSupply and there is an overflow check below
