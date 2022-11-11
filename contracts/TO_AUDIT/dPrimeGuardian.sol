@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.12;
+pragma solidity ^0.8.7;
 
 import "./dependencies/AuthAdmin.sol";
 
@@ -20,6 +20,10 @@ contract dPrimeGuardian is AuthAdmin("dPrimeGuardian") {
 
     constructor(address _dPrimeContract) {
         dPrimeContract = _dPrimeContract;
+    }
+
+    function setPipeAddresses(bytes32 pipeName, address pipeAddress) external auth {
+        pipeAddresses[pipeName] = pipeAddress;
     }
 
     function removeConnectorAdmin(bytes32 pipeName) external auth {

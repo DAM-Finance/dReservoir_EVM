@@ -110,3 +110,59 @@ Contract specific documentation:
 
 1. In V1 no interest is payable on dPRIME deposits.
 2. In V1 there is no governance token and therefore no decentralised governance or protocol enforced bail-ins/ bail-outs in the case of excessive protocol deficit.
+
+## Deployment
+
+For deploying a localhost version of DAM for testing use the following:
+
+`npx hardhat node`
+
+This sets up the local test network and executes transactions to set up all of the contracts -- permissions etc. You can then use hardhat tasks to interact with the contracts e.g.
+
+1. `npx hardhat eth_balance --user [ADDRESS] --network localhost` 
+2. `npx hardhat usdc_mint --user [ADDRESS] --amount [AMOUNT] --network localhost`
+3. `npx hardhat usdc_balance --user [ADDRESS] --network localhost`
+4. `npx hardhat dprime_swap --user [ADDRESS] --amount [AMOUNT] --network localhost`
+5. `npx hardhat dprime_balance --user [ADDRESS] --network localhost`
+6. `npx hardhat dprime_teleport --user [ADDRESS]] --amount [AMOUNT] --network localhost --source-chain-id 1 --dest-chain-id 2` - for teleporting using the local test network we use the LayerZero mock end-point which simulates the existence of two networks. With this approach there are two dPrime contracts, two end-points and two connectors. One end-point has id `1` and the other id `2`. 
+
+For deploying to testnet or mainnet, use the following:
+
+1. `npx hardhat deploy --network [NETWORK NAME]` - currently only supports Goerli and Moonbase Alpha
+2. `npx hardhat setup_contracts --network [NETWORK NAME]` - currently only supports Goerli and Moonbase Alpha. This sets up all the contracts with permissions etc. It's done in a separate step to deploying with testnets and production.
+
+You can then use the same tasks as described above for the local test network to interact with testnet and mainnet deployments. Make sure to change the network name option to the nework of choice.
+
+### Environment variables
+
+
+```
+ETH_NODE_URI_ETHEREUM
+ETH_NODE_URI_GOERLI
+ETH_NODE_URI_MOONBEAM
+ETH_NODE_URI_MOONBASE
+
+MNEMONIC_ETHEREUM
+MNEMONIC_GOERLI
+MNEMONIC_MOONBEAM
+MNEMONIC_MOONBASE
+
+LAYER_ZERO_ENDPOINT_ETHEREUM
+LAYER_ZERO_ENDPOINT_GOERLI
+LAYER_ZERO_ENDPOINT_MOONBEAM
+LAYER_ZERO_ENDPOINT_MOONBASE
+LAYER_ZERO_CHAIN_ID_ETHEREUM
+LAYER_ZERO_CHAIN_ID_GOERLI
+LAYER_ZERO_CHAIN_ID_MOONBEAM
+LAYER_ZERO_CHAIN_ID_MOONBASE
+
+HYPERLANE_CONNECTION_MANAGER_GOERLI
+HYPERLANE_INTERCHAIN_GAS_PAYMASTER_GOERLI
+HYPERLANE_DOMAIN_IDENTIFIER_GOERLI
+HYPERLANE_DOMAIN_IDENTIFIER_MOONBASE
+
+USDC_ADDRESS_ETHEREUM
+USDC_PSM_SYMBOL
+
+ETHERSCAN_API_KEY
+```

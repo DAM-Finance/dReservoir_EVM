@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.12;
+pragma solidity ^0.8.7;
 
 import {Router} from "@hyperlane-xyz/app/contracts/Router.sol";
 import "../dependencies/AuthAdmin.sol";
@@ -8,7 +8,7 @@ interface dPrimeLike {
     function decreaseAllowanceAdmin(address owner, address spender, uint256 subtractedValue) external returns (bool);
     function totalSupply() external view returns (uint256 supply);
     function burn(address,uint256) external;
-    function mint(address,uint256) external;
+    function mintAndDelay(address,uint256) external;
 }
 
 /**
@@ -123,7 +123,7 @@ contract dPrimeConnectorHyperlane is Router, AuthAdmin("dPrimeConnectorHyperlane
             (address, uint256)
         );
 
-        try dPrimeLike(dPrimeContract).mint(recipient, amount) {
+        try dPrimeLike(dPrimeContract).mintAndDelay(recipient, amount) {
             emit ReceivedTransferRemote(_origin, recipient, amount);
         } catch {
             failedMessages[_origin][recipient][nonce] = amount;
@@ -141,7 +141,7 @@ contract dPrimeConnectorHyperlane is Router, AuthAdmin("dPrimeConnectorHyperlane
     function retry(uint32 _origin, address _recipient, uint256 _nonce) external {
         uint256 amount = failedMessages[_origin][_recipient][_nonce];
 
-        try dPrimeLike(dPrimeContract).mint(_recipient, amount) {
+        try dPrimeLike(dPrimeContract).mintAndDelay(_recipient, amount) {
             emit ReceivedTransferRemote(_origin, _recipient, amount);
         } catch {
             emit FailedTransferRemote(_origin, _recipient, nonce, amount);
