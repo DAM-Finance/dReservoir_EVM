@@ -23,8 +23,6 @@ contract dPrimeConnectorHyperlane is Router, AuthAdmin("dPrimeConnectorHyperlane
     address public dPrimeContract;
     uint256 public nonce;
 
-    event Cage(uint256 status);
-
     /**
      * @dev Emitted on `transferRemote` when a transfer message is dispatched.
      * @param destination The identifier of the destination chain.
@@ -73,6 +71,11 @@ contract dPrimeConnectorHyperlane is Router, AuthAdmin("dPrimeConnectorHyperlane
         address _interchainGasPaymaster,
         address _dPrimeContract
     ) external initializer auth {
+        require(_abacusConnectionManager != address(0) 
+        && _interchainGasPaymaster != address(0) 
+        && _dPrimeContract != address(0), 
+        "dPrimeConnectorHyperlane/invalid address");
+
         // Set ownable to sender
         _transferOwnership(msg.sender);
         // Set ACM contract address
@@ -97,6 +100,8 @@ contract dPrimeConnectorHyperlane is Router, AuthAdmin("dPrimeConnectorHyperlane
         address _recipient,
         uint256 _amount
     ) external payable alive {
+        require(_amount > 0, "dPrimeConnectorHyperlane/Amount cannot be zero");
+        require(_recipient != address(0), "dPrimeConnectorHyperlane/Recipient address cannot be zero");
         dPrimeLike(dPrimeContract).burn(msg.sender, _amount);
         _dispatchWithGas(
             _destination,
@@ -138,10 +143,12 @@ contract dPrimeConnectorHyperlane is Router, AuthAdmin("dPrimeConnectorHyperlane
      * @param _origin The identifier of the origin chain.
      * @param _recipient The address of the recipient on receiving chain.
      */
-    function retry(uint32 _origin, address _recipient, uint256 _nonce) external {
+    function retry(uint32 _origin, address _recipient, uint256 _nonce) external alive {
         uint256 amount = failedMessages[_origin][_recipient][_nonce];
+        require(amount > 0, "dPrimeConnectorHyperlane/Amount must be greater than 0 to retry");
 
         try dPrimeLike(dPrimeContract).mintAndDelay(_recipient, amount) {
+            delete failedMessages[_origin][_recipient][_nonce];
             emit ReceivedTransferRemote(_origin, _recipient, amount);
         } catch {
             emit FailedTransferRemote(_origin, _recipient, nonce, amount);

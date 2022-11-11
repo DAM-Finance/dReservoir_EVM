@@ -13,17 +13,21 @@ contract dPrimeGuardian is AuthAdmin("dPrimeGuardian") {
 
     //HYP, LZ, etc -> address deployed on this chain
     mapping (bytes32 => address) public pipeAddresses;
-    address public dPrimeContract;
+    address public immutable dPrimeContract;
 
+    event SetPipeAddress(bytes32 indexed pipeName, address pipeAddress);
     event HaltedPipe(bytes32 indexed pipe);
     event CagedDPrime();
+    
 
     constructor(address _dPrimeContract) {
+        require(_dPrimeContract != address(0), "dPrimeGuardian/invalid address");
         dPrimeContract = _dPrimeContract;
     }
 
-    function setPipeAddresses(bytes32 pipeName, address pipeAddress) external auth {
+    function setPipeAddress(bytes32 pipeName, address pipeAddress) external auth {
         pipeAddresses[pipeName] = pipeAddress;
+        emit SetPipeAddress(pipeName, pipeAddress);
     }
 
     function removeConnectorAdmin(bytes32 pipeName) external auth {
