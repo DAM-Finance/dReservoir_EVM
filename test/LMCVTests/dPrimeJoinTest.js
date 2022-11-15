@@ -178,15 +178,20 @@ describe("dPrime Testing", function () {
     });
 
     describe("dPrime Mint Testing", function () {
+        const blockwait = 6;
+        const lockupTriggerAmt = fwad("999");
+
+        beforeEach(async function () {
+            await dPrime.setTransferBlockWait(blockwait);
+            await dPrime.setLockupTriggerAmount(lockupTriggerAmt);
+        });
 
         it("Should prevent user from transferring dPrime until n amount of blocks after mintAndDelay is called", async function () {
-            const blockwait = 6;
+            
             userDPrime = dPrime.connect(addr1);
             user2DPrime = dPrime.connect(addr2);
 
             await userDPrime.approve(addr2.address, MAX_INT);
-
-            await dPrime.setTransferBlockWait(blockwait);
 
             let txresult = await dPrime.mintAndDelay(addr1.address, fwad("1000"));
             expect(await dPrime.balanceOf(addr1.address)).to.equal(fwad("1000"));
@@ -196,6 +201,23 @@ describe("dPrime Testing", function () {
             await expect(user2DPrime.transferFrom(addr1.address, addr2.address, fwad("100"))).to.be.revertedWith("dPrime/transfer too soon after cross-chain mint");
 
             await mineNBlocks(blockwait);
+
+            await userDPrime.transfer(addr2.address, fwad("100"));
+            expect(await dPrime.balanceOf(addr2.address)).to.equal(fwad("100"));
+
+            await user2DPrime.transferFrom(addr1.address, addr2.address, fwad("100"));
+            expect(await dPrime.balanceOf(addr2.address)).to.equal(fwad("200"));
+        });
+
+        it("Should prevent user from transferring dPrime until n amount of blocks after mintAndDelay is called", async function () {
+            userDPrime = dPrime.connect(addr1);
+            user2DPrime = dPrime.connect(addr2);
+
+            await userDPrime.approve(addr2.address, MAX_INT);
+
+            let txresult = await dPrime.mintAndDelay(addr1.address, fwad("500"));
+            expect(await dPrime.balanceOf(addr1.address)).to.equal(fwad("500"));
+            expect(await dPrime.transferBlockRelease(addr1.address)).to.equal(0);
 
             await userDPrime.transfer(addr2.address, fwad("100"));
             expect(await dPrime.balanceOf(addr2.address)).to.equal(fwad("100"));
