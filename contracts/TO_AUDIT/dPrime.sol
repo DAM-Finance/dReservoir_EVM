@@ -15,7 +15,8 @@ contract dPrime {
     uint8   public constant decimals = 18;
     uint256 public totalSupply;
     uint256 public live;
-    uint256 public transferBlockWait;      //Amount of blocks to wait before user can transfer dPrime after minting cross-chain
+    uint256 public transferBlockWait;       //Amount of blocks to wait before user can transfer dPrime after minting cross-chain
+    uint256 public lockupTriggerAmt;            //dPrime amount where lockup will kick in after cross-chain transfer
 
     mapping (address => uint256)                        public balanceOf;
     mapping (address => mapping (address => uint256))   public allowance;
@@ -28,6 +29,7 @@ contract dPrime {
     event Approval(address indexed owner, address indexed spender, uint256 value);
     event Transfer(address indexed from, address indexed to, uint256 value);
     event TransferBlockWait(uint256 blockWait);
+    event LockupTriggerAmount(uint256 amount);
     event Cage(uint256 status);
     
 
@@ -99,6 +101,11 @@ contract dPrime {
     function setTransferBlockWait(uint256 num) external auth {
         transferBlockWait = num;
         emit TransferBlockWait(transferBlockWait);
+    }
+
+    function setLockupTriggerAmount(uint256 amount) external auth {
+        lockupTriggerAmt = amount;
+        emit LockupTriggerAmount(amount);
     }
 
     // --- ERC20 Mutations ---
@@ -189,7 +196,9 @@ contract dPrime {
     }
 
     function mintAndDelay(address to, uint256 value) external auth {
-        transferBlockRelease[to] = block.number + transferBlockWait;
+        if(value > lockupTriggerAmt){
+            transferBlockRelease[to] = block.number + transferBlockWait;
+        }
         _mint(to, value);
     }
 
