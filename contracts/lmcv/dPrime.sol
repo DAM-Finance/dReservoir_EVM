@@ -15,7 +15,7 @@ contract dPrime {
     uint8   public constant decimals = 18;
     uint256 public totalSupply;
     uint256 public live;
-    uint256 public transferBlockWait;       //Amount of blocks to wait before user can transfer dPrime after minting cross-chain
+    uint256 public transferBlockWait;           //Amount of blocks to wait before user can transfer dPrime after minting cross-chain
     uint256 public lockupTriggerAmt;            //dPrime amount where lockup will kick in after cross-chain transfer
 
     mapping (address => uint256)                        public balanceOf;
