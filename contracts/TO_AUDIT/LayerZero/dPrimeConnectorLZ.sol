@@ -16,12 +16,13 @@ interface dPrimeLike {
 
 contract dPrimeConnectorLZ is OFTCore, IOFT, AuthAdmin("dPrimeConnectorLZ") {
 
-    address public dPrimeContract;
+    address public immutable dPrimeContract;
 
     event MintLayerZero(address indexed from, uint256 amount, uint16 _srcChainId);
     event BurnLayerZero(address indexed from, uint256 amount, uint16 _dstChainId);
 
     constructor(address _lzEndpoint, address _dPrimeContract) OFTCore(_lzEndpoint) {
+        require(_lzEndpoint != address(0) && _dPrimeContract != address(0), "dPrimeConnectorLZ/invalid address");
         dPrimeContract = _dPrimeContract;
     }
 
