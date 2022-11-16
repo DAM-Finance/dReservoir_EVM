@@ -19,25 +19,25 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 	}
 
 	// ------
-	// dPRIME
+	// d2O
 	// ------
 
-	// dPrime
+	// d2O
 
-	const dPrime = await deploy('dPrime', {
+	const d2O = await deploy('d2O', {
 		from: deployer,
 		args: [],
 		log: true,
 		autoMine: true
 	});
 
-	const dPrimeAddress = dPrime.receipt?.contractAddress;
+	const d2OAddress = d2O.receipt?.contractAddress;
 
 	// Layer Zero
 
-	const LZPipe = await deploy('dPrimeConnectorLZ', {		
+	const LZPipe = await deploy('LayerZeroPipe', {
 		from: deployer,
-		args: [layerZeroEndpointAddress, dPrimeAddress],
+		args: [layerZeroEndpointAddress, d2OAddress],
 		log: true,
 		autoMine: true
 	});
@@ -46,7 +46,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 	// Hyperlane
 
-	const HyperlanePipe = await deploy('dPrimeConnectorHyperlane', {		
+	const HyperlanePipe = await deploy('HyperlanePipe', {
 		from: deployer,
 		args: [],
 		log: true,

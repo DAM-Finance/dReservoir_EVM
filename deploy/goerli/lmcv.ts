@@ -63,50 +63,50 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 	const lmcvProxyAddress = lmcvProxy.receipt?.contractAddress;
 
-	// dPrime
+	// d2O
 
-	const dPrime = await deploy('dPrime', {
+	const d2O = await deploy('d2O', {
 		from: deployer,
 		args: [],
 		log: true,
 		autoMine: true
 	});
 
-	const dPrimeAddress = dPrime.receipt?.contractAddress;
+	const d2OAddress = d2O.receipt?.contractAddress;
 
-	// dPrime connector layer-zero
+	// d2O connector layer-zero
 
-	const dPrimeConnectorLZ = await deploy('dPrimeConnectorLZ', {
+	const LayerZeroPipe = await deploy('LayerZeroPipe', {
 		from: deployer,
-		args: [layerZeroEndpointAddress, dPrimeAddress],
+		args: [layerZeroEndpointAddress, d2OAddress],
 		log: true,
 		autoMine: true,
-		contract: "dPrimeConnectorLZ"
+		contract: "d2OConnectorLZ"
 	});
 
-	const dPrimeConnectorLZAddress = dPrimeConnectorLZ.receipt?.contractAddress;
+	const LayerZeroPipeAddress = LayerZeroPipe.receipt?.contractAddress;
 
-	// dPrime connector hyperlane
+	// d2O connector hyperlane
 
-	const dPrimeConnectorHyperlane = await deploy('dPrimeConnectorHyperlane', {		
+	const HyperlanePipe = await deploy('HyperlanePipe', {
 		from: deployer,
 		args: [],
 		log: true,
 		autoMine: true
 	});
 
-	const dPrimeConnectorHyperlaneAddress = dPrimeConnectorHyperlane.receipt?.contractAddress;
+	const HyperlanePipeAddress = HyperlanePipe.receipt?.contractAddress;
 
-	// dPrime Join.
+	// d2O Join.
 
-	const dPrimeJoin = await deploy('dPrimeJoin', {
+	const d2OJoin = await deploy('d2OJoin', {
 		from: deployer,
-		args: [lmcvAddress, dPrimeAddress, lmcvProxyAddress],
+		args: [lmcvAddress, d2OAddress, lmcvProxyAddress],
 		log: true,
 		autoMine: true
 	});
 
-	const dPrimeJoinAddress = dPrimeJoin.receipt?.contractAddress;
+	const d2OJoinAddress = d2OJoin.receipt?.contractAddress;
 
 	// USDC Join
 
@@ -125,7 +125,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 	const usdcPsm = await deploy('PSM', {		
 		from: deployer,
-		args: [usdcJoinAddress, dPrimeJoinAddress, treasury],
+		args: [usdcJoinAddress, d2OJoinAddress, treasury],
 		log: true,
 		autoMine: true
 	});

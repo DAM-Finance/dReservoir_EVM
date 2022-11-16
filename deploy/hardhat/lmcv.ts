@@ -96,60 +96,60 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 	const lmcvProxyAddress = lmcvProxy.receipt?.contractAddress;
 
-	// dPrime
+// d2O
 
-	const dPrimeOne = await deploy('dPrimeOne', {
+	const d2O_One = await deploy('d2O_One', {
 		from: deployer,
 		args: [],
 		log: true,
 		autoMine: true,
-		contract: "dPrime"
+		contract: "d2O"
 	});
 
-	const dPrimeOneAddress = dPrimeOne.receipt?.contractAddress;
+	const d2O_OneAddress = d2O_One.receipt?.contractAddress;
 
-	const dPrimeTwo = await deploy('dPrimeTwo', {
+	const d2O_Two = await deploy('d2O_Two', {
 		from: deployer,
 		args: [],
 		log: true,
 		autoMine: true,
-		contract: "dPrime"
+		contract: "d2O"
 	});
 
-	const dPrimeTwoAddress = dPrimeTwo.receipt?.contractAddress;
+	const d2O_TwoAddress = d2O_Two.receipt?.contractAddress;
 
-	// dPrime connector layer-zero
+	// d2Oconnector layer-zero
 
-	const dPrimeConnectorLZOne = await deploy('dPrimeConnectorLZOne', {
+	const LZPipeOne = await deploy('LZPipeOne', {
 		from: deployer,
-		args: [LZEndpointMockOneAddress, dPrimeOneAddress],
+		args: [LZEndpointMockOneAddress, d2O_OneAddress],
 		log: true,
 		autoMine: true,
-		contract: "dPrimeConnectorLZ"
+		contract: "LayerZeroPipe"
 	});
 
-	const dPrimeConnectorLZOneAddress = dPrimeConnectorLZOne.receipt?.contractAddress;
+	const LZPipeOneAddress = LZPipeOne.receipt?.contractAddress;
 
-	const dPrimeConnectorLZTwo = await deploy('dPrimeConnectorLZTwo', {
+	const LZPipeTwo = await deploy('LZPipeTwo', {
 		from: deployer,
-		args: [LZEndpointMockTwoAddress, dPrimeTwoAddress],
+		args: [LZEndpointMockTwoAddress, d2O_TwoAddress],
 		log: true,
 		autoMine: true,
-		contract: "dPrimeConnectorLZ"
+		contract: "LayerZeroPipe"
 	});
 
-	const dPrimeConnectorLZTwoAddress = dPrimeConnectorLZTwo.receipt?.contractAddress;
+	const LZPipeTwoAddress = LZPipeTwo.receipt?.contractAddress;
 
-	// dPRIME Join. Can only mint and burn on one network.
+	// D2O Join. Can only mint and burn on one network.
 
-	const dPrimeJoin = await deploy('dPrimeJoin', {
+	const d2OJoin = await deploy('d2OJoin', {
 		from: deployer,
-		args: [lmcvAddress, dPrimeOneAddress, lmcvProxyAddress],
+		args: [lmcvAddress, d2O_OneAddress, lmcvProxyAddress],
 		log: true,
 		autoMine: true
 	});
 
-	const dPrimeJoinAddress = dPrimeJoin.receipt?.contractAddress;
+	const d2OJoinAddress = d2OJoin.receipt?.contractAddress;
 
 	// USDC Join
 
@@ -168,7 +168,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 	const usdcPsm = await deploy('PSM', {		
 		from: deployer,
-		args: [usdcJoinAddress, dPrimeJoinAddress, treasury],
+		args: [usdcJoinAddress, d2OJoinAddress, treasury],
 		log: true,
 		autoMine: true
 	});
@@ -176,31 +176,31 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 	const usdcPsmAddress = usdcPsm.receipt?.contractAddress;
 
 	// ------------
-	// Setup dPRIME
+	// Setup d2O
 	// ------------
 
 	await execute(
-		"dPrimeOne",
+		"d2O_One",
 		{from: deployer, log: true},
 		"rely",
-		dPrimeJoinAddress
+		d2OJoinAddress
 	)
 
 	await execute(
-		"dPrimeOne",
+		"d2O_One",
 		{from: deployer, log: true},
 		"rely",
-		dPrimeConnectorLZOneAddress
+		LZPipeOneAddress
 	)
 
 	await execute(
-		"dPrimeTwo",
+		"d2O_Two",
 		{from: deployer, log: true},
 		"rely",
-		dPrimeConnectorLZTwoAddress
+		LZPipeTwoAddress
 	)
 
-	// Need to permission connector two on dprime 2.
+	// Need to permission connector two on d2O 2.
 
 	// ---------------
 	// Setup LMCVProxy
@@ -209,15 +209,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 	await execute(
 		"LMCVProxy",
 		{from: deployer, log: true},
-		"setDPrimeJoin",
-		dPrimeJoinAddress
+		"setD2OJoin",
+		d2OJoinAddress
 	)
 
 	await execute(
 		"LMCVProxy",
 		{from: deployer, log: true},
-		"setDPrime",
-		dPrimeOneAddress
+		"setD2O",
+		d2O_OneAddress
 	)
 
 	// ----------
@@ -228,7 +228,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 		"LMCV",
 		{from: deployer, log: true},
 		"administrate",
-		dPrimeJoinAddress, 1
+		d2OJoinAddress, 1
 	)
 
 	await execute(
@@ -285,28 +285,28 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 		"LZEndPointMockOne",
 		{from: deployer, log: true},
 		"setDestLzEndpoint",
-		dPrimeConnectorLZTwoAddress, LZEndpointMockTwoAddress
+		LZPipeTwoAddress, LZEndpointMockTwoAddress
 	)
 
 	await execute(
 		"LZEndPointMockTwo",
 		{from: deployer, log: true},
 		"setDestLzEndpoint",
-		dPrimeConnectorLZOneAddress, LZEndpointMockOneAddress
+		LZPipeOneAddress, LZEndpointMockOneAddress
 	)
 
 	await execute(
-		"dPrimeConnectorLZOne",
+		"LZPipeOne",
 		{from: deployer, log: true},
 		"setTrustedRemoteAddress",
-		chainIdTwo, dPrimeConnectorLZTwoAddress
+		chainIdTwo, LZPipeTwoAddress
 	)
 
 	await execute(
-		"dPrimeConnectorLZTwo",
+		"LZPipeTwo",
 		{from: deployer, log: true},
 		"setTrustedRemoteAddress",
-		chainIdOne, dPrimeConnectorLZOneAddress
+		chainIdOne, LZPipeOneAddress
 	)
 
 	console.log("✅ Deployment successful.")
