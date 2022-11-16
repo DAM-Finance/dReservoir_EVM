@@ -2,8 +2,8 @@ const {expect} = require("chai");
 const {ethers, network} = require("hardhat");
 
 let owner, addr1, addr2, addr3, addrs;
-let dPrimeFactory, dPrime;
-let dPrimeJoinFactory, dPrimeJoin;
+let d2OFactory, d2O;
+let d2OJoinFactory, d2OJoin;
 let LMCVFactory, lmcv;
 let tokenFactory, mockToken;
 let collateralJoinFactory, collateralJoin;
@@ -55,9 +55,9 @@ async function setupUser(addr, amounts){
 describe("Testing LMCV", function () {
 
     before(async function () {
-        dPrimeFactory = await ethers.getContractFactory("dPrime");
+        d2OFactory = await ethers.getContractFactory("d2O");
         LMCVFactory = await ethers.getContractFactory("LMCV");
-        dPrimeJoinFactory = await ethers.getContractFactory("dPrimeJoin");
+        d2OJoinFactory = await ethers.getContractFactory("d2OJoin");
         tokenFactory = await ethers.getContractFactory("MockTokenFour");
         collateralJoinFactory = await ethers.getContractFactory("CollateralJoin");
         lmcvProxyFactory = await ethers.getContractFactory("LMCVProxy");
@@ -67,10 +67,10 @@ describe("Testing LMCV", function () {
     beforeEach(async function () {
         [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners();
 
-        dPrime = await dPrimeFactory.deploy();
+        d2O = await d2OFactory.deploy();
         lmcv = await LMCVFactory.deploy();
         lmcvProxy = await lmcvProxyFactory.deploy(lmcv.address);
-        dPrimeJoin = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address, lmcvProxy.address);
+        d2OJoin = await d2OJoinFactory.deploy(lmcv.address, d2O.address, lmcvProxy.address);
 
         mockToken = await tokenFactory.deploy("TSTR");
 
@@ -117,20 +117,20 @@ describe("Testing LMCV", function () {
             //Total loanable amount: $3000
             await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr1.address);
             expect(await userLMCV.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
-            expect(await userLMCV.dPrime(addr1.address)).to.equal(frad("2000"));
+            expect(await userLMCV.d2O(addr1.address)).to.equal(frad("2000"));
 
             await userTwoLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr2.address);
             expect(await userTwoLMCV.normalizedDebt(addr2.address)).to.equal(fwad("2000"));
-            expect(await userTwoLMCV.dPrime(addr2.address)).to.equal(frad("2000"));
+            expect(await userTwoLMCV.d2O(addr2.address)).to.equal(frad("2000"));
 
-            await userTwoLMCV.moveDPrime(addr2.address, addr1.address, frad("2000"));
-            expect(await userLMCV.dPrime(addr1.address)).to.equal(frad("4000"));
+            await userTwoLMCV.moveD2O(addr2.address, addr1.address, frad("2000"));
+            expect(await userLMCV.d2O(addr1.address)).to.equal(frad("4000"));
 
             await lmcv.updateRate(fray(".1"));
             expect(await lmcv.AccumulatedRate()).to.equal(fray("1.1"));
 
             await userLMCV.repay(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr1.address);
-            expect(await lmcv.dPrime(addr1.address)).to.equal(frad("1800"));
+            expect(await lmcv.d2O(addr1.address)).to.equal(frad("1800"));
             expect(await lmcv.normalizedDebt(addr1.address)).to.equal(0);
         });
 
@@ -138,32 +138,32 @@ describe("Testing LMCV", function () {
 
             await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr1.address);
             expect(await userLMCV.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
-            expect(await userLMCV.dPrime(addr1.address)).to.equal(frad("2000"));
+            expect(await userLMCV.d2O(addr1.address)).to.equal(frad("2000"));
 
             await lmcv.updateRate(fray(".1"));
             expect(await lmcv.AccumulatedRate()).to.equal(fray("1.1"));
 
-            expect(await lmcv.dPrime(owner.address)).to.equal(frad("200"));
+            expect(await lmcv.d2O(owner.address)).to.equal(frad("200"));
 
             await userLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr1.address);
-            expect(await lmcv.dPrime(addr1.address)).to.equal(frad("4200"));
+            expect(await lmcv.d2O(addr1.address)).to.equal(frad("4200"));
             expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("4000"));
 
 
             await userTwoLMCV.loan(collateralBytesList, [fwad("50"), fwad("100"), fwad("200")], fwad("2000"), addr2.address);
             expect(await userTwoLMCV.normalizedDebt(addr2.address)).to.equal(fwad("2000"));
-            expect(await userTwoLMCV.dPrime(addr2.address)).to.equal(frad("2200"));
+            expect(await userTwoLMCV.d2O(addr2.address)).to.equal(frad("2200"));
 
-            await userTwoLMCV.moveDPrime(addr2.address, addr1.address, frad("2200"));
-            expect(await userLMCV.dPrime(addr1.address)).to.equal(frad("6400"));
+            await userTwoLMCV.moveD2O(addr2.address, addr1.address, frad("2200"));
+            expect(await userLMCV.d2O(addr1.address)).to.equal(frad("6400"));
 
             await lmcv.updateRate(fray(".1"));
             expect(await lmcv.AccumulatedRate()).to.equal(fray("1.2"));
 
-            expect(await lmcv.dPrime(owner.address)).to.equal(frad("800"));
+            expect(await lmcv.d2O(owner.address)).to.equal(frad("800"));
 
             await userLMCV.repay(collateralBytesList, [fwad("100"), fwad("200"), fwad("400")], fwad("4000"), addr1.address);
-            expect(await lmcv.dPrime(addr1.address)).to.equal(frad("1600"));
+            expect(await lmcv.d2O(addr1.address)).to.equal(frad("1600"));
             expect(await lmcv.normalizedDebt(addr1.address)).to.equal(0);
             expect(await lmcv.totalNormalizedDebt()).to.equal(fwad("2000"));
         });

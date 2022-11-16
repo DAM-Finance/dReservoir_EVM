@@ -4,7 +4,7 @@ pragma solidity ^0.8.7;
 import {Router} from "@hyperlane-xyz/app/contracts/Router.sol";
 import "../dependencies/AuthAdmin.sol";
 
-interface dPrimeLike {
+interface d2OLike {
     function decreaseAllowanceAdmin(address owner, address spender, uint256 subtractedValue) external returns (bool);
     function totalSupply() external view returns (uint256 supply);
     function burn(address,uint256) external;
@@ -16,11 +16,11 @@ interface dPrimeLike {
  * @author Abacus Works
  * @dev Supply on each chain is not constant but the aggregate supply across all chains is.
  */
-contract dPrimeConnectorHyperlane is Router, AuthAdmin("dPrimeConnectorHyperlane") {
+contract HyperlanePipe is Router, AuthAdmin("HyperlanePipe") {
 
     // Origin chain -> recipient address -> nonce -> amount
     mapping (uint32 => mapping(address => mapping(uint256 => uint256))) failedMessages;
-    address public dPrimeContract;
+    address public d2OContract;
     uint256 public nonce;
 
     /**
@@ -69,12 +69,12 @@ contract dPrimeConnectorHyperlane is Router, AuthAdmin("dPrimeConnectorHyperlane
     function initialize(
         address _abacusConnectionManager,
         address _interchainGasPaymaster,
-        address _dPrimeContract
+        address _d2OContract
     ) external initializer auth {
         require(_abacusConnectionManager != address(0) 
         && _interchainGasPaymaster != address(0) 
-        && _dPrimeContract != address(0), 
-        "dPrimeConnectorHyperlane/invalid address");
+        && _d2OContract != address(0), 
+        "d2OConnectorHyperlane/invalid address");
 
         // Set ownable to sender
         _transferOwnership(msg.sender);
@@ -83,7 +83,7 @@ contract dPrimeConnectorHyperlane is Router, AuthAdmin("dPrimeConnectorHyperlane
         // Set IGP contract address
         _setInterchainGasPaymaster(_interchainGasPaymaster);
 
-        dPrimeContract = _dPrimeContract;
+        d2OContract = _d2OContract;
     }
 
     /**
@@ -100,9 +100,9 @@ contract dPrimeConnectorHyperlane is Router, AuthAdmin("dPrimeConnectorHyperlane
         address _recipient,
         uint256 _amount
     ) external payable alive {
-        require(_amount > 0, "dPrimeConnectorHyperlane/Amount cannot be zero");
-        require(_recipient != address(0), "dPrimeConnectorHyperlane/Recipient address cannot be zero");
-        dPrimeLike(dPrimeContract).burn(msg.sender, _amount);
+        require(_amount > 0, "d2OConnectorHyperlane/Amount cannot be zero");
+        require(_recipient != address(0), "d2OConnectorHyperlane/Recipient address cannot be zero");
+        d2OLike(d2OContract).burn(msg.sender, _amount);
         _dispatchWithGas(
             _destination,
             abi.encode(_recipient, _amount),
@@ -128,7 +128,7 @@ contract dPrimeConnectorHyperlane is Router, AuthAdmin("dPrimeConnectorHyperlane
             (address, uint256)
         );
 
-        try dPrimeLike(dPrimeContract).mintAndDelay(recipient, amount) {
+        try d2OLike(d2OContract).mintAndDelay(recipient, amount) {
             emit ReceivedTransferRemote(_origin, recipient, amount);
         } catch {
             failedMessages[_origin][recipient][nonce] = amount;
@@ -145,9 +145,9 @@ contract dPrimeConnectorHyperlane is Router, AuthAdmin("dPrimeConnectorHyperlane
      */
     function retry(uint32 _origin, address _recipient, uint256 _nonce) external alive {
         uint256 amount = failedMessages[_origin][_recipient][_nonce];
-        require(amount > 0, "dPrimeConnectorHyperlane/Amount must be greater than 0 to retry");
+        require(amount > 0, "d2OConnectorHyperlane/Amount must be greater than 0 to retry");
 
-        try dPrimeLike(dPrimeContract).mintAndDelay(_recipient, amount) {
+        try d2OLike(d2OContract).mintAndDelay(_recipient, amount) {
             delete failedMessages[_origin][_recipient][_nonce];
             emit ReceivedTransferRemote(_origin, _recipient, amount);
         } catch {

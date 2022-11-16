@@ -7,23 +7,23 @@ import "@layerzerolabs/solidity-examples/contracts/token/oft/OFTCore.sol";
 import "../dependencies/AuthAdmin.sol";
 import "./IOFT.sol";
 
-interface dPrimeLike { 
+interface d2OLike {
     function decreaseAllowanceAdmin(address owner, address spender, uint256 subtractedValue) external returns (bool);
     function totalSupply() external view returns (uint256 supply);
     function burn(address,uint256) external;
     function mintAndDelay(address,uint256) external;
 }
 
-contract dPrimeConnectorLZ is OFTCore, IOFT, AuthAdmin("dPrimeConnectorLZ") {
+contract LayerZeroPipe is OFTCore, IOFT, AuthAdmin("LayerZeroPipe") {
 
-    address public immutable dPrimeContract;
+    address public immutable d2OContract;
 
     event MintLayerZero(address indexed from, uint256 amount, uint16 _srcChainId);
     event BurnLayerZero(address indexed from, uint256 amount, uint16 _dstChainId);
 
-    constructor(address _lzEndpoint, address _dPrimeContract) OFTCore(_lzEndpoint) {
-        require(_lzEndpoint != address(0) && _dPrimeContract != address(0), "dPrimeConnectorLZ/invalid address");
-        dPrimeContract = _dPrimeContract;
+    constructor(address _lzEndpoint, address _d2OContract) OFTCore(_lzEndpoint) {
+        require(_lzEndpoint != address(0) && _d2OContract != address(0), "d2OConnectorLZ/invalid address");
+        d2OContract = _d2OContract;
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(OFTCore, IERC165) returns (bool) {
@@ -31,20 +31,20 @@ contract dPrimeConnectorLZ is OFTCore, IOFT, AuthAdmin("dPrimeConnectorLZ") {
     }
 
     function circulatingSupply() public view virtual override returns (uint) {
-        return dPrimeLike(dPrimeContract).totalSupply();
+        return d2OLike(d2OContract).totalSupply();
     }
 
     function _debitFrom(address _from, uint16 _dstChainId, bytes memory, uint _amount) internal virtual override alive {
         address spender = _msgSender();
         if (_from != spender) {
-            require(dPrimeLike(dPrimeContract).decreaseAllowanceAdmin(_from, spender, _amount),"dPrimeConnectorLZ/Must have proper allowance");
+            require(d2OLike(d2OContract).decreaseAllowanceAdmin(_from, spender, _amount),"d2OConnectorLZ/Must have proper allowance");
         }
-        dPrimeLike(dPrimeContract).burn(_from, _amount);
+        d2OLike(d2OContract).burn(_from, _amount);
         emit BurnLayerZero(_from, _amount, _dstChainId);
     }
 
     function _creditTo(uint16 _srcChainId, address _toAddress, uint _amount) internal virtual override alive {
-        dPrimeLike(dPrimeContract).mintAndDelay(_toAddress, _amount);
+        d2OLike(d2OContract).mintAndDelay(_toAddress, _amount);
         emit MintLayerZero(_toAddress, _amount, _srcChainId);
     }
 

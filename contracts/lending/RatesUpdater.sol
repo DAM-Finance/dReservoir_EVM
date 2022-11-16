@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.7;
 
-import "hardhat/console.sol";
-
 interface LMCVLike {
     function updateRate(int256) external;
     function AccumulatedRate() external returns (uint256);
@@ -11,12 +9,12 @@ interface LMCVLike {
 
 /**
  * RatesUpdates.sol - allows any interested party to accrue interest on any
- * LMCV vaults. If the vault has a debt (ie. it has issued dPRIME), then interest
+ * LMCV vaults. If the vault has a debt (ie. it has issued d2O), then interest
  * will accrue, compounding on a per second basis, set by the `stabilityRate` 
- * property of this contract. Note: if a user issues dPRIME, then redeems the 
+ * property of this contract. Note: if a user issues d2O, then redeems the
  * full amount and `aaccrueInterest` in not called in between the issuance and
  * redemption, then no interest would have accrue on the debt in respect of the 
- * issued dPRIME. In other words, interest only accrues is someone calls 
+ * issued d2O. In other words, interest only accrues is someone calls
  * `accrueInterest`.
  */
 contract RatesUpdater {
