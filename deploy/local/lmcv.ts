@@ -3,7 +3,7 @@ import { DeployFunction } from 'hardhat-deploy/types';
 import { ethers } from 'ethers';
 
 // TODO: Import via environment variable.
-let usdcBytes = ethers.utils.formatBytes32String("USDC");	
+let usdcBytes = ethers.utils.formatBytes32String("PSM-USDC");	
 
 const chainIdOne = 1;
 const chainIdTwo = 2;
