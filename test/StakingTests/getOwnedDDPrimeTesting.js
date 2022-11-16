@@ -11,7 +11,7 @@ let fooBytes = ethers.utils.formatBytes32String("FOO");
 let barBytes = ethers.utils.formatBytes32String("BAR");
 let bazBytes = ethers.utils.formatBytes32String("BAZ");
 let blorpBytes = ethers.utils.formatBytes32String("BLROP");
-let d3OBytes = ethers.utils.formatBytes32String("DDPRIME");
+let d3OBytes = ethers.utils.formatBytes32String("d3O");
 
 // Accounts.
 let owner, addr1, addr2, addr3, addrs;
@@ -156,8 +156,8 @@ describe("Testing checkD3OOwnership", function () {
 
         // //Set up d3O in LMCV
 
-        let userDDPRIME = d3O.connect(addr1);
-        await userDDPRIME.approve(d3OCollateralJoin.address, MAX_INT);
+        let userD3O = d3O.connect(addr1);
+        await userD3O.approve(d3OCollateralJoin.address, MAX_INT);
 
         expect(await d3O.balanceOf(addr1.address)).to.equal(fwad("1000"));
 
@@ -194,8 +194,8 @@ describe("Testing checkD3OOwnership", function () {
 
         //Set up d3O in LMCV
 
-        let userDDPRIME = d3O.connect(addr1);
-        await userDDPRIME.approve(d3OCollateralJoin.address, MAX_INT);
+        let userD3O = d3O.connect(addr1);
+        await userD3O.approve(d3OCollateralJoin.address, MAX_INT);
 
         expect(await d3O.balanceOf(addr1.address)).to.equal(fwad("1000"));
         expect(await stakingVault.getOwnedD3O(addr1.address)).to.equal(frad("1000"));
@@ -222,11 +222,11 @@ describe("Testing checkD3OOwnership", function () {
         expect(await d3O.balanceOf(addr1.address)).to.equal(fwad("1000"));
 
         //Set up d3O in LMCV
-        let userDDPRIME = d3O.connect(addr1);
-        await userDDPRIME.approve(d3OCollateralJoin.address, MAX_INT);
+        let userD3O = d3O.connect(addr1);
+        await userD3O.approve(d3OCollateralJoin.address, MAX_INT);
 
         expect(await d3O.balanceOf(addr1.address)).to.equal(fwad("1000"));
-        await userDDPRIME.transfer(addr2.address, fwad("1000"));
+        await userD3O.transfer(addr2.address, fwad("1000"));
         expect(await stakingVault.getOwnedD3O(addr1.address)).to.equal("0");
     });
 });

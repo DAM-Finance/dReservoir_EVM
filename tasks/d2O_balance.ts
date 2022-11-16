@@ -2,7 +2,7 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { task } from "hardhat/config";
 import { ethers } from 'ethers';
 
-task("dprime_balance", "gets the USDC balance for an account")
+task("d2O_balance", "gets the USDC balance for an account")
   .addParam("user", "The user's address")
   .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
 	const {deployments} = hre;
@@ -11,41 +11,41 @@ task("dprime_balance", "gets the USDC balance for an account")
 
 	switch (network) {
 		case "localhost":
-			const dPrimeOne = await read(
-				"dPrimeOne", 
+			const d2OOne = await read(
+				"d2OOne", 
 				{from: taskArgs.user},
 				"balanceOf",
 				taskArgs.user
 			);
 	
-			console.log(`User ${taskArgs.user.substring(0, 10)} dPrimeOne balance:`, ethers.utils.formatEther(dPrimeOne));
+			console.log(`User ${taskArgs.user.substring(0, 10)} d2OOne balance:`, ethers.utils.formatEther(d2OOne));
 	
-			const dPrimeTwo = await read(
-				"dPrimeTwo", 
+			const d2OTwo = await read(
+				"d2OTwo", 
 				{from: taskArgs.user},
 				"balanceOf",
 				taskArgs.user
 			);
 	
-			console.log(`User ${taskArgs.user.substring(0, 10)} dPrimeTwo balance:`, ethers.utils.formatEther(dPrimeTwo));
+			console.log(`User ${taskArgs.user.substring(0, 10)} d2OTwo balance:`, ethers.utils.formatEther(d2OTwo));
 			break;
 		case "goerli":
-			let dPrimeGoerli = await read(
-				"dPrime", 
+			let d2OGoerli = await read(
+				"d2O", 
 				{from: taskArgs.user},
 				"balanceOf",
 				taskArgs.user
 			);
-			console.log(`User ${taskArgs.user.substring(0, 10)} dPrime balance:`, ethers.utils.formatEther(dPrimeGoerli));
+			console.log(`User ${taskArgs.user.substring(0, 10)} d2O balance:`, ethers.utils.formatEther(d2OGoerli));
 			break;
 		case "moonbase":
-			let dPrimeMoonbase = await read(
-				"dPrime", 
+			let d2OMoonbase = await read(
+				"d2O", 
 				{from: taskArgs.user},
 				"balanceOf",
 				taskArgs.user
 			);
-			console.log(`User ${taskArgs.user.substring(0, 10)} dPrime balance:`, ethers.utils.formatEther(dPrimeMoonbase));
+			console.log(`User ${taskArgs.user.substring(0, 10)} d2O balance:`, ethers.utils.formatEther(d2OMoonbase));
 			break;
 		default:
 			console.log(`Network ${network} not supported for task usdc_balance.`)

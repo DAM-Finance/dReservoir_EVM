@@ -604,7 +604,7 @@ describe("Testing LMCV", function () {
             // liquidation contract.
             //
             // We will do a 33% liquidation for this test.
-            // 33% x 500 dPRIME = 165 dPRIME
+            // 33% x 500 d2O = 165 d2O
             // 165 dPRIME / 40  = 4.125 MockToken
             // So we reduce the locked dPRIME and collateral balances by 165 dPRIME - this equates to 4.125 MockToken.
             // Note, these are not necessarily correct numbers as per liquidation contract operation but they are adequate 

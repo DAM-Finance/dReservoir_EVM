@@ -8,8 +8,8 @@ function fwad(wad: string) {
 
 let usdcBytes = ethers.utils.formatBytes32String("PSM-USDC");	
 
-task("dprime_swap", "teleports dPrime from one chain to another")
-  .addParam("amount", "The amount of dPrime to swap")
+task("d2O_swap", "teleports d2O from one chain to another")
+  .addParam("amount", "The amount of d2O to swap")
   .addParam("user", "The user's address to send from")
   .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
 	const {deployments, getNamedAccounts} = hre;
@@ -32,12 +32,12 @@ task("dprime_swap", "teleports dPrime from one chain to another")
 
 	// Execute PSM swap.
 
-	console.log(`Swapping ${taskArgs.amount} of USDC for ${taskArgs.amount} dPrime...`);
+	console.log(`Swapping ${taskArgs.amount} of USDC for ${taskArgs.amount} d2O...`);
 
 	const swapResult = await execute(
 		"PSM", 
 		{from: taskArgs.user, log: true},
-		"createDPrime",
+		"createD2O",
 		taskArgs.user,
 		[usdcBytes],
 		[ethers.utils.parseUnits(taskArgs.amount, 6).toString()]
@@ -45,7 +45,7 @@ task("dprime_swap", "teleports dPrime from one chain to another")
 
 	console.log("✅ Swap successful: ", swapResult.transactionHash);
 
-	await hre.run("dprime_balance", {user: taskArgs.user});
+	await hre.run("d2O_balance", {user: taskArgs.user});
 	await hre.run("usdc_balance", {user: taskArgs.user});
 	await hre.run("eth_balance", {user: taskArgs.user});
 });

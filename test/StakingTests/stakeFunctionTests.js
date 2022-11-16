@@ -10,7 +10,7 @@ function frad(rad) { return ethers.utils.parseEther(rad).mul("100000000000000000
 let fooBytes = ethers.utils.formatBytes32String("FOO");
 let barBytes = ethers.utils.formatBytes32String("BAR");
 let bazBytes = ethers.utils.formatBytes32String("BAZ");
-let d3OBytes = ethers.utils.formatBytes32String("DDPRIME");
+let d3OBytes = ethers.utils.formatBytes32String("d3O");
 
 // Accounts.
 let owner, addr1, addr2, addr3, addrs;

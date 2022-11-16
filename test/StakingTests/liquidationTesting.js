@@ -11,7 +11,7 @@ let fooBytes = ethers.utils.formatBytes32String("FOO");
 let barBytes = ethers.utils.formatBytes32String("BAR");
 let bazBytes = ethers.utils.formatBytes32String("BAZ");
 let blorpBytes = ethers.utils.formatBytes32String("BLROP");
-let d3OBytes = ethers.utils.formatBytes32String("DDPRIME");
+let d3OBytes = ethers.utils.formatBytes32String("d3O");
 
 // Accounts.
 let owner, addr1, addr2, addr3, addr4, addrs;
@@ -53,7 +53,7 @@ async function setupUser(user, amounts) {
 async function setupLiquidatedUser(){
     let userLMCV;
     let userD3OJoin;
-    let userDDPRIME;
+    let userd3O;
     let d3OCollatJoinConnect;
 
     let blorpConnect = blorp.connect(addr4);
@@ -78,8 +78,8 @@ async function setupLiquidatedUser(){
     await userD3OJoin.exit(addr4.address, fwad("1000"));
 
     //Set up d3O in LMCV
-    userDDPRIME = d3O.connect(addr4);
-    await userDDPRIME.approve(d3OCollateralJoin.address, MAX_INT);
+    userd3O = d3O.connect(addr4);
+    await userd3O.approve(d3OCollateralJoin.address, MAX_INT);
 
     d3OCollatJoinConnect = d3OCollateralJoin.connect(addr4);
     await d3OCollatJoinConnect.join(addr4.address, fwad("1000"));
