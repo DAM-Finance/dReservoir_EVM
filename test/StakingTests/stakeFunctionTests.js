@@ -10,14 +10,14 @@ function frad(rad) { return ethers.utils.parseEther(rad).mul("100000000000000000
 let fooBytes = ethers.utils.formatBytes32String("FOO");
 let barBytes = ethers.utils.formatBytes32String("BAR");
 let bazBytes = ethers.utils.formatBytes32String("BAZ");
-let ddPrimeBytes = ethers.utils.formatBytes32String("DDPRIME");
+let d3OBytes = ethers.utils.formatBytes32String("DDPRIME");
 
 // Accounts.
 let owner, addr1, addr2, addr3, addrs;
 
 // Contracts and contract factories.
-let ddPrimeFactory, ddPrime;
-let ddPrimeJoinFactory, ddPrimeJoin;
+let d3OFactory, d3O;
+let d3OJoinFactory, d3OJoin;
 let stakingVaultFactory, stakingVault;
 let LMCVFactory, lmcv;
 let tokenFactory, foo, bar, baz;
@@ -49,10 +49,10 @@ const MAX_INT = "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 describe("Stake Testing", function () {
 
     before(async function () {
-        ddPrimeFactory              = await ethers.getContractFactory("ddPrime");
+        d3OFactory              = await ethers.getContractFactory("d3O");
         LMCVFactory                 = await ethers.getContractFactory("LMCV");
         stakingVaultFactory         = await ethers.getContractFactory("StakingVault");
-        ddPrimeJoinFactory          = await ethers.getContractFactory("ddPrimeJoin");
+        d3OJoinFactory          = await ethers.getContractFactory("d3OJoin");
         tokenFactory                = await ethers.getContractFactory("MockTokenFour");
         rewardJoinFactory           = await ethers.getContractFactory("RewardJoin");
         stakeJoinFactory            = await ethers.getContractFactory("StakeJoin");
@@ -61,10 +61,10 @@ describe("Stake Testing", function () {
     beforeEach(async function () {
         [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners();
 
-        ddPrime = await ddPrimeFactory.deploy();
+        d3O = await d3OFactory.deploy();
         lmcv = await LMCVFactory.deploy();
-        stakingVault = await stakingVaultFactory.deploy(ddPrimeBytes, ddPrime.address, lmcv.address);
-        ddPrimeJoin = await ddPrimeJoinFactory.deploy(stakingVault.address, ddPrime.address);
+        stakingVault = await stakingVaultFactory.deploy(d3OBytes, d3O.address, lmcv.address);
+        d3OJoin = await d3OJoinFactory.deploy(stakingVault.address, d3O.address);
 
         foo = await tokenFactory.deploy("FOO");
         bar = await tokenFactory.deploy("BAR");
@@ -113,7 +113,7 @@ describe("Stake Testing", function () {
             expect(await stakingVault.withdrawableRewards(addr1.address, barBytes)).to.equal(0);
             expect(await stakingVault.lockedStakeable(addr1.address)).to.equal(fwad("800"));
             expect(await stakingVault.unlockedStakeable(addr1.address)).to.equal(fwad("200"));
-            expect(await stakingVault.ddPrime(addr1.address)).to.equal(frad("800"));
+            expect(await stakingVault.d3O(addr1.address)).to.equal(frad("800"));
     
             
             //User 2 adds 1000 stakeable coin with join contract, and stake only 300 of it
@@ -126,9 +126,9 @@ describe("Stake Testing", function () {
             expect(await stakingVault.withdrawableRewards(addr2.address, barBytes)).to.equal(0);
             expect(await stakingVault.lockedStakeable(addr2.address)).to.equal(fwad("300"));
             expect(await stakingVault.unlockedStakeable(addr2.address)).to.equal(fwad("700"));
-            expect(await stakingVault.ddPrime(addr2.address)).to.equal(frad("300"));
+            expect(await stakingVault.d3O(addr2.address)).to.equal(frad("300"));
     
-            expect(await stakingVault.totalDDPrime()).to.equal(frad("1100"));
+            expect(await stakingVault.totalD3O()).to.equal(frad("1100"));
             expect(await stakingVault.stakedAmount()).to.equal(fwad("1100"));
     
             // Foo Rewards get added
@@ -147,7 +147,7 @@ describe("Stake Testing", function () {
             expect(await stakingVault.withdrawableRewards(addr1.address, barBytes)).to.equal(0);
             expect(await stakingVault.lockedStakeable(addr1.address)).to.equal(fwad("800"));
             expect(await stakingVault.unlockedStakeable(addr1.address)).to.equal(fwad("200"));
-            expect(await stakingVault.ddPrime(addr1.address)).to.equal(frad("800"));
+            expect(await stakingVault.d3O(addr1.address)).to.equal(frad("800"));
     
             let userFooJoin1 = fooJoin.connect(addr1);
             await userFooJoin1.exit(addr1.address, "14545454545454545454");
@@ -168,9 +168,9 @@ describe("Stake Testing", function () {
             expect(await stakingVault.withdrawableRewards(addr3.address, barBytes)).to.equal(0);
             expect(await stakingVault.lockedStakeable(addr3.address)).to.equal(fwad("2000"));
             expect(await stakingVault.unlockedStakeable(addr3.address)).to.equal(0);
-            expect(await stakingVault.ddPrime(addr3.address)).to.equal(frad("2000"));
+            expect(await stakingVault.d3O(addr3.address)).to.equal(frad("2000"));
     
-            expect(await stakingVault.totalDDPrime()).to.equal(frad("3100"));
+            expect(await stakingVault.totalD3O()).to.equal(frad("3100"));
             expect(await stakingVault.stakedAmount()).to.equal(fwad("3100"));
     
             //More foo rewards are added and bar rewards are introduced
@@ -195,7 +195,7 @@ describe("Stake Testing", function () {
             expect(await stakingVault.withdrawableRewards(addr1.address, barBytes)).to.equal("25806451612903225806");
             expect(await stakingVault.lockedStakeable(addr1.address)).to.equal(fwad("800"));
             expect(await stakingVault.unlockedStakeable(addr1.address)).to.equal(fwad("200"));
-            expect(await stakingVault.ddPrime(addr1.address)).to.equal(frad("800"));
+            expect(await stakingVault.d3O(addr1.address)).to.equal(frad("800"));
     
             //User 2
             await userSV2.stake("0", addr2.address);
@@ -206,7 +206,7 @@ describe("Stake Testing", function () {
             expect(await stakingVault.withdrawableRewards(addr2.address, barBytes)).to.equal("9677419354838709677");
             expect(await stakingVault.lockedStakeable(addr2.address)).to.equal(fwad("300"));
             expect(await stakingVault.unlockedStakeable(addr2.address)).to.equal(fwad("700"));
-            expect(await stakingVault.ddPrime(addr2.address)).to.equal(frad("300"));
+            expect(await stakingVault.d3O(addr2.address)).to.equal(frad("300"));
     
             //User 3
             await userSV3.stake("0", addr3.address);
@@ -217,7 +217,7 @@ describe("Stake Testing", function () {
             expect(await stakingVault.withdrawableRewards(addr3.address, barBytes)).to.equal("64516129032258064516");
             expect(await stakingVault.lockedStakeable(addr3.address)).to.equal(fwad("2000"));
             expect(await stakingVault.unlockedStakeable(addr3.address)).to.equal(0);
-            expect(await stakingVault.ddPrime(addr3.address)).to.equal(frad("2000"));
+            expect(await stakingVault.d3O(addr3.address)).to.equal(frad("2000"));
     
             //All users withdraw all of their rewards
             let userFooJoin2 = fooJoin.connect(addr2);
@@ -281,7 +281,7 @@ describe("Stake Testing", function () {
 
             expect(await stakingVault.lockedStakeable(addr1.address)).to.equal(0);
             expect(await stakingVault.unlockedStakeable(addr1.address)).to.equal(fwad("1000"));
-            expect(await stakingVault.ddPrime(addr1.address)).to.equal(0);
+            expect(await stakingVault.d3O(addr1.address)).to.equal(0);
 
             expect(await stakingVault.withdrawableRewards(addr1.address, fooBytes)).to.equal("1290322580645161290");
             expect(await stakingVault.withdrawableRewards(addr1.address, barBytes)).to.equal("25806451612903225806");
@@ -290,7 +290,7 @@ describe("Stake Testing", function () {
             expect(await stakingVault.rewardDebt(addr1.address, barBytes)).to.equal(0); // wad 25.8
             
     
-            expect(await stakingVault.totalDDPrime()).to.equal(frad("2300"));
+            expect(await stakingVault.totalD3O()).to.equal(frad("2300"));
             expect(await stakingVault.stakedAmount()).to.equal(fwad("2300"));
     
 
@@ -298,7 +298,7 @@ describe("Stake Testing", function () {
 
             expect(await stakingVault.lockedStakeable(addr2.address)).to.equal(0);
             expect(await stakingVault.unlockedStakeable(addr2.address)).to.equal(fwad("1000"));
-            expect(await stakingVault.ddPrime(addr2.address)).to.equal(0);
+            expect(await stakingVault.d3O(addr2.address)).to.equal(0);
 
             expect(await stakingVault.withdrawableRewards(addr2.address, fooBytes)).to.equal("5938416422287390029");
             expect(await stakingVault.withdrawableRewards(addr2.address, barBytes)).to.equal("9677419354838709677");
@@ -307,7 +307,7 @@ describe("Stake Testing", function () {
             expect(await stakingVault.rewardDebt(addr2.address, barBytes)).to.equal(0); // wad 25.8
             
     
-            expect(await stakingVault.totalDDPrime()).to.equal(frad("2000"));
+            expect(await stakingVault.totalD3O()).to.equal(frad("2000"));
             expect(await stakingVault.stakedAmount()).to.equal(fwad("2000"));
 
 
@@ -315,7 +315,7 @@ describe("Stake Testing", function () {
 
             expect(await stakingVault.lockedStakeable(addr3.address)).to.equal(0);
             expect(await stakingVault.unlockedStakeable(addr3.address)).to.equal(fwad("2000"));
-            expect(await stakingVault.ddPrime(addr3.address)).to.equal(0);
+            expect(await stakingVault.d3O(addr3.address)).to.equal(0);
 
             expect(await stakingVault.withdrawableRewards(addr3.address, fooBytes)).to.equal("3225806451612903226");
             expect(await stakingVault.withdrawableRewards(addr3.address, barBytes)).to.equal("64516129032258064516");
@@ -323,7 +323,7 @@ describe("Stake Testing", function () {
             expect(await stakingVault.rewardDebt(addr3.address, fooBytes)).to.equal(0); // wad 15.8
             expect(await stakingVault.rewardDebt(addr3.address, barBytes)).to.equal(0); // wad 25.8
         
-            expect(await stakingVault.totalDDPrime()).to.equal(0);
+            expect(await stakingVault.totalD3O()).to.equal(0);
             expect(await stakingVault.stakedAmount()).to.equal(0);
 
 
@@ -334,7 +334,7 @@ describe("Stake Testing", function () {
 
             expect(await stakingVault.lockedStakeable(addr1.address)).to.equal(fwad("300"));
             expect(await stakingVault.unlockedStakeable(addr1.address)).to.equal(fwad("700"));
-            expect(await stakingVault.ddPrime(addr1.address)).to.equal(frad("300"));
+            expect(await stakingVault.d3O(addr1.address)).to.equal(frad("300"));
 
             expect(await stakingVault.withdrawableRewards(addr1.address, fooBytes)).to.equal("1290322580645161290");
             expect(await stakingVault.withdrawableRewards(addr1.address, barBytes)).to.equal("25806451612903225806");
@@ -343,7 +343,7 @@ describe("Stake Testing", function () {
             expect(await stakingVault.rewardDebt(addr1.address, barBytes)).to.equal("9677419354838709677"); // wad 9.7
             
     
-            expect(await stakingVault.totalDDPrime()).to.equal(frad("2600"));
+            expect(await stakingVault.totalD3O()).to.equal(frad("2600"));
             expect(await stakingVault.stakedAmount()).to.equal(fwad("2600"));
     
 
@@ -351,7 +351,7 @@ describe("Stake Testing", function () {
 
             expect(await stakingVault.lockedStakeable(addr2.address)).to.equal(0);
             expect(await stakingVault.unlockedStakeable(addr2.address)).to.equal(fwad("1000"));
-            expect(await stakingVault.ddPrime(addr2.address)).to.equal(0);
+            expect(await stakingVault.d3O(addr2.address)).to.equal(0);
 
             expect(await stakingVault.withdrawableRewards(addr2.address, fooBytes)).to.equal("5938416422287390029");
             expect(await stakingVault.withdrawableRewards(addr2.address, barBytes)).to.equal("9677419354838709677");
@@ -360,7 +360,7 @@ describe("Stake Testing", function () {
             expect(await stakingVault.rewardDebt(addr2.address, barBytes)).to.equal(0); 
             
     
-            expect(await stakingVault.totalDDPrime()).to.equal(frad("2300"));
+            expect(await stakingVault.totalD3O()).to.equal(frad("2300"));
             expect(await stakingVault.stakedAmount()).to.equal(fwad("2300"));
 
 
@@ -368,7 +368,7 @@ describe("Stake Testing", function () {
 
             expect(await stakingVault.lockedStakeable(addr3.address)).to.equal(0);
             expect(await stakingVault.unlockedStakeable(addr3.address)).to.equal(fwad("2000"));
-            expect(await stakingVault.ddPrime(addr3.address)).to.equal(0);
+            expect(await stakingVault.d3O(addr3.address)).to.equal(0);
 
             expect(await stakingVault.withdrawableRewards(addr3.address, fooBytes)).to.equal("3225806451612903226");
             expect(await stakingVault.withdrawableRewards(addr3.address, barBytes)).to.equal("64516129032258064516");
@@ -376,7 +376,7 @@ describe("Stake Testing", function () {
             expect(await stakingVault.rewardDebt(addr3.address, fooBytes)).to.equal(0); // wad 15.8
             expect(await stakingVault.rewardDebt(addr3.address, barBytes)).to.equal(0); // wad 25.8
         
-            expect(await stakingVault.totalDDPrime()).to.equal(frad("300"));
+            expect(await stakingVault.totalD3O()).to.equal(frad("300"));
             expect(await stakingVault.stakedAmount()).to.equal(fwad("300"));
 
 
@@ -389,7 +389,7 @@ describe("Stake Testing", function () {
 
             expect(await stakingVault.lockedStakeable(addr1.address)).to.equal(fwad("300"));
             expect(await stakingVault.unlockedStakeable(addr1.address)).to.equal(fwad("700"));
-            expect(await stakingVault.ddPrime(addr1.address)).to.equal(frad("300"));
+            expect(await stakingVault.d3O(addr1.address)).to.equal(frad("300"));
 
             expect(await stakingVault.withdrawableRewards(addr1.address, fooBytes)).to.equal("1290322580645161290");
             expect(await stakingVault.withdrawableRewards(addr1.address, barBytes)).to.equal("25806451612903225806");
@@ -397,7 +397,7 @@ describe("Stake Testing", function () {
             expect(await stakingVault.rewardDebt(addr1.address, fooBytes)).to.equal("5938416422287390029"); // wad 5.9
             expect(await stakingVault.rewardDebt(addr1.address, barBytes)).to.equal("9677419354838709677"); // wad 9.7
             
-            expect(await stakingVault.totalDDPrime()).to.equal(frad("2600"));
+            expect(await stakingVault.totalD3O()).to.equal(frad("2600"));
             expect(await stakingVault.stakedAmount()).to.equal(fwad("2600"));
 
             let userFooJoin1 = fooJoin.connect(addr1);
@@ -428,12 +428,12 @@ describe("Stake Testing", function () {
 
             await userSV.stake("0", addr1.address);
 
-            expect(await stakingVault.totalDDPrime()).to.equal(frad("2600"));
+            expect(await stakingVault.totalD3O()).to.equal(frad("2600"));
             expect(await stakingVault.stakedAmount()).to.equal(fwad("2600"));
 
             expect(await stakingVault.lockedStakeable(addr1.address)).to.equal(fwad("300"));
             expect(await stakingVault.unlockedStakeable(addr1.address)).to.equal(fwad("700"));
-            expect(await stakingVault.ddPrime(addr1.address)).to.equal(frad("300"));
+            expect(await stakingVault.d3O(addr1.address)).to.equal(frad("300"));
 
             expect(await stakingVault.withdrawableRewards(addr1.address, fooBytes)).to.equal("2307692307692307692");
             expect(await stakingVault.withdrawableRewards(addr1.address, barBytes)).to.equal(0);
@@ -445,7 +445,7 @@ describe("Stake Testing", function () {
 
             expect(await stakingVault.lockedStakeable(addr3.address)).to.equal(fwad("2000"));
             expect(await stakingVault.unlockedStakeable(addr3.address)).to.equal(0);
-            expect(await stakingVault.ddPrime(addr3.address)).to.equal(frad("2000"));
+            expect(await stakingVault.d3O(addr3.address)).to.equal(frad("2000"));
 
             expect(await stakingVault.withdrawableRewards(addr3.address, fooBytes)).to.equal("15384615384615384615");
             expect(await stakingVault.withdrawableRewards(addr3.address, barBytes)).to.equal("0");

@@ -136,7 +136,7 @@ describe("d2O Testing", function () {
             await expect(userD2OJoin.join(addr1.address, fwad("1001"))).to.be.revertedWith("d2O/insufficient-balance");
         });
 
-        it("User can re-deposit a portion of their withdrawn dPRIME", async function () {
+        it("User can re-deposit a portion of their withdrawn d2O", async function () {
             await userLMCV.loan([mockTokenBytes], [fwad("500")], fwad("2000"), addr1.address);
             expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("2000"));
 
@@ -148,7 +148,7 @@ describe("d2O Testing", function () {
             expect(await lmcv.d2O(addr1.address)).to.equal(frad("1480"));
         });
 
-        it("User receives dPRIME externally and re-deposits", async function () {
+        it("User receives d2O externally and re-deposits", async function () {
             await userLMCV.approveMultiple([userD2OJoin.address]);
             await userTwoLMCV.approveMultiple([userTwoD2OJoin.address]);
 
@@ -169,9 +169,9 @@ describe("d2O Testing", function () {
             expect(await lmcv.d2O(addr2.address)).to.equal(frad("980"));
 
             //transfer to user1 then user 1 repays fully
-            userTwoDPrime = d2O.connect(addr2);
+            userTwoD2O = d2O.connect(addr2);
 
-            await userTwoDPrime.transfer(addr1.address, fwad("500"));
+            await userTwoD2O.transfer(addr1.address, fwad("500"));
             expect(await d2O.balanceOf(addr1.address)).to.equal(fwad("1500"));
             expect(await d2O.balanceOf(addr2.address)).to.equal(fwad("500"));
 
@@ -192,7 +192,7 @@ describe("d2O Testing", function () {
         it("Should prevent user from transferring d2O until n amount of blocks after mintAndDelay is called", async function () {
             
             userD2O = d2O.connect(addr1);
-            user2DPrime = d2O.connect(addr2);
+            user2D2O = d2O.connect(addr2);
 
             await userD2O.approve(addr2.address, MAX_INT);
 
@@ -201,20 +201,20 @@ describe("d2O Testing", function () {
             expect(await d2O.transferBlockRelease(addr1.address)).to.equal(txresult.blockNumber + blockwait);
 
             await expect(userD2O.transfer(addr2.address, fwad("100"))).to.be.revertedWith("d2O/transfer too soon after cross-chain mint");
-            await expect(user2DPrime.transferFrom(addr1.address, addr2.address, fwad("100"))).to.be.revertedWith("d2O/transfer too soon after cross-chain mint");
+            await expect(user2D2O.transferFrom(addr1.address, addr2.address, fwad("100"))).to.be.revertedWith("d2O/transfer too soon after cross-chain mint");
 
             await mineNBlocks(blockwait);
 
             await userD2O.transfer(addr2.address, fwad("100"));
             expect(await d2O.balanceOf(addr2.address)).to.equal(fwad("100"));
 
-            await user2DPrime.transferFrom(addr1.address, addr2.address, fwad("100"));
+            await user2D2O.transferFrom(addr1.address, addr2.address, fwad("100"));
             expect(await d2O.balanceOf(addr2.address)).to.equal(fwad("200"));
         });
 
         it("Should prevent user from transferring d2O until n amount of blocks after mintAndDelay is called", async function () {
             userD2O = d2O.connect(addr1);
-            user2DPrime = d2O.connect(addr2);
+            user2D2O = d2O.connect(addr2);
 
             await userD2O.approve(addr2.address, MAX_INT);
 
@@ -225,7 +225,7 @@ describe("d2O Testing", function () {
             await userD2O.transfer(addr2.address, fwad("100"));
             expect(await d2O.balanceOf(addr2.address)).to.equal(fwad("100"));
 
-            await user2DPrime.transferFrom(addr1.address, addr2.address, fwad("100"));
+            await user2D2O.transferFrom(addr1.address, addr2.address, fwad("100"));
             expect(await d2O.balanceOf(addr2.address)).to.equal(fwad("200"));
         });
     });

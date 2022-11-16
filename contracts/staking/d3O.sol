@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-/// ddPrime.sol -- ddPrime token
+/// d3O.sol -- d3O token
 
 pragma solidity ^0.8.12;
 
-contract ddPrime {
+contract d3O {
     address public ArchAdmin;
     mapping (address => uint256) public admins;
 
     // --- ERC20 Data ---
-    string  public constant name     = "ddPrime";
-    string  public constant symbol   = "ddPRI";
+    string  public constant name     = "d3O";
+    string  public constant symbol   = "d3O";
     string  public constant version  = "1";
     uint8   public constant decimals = 18;
     uint256 public totalSupply;
@@ -31,7 +31,7 @@ contract ddPrime {
     bytes32 public constant PERMIT_TYPEHASH = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     modifier auth {
-        require(admins[msg.sender] == 1, "ddPrime/not-authorized");
+        require(admins[msg.sender] == 1, "d3O/not-authorized");
         _;
     }
 
@@ -62,7 +62,7 @@ contract ddPrime {
 
     // --- Administration ---
     function setArchAdmin(address newArch) external auth {
-        require(ArchAdmin == msg.sender && newArch != address(0), "ddPrime/Must be ArchAdmin");
+        require(ArchAdmin == msg.sender && newArch != address(0), "d3O/Must be ArchAdmin");
         ArchAdmin = newArch;
         admins[ArchAdmin] = 1;
     }
@@ -73,16 +73,16 @@ contract ddPrime {
     }
 
     function deny(address usr) external auth {
-        require(usr != ArchAdmin, "ddPrime/ArchAdmin cannot lose admin - update ArchAdmin to another address");
+        require(usr != ArchAdmin, "d3O/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         admins[usr] = 0;
         emit Deny(usr);
     }
 
     // --- ERC20 Mutations ---
     function transfer(address to, uint256 value) external returns (bool) {
-        require(to != address(0) && to != address(this), "ddPrime/invalid-address");
+        require(to != address(0) && to != address(this), "d3O/invalid-address");
         uint256 balance = balanceOf[msg.sender];
-        require(balance >= value, "ddPrime/insufficient-balance");
+        require(balance >= value, "d3O/insufficient-balance");
 
         unchecked {
             balanceOf[msg.sender] = balance - value;
@@ -95,14 +95,14 @@ contract ddPrime {
     }
 
     function transferFrom(address from, address to, uint256 value) external returns (bool) {
-        require(to != address(0) && to != address(this), "ddPrime/invalid-address");
+        require(to != address(0) && to != address(this), "d3O/invalid-address");
         uint256 balance = balanceOf[from];
-        require(balance >= value, "ddPrime/insufficient-balance");
+        require(balance >= value, "d3O/insufficient-balance");
 
         if (from != msg.sender) {
             uint256 allowed = allowance[from][msg.sender];
             if (allowed != type(uint256).max) {
-                require(allowed >= value, "ddPrime/insufficient-allowance");
+                require(allowed >= value, "d3O/insufficient-allowance");
 
                 unchecked {
                     allowance[from][msg.sender] = allowed - value;
@@ -139,7 +139,7 @@ contract ddPrime {
 
     function decreaseAllowance(address spender, uint256 subtractedValue) external returns (bool) {
         uint256 allowed = allowance[msg.sender][spender];
-        require(allowed >= subtractedValue, "ddPrime/insufficient-allowance");
+        require(allowed >= subtractedValue, "d3O/insufficient-allowance");
         unchecked{
             allowed = allowed - subtractedValue;
         }
@@ -152,7 +152,7 @@ contract ddPrime {
 
     // --- Mint/Burn ---
     function mint(address to, uint256 value) external auth {
-        require(to != address(0) && to != address(this), "ddPrime/invalid-address");
+        require(to != address(0) && to != address(this), "d3O/invalid-address");
         unchecked {
             balanceOf[to] = balanceOf[to] + value; // note: we don't need an overflow check here b/c balanceOf[to] <= totalSupply and there is an overflow check below
         }
@@ -163,12 +163,12 @@ contract ddPrime {
 
     function burn(address from, uint256 value) external {
         uint256 balance = balanceOf[from];
-        require(balance >= value, "ddPrime/insufficient-balance");
+        require(balance >= value, "d3O/insufficient-balance");
 
         if (from != msg.sender && admins[msg.sender] != 1) {
             uint256 allowed = allowance[from][msg.sender];
             if (allowed != type(uint256).max) {
-                require(allowed >= value, "ddPrime/insufficient-allowance");
+                require(allowed >= value, "d3O/insufficient-allowance");
 
                 unchecked {
                     allowance[from][msg.sender] = allowed - value;
@@ -186,7 +186,7 @@ contract ddPrime {
 
     // --- Approve by signature ---
     function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external {
-        require(block.timestamp <= deadline, "ddPrime/permit-expired");
+        require(block.timestamp <= deadline, "d3O/permit-expired");
 
         uint256 nonce;
         unchecked { nonce = nonces[owner]++; }
@@ -205,7 +205,7 @@ contract ddPrime {
                 ))
             ));
 
-        require(owner != address(0) && owner == ecrecover(digest, v, r, s), "ddPrime/invalid-permit");
+        require(owner != address(0) && owner == ecrecover(digest, v, r, s), "d3O/invalid-permit");
 
         allowance[owner][spender] = value;
         emit Approval(owner, spender, value);

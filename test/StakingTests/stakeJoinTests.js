@@ -15,8 +15,8 @@ let bazBytes = ethers.utils.formatBytes32String("BAZ");
 let owner, addr1, addr2, addr3, addrs;
 
 // Contracts and contract factories.
-let ddPrimeFactory, ddPrime;
-let ddPrimeJoinFactory, ddPrimeJoin;
+let d3OFactory, d3O;
+let d3OJoinFactory, d3OJoin;
 let stakingVaultFactory, stakingVault;
 let LMCVFactory, lmcv;
 let tokenFactory, foo, bar, baz;
@@ -48,10 +48,10 @@ async function setupUser(user, amounts) {
 describe("Testing RewardJoins", function () {
 
     before(async function () {
-        ddPrimeFactory              = await ethers.getContractFactory("ddPrime");
+        d3OFactory              = await ethers.getContractFactory("d3O");
         LMCVFactory                 = await ethers.getContractFactory("LMCV");
         stakingVaultFactory         = await ethers.getContractFactory("StakingVault");
-        ddPrimeJoinFactory          = await ethers.getContractFactory("ddPrimeJoin");
+        d3OJoinFactory          = await ethers.getContractFactory("d3OJoin");
         tokenFactory                = await ethers.getContractFactory("MockTokenFour");
         rewardJoinFactory           = await ethers.getContractFactory("RewardJoin");
         stakeJoinFactory            = await ethers.getContractFactory("StakeJoin");
@@ -60,10 +60,10 @@ describe("Testing RewardJoins", function () {
     beforeEach(async function () {
         [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners();
 
-        ddPrime = await ddPrimeFactory.deploy();
+        d3O = await d3OFactory.deploy();
         lmcv = await LMCVFactory.deploy();
-        stakingVault = await stakingVaultFactory.deploy(bazBytes, ddPrime.address, lmcv.address);
-        ddPrimeJoin = await ddPrimeJoinFactory.deploy(stakingVault.address, ddPrime.address);
+        stakingVault = await stakingVaultFactory.deploy(bazBytes, d3O.address, lmcv.address);
+        d3OJoin = await d3OJoinFactory.deploy(stakingVault.address, d3O.address);
 
         foo = await tokenFactory.deploy("FOO");
         bar = await tokenFactory.deploy("BAR");
