@@ -16,7 +16,7 @@ interface dPrimeLike {
 
 contract dPrimeConnectorLZ is OFTCore, IOFT, AuthAdmin("dPrimeConnectorLZ") {
 
-    address public dPrimeContract;
+    address public immutable dPrimeContract;
 
     event MintLayerZero(address indexed from, uint256 amount, uint16 _srcChainId);
     event BurnLayerZero(address indexed from, uint256 amount, uint16 _dstChainId);
