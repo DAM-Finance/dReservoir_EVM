@@ -9,9 +9,9 @@ contract AuthAdmin {
     mapping (address => uint256) public admins;
     uint256 public live;
 
-
     event Rely(address indexed usr);
     event Deny(address indexed usr);
+    event Cage(uint256 live);
 
     modifier auth {
         require(admins[msg.sender] == 1, string.concat(parentContractName, "/not-authorized"));
@@ -50,5 +50,6 @@ contract AuthAdmin {
 
     function cage(uint256 _live) external auth {
         live = _live;
+        emit Cage(_live);
     }
 }
