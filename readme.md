@@ -96,9 +96,9 @@ Contract specific documentation:
 
 ### Staking
 
-**[dd2O.sol](contracts/staking/dd2O.sol) - for minting, burning and moving dd2O**
+**[d3O.sol](contracts/staking/dd2O.sol) - for minting, burning and moving dd2O**
 
-**[dd2OJoin.sol](contracts/staking/dd2OJoin.sol) - for depositing and withdrawing dd2O in the staking vault**
+**[d3OJoin.sol](contracts/staking/dd2OJoin.sol) - for depositing and withdrawing dd2O in the staking vault**
 
 **[RewardJoin.sol](contracts/staking/RewardJoin.sol) - for depositing and withdrawing reward tokens in the staking vault**
 
