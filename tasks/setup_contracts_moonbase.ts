@@ -83,12 +83,6 @@ task("setup_contracts_moonbase", "sets up contracts ready for use on Moonbase")
 	// ---------------------------
 
 	await transaction(
-		"dPrime", 
-		"rely", 
-		deployedContracts["dPrimeJoin"].address
-	);
-
-	await transaction(
 		"dPrime",
 		"rely",
 		deployedContracts["dPrimeConnectorLZ"].address

@@ -15,20 +15,20 @@ task("dprime_swap", "teleports dPrime from one chain to another")
 	const {deployments, getNamedAccounts} = hre;
 	const {execute} = deployments;
 
-	const usdcJoinAddress = await (await deployments.get("usdcJoin")).address;
+	const usdcJoinAddress = await (await deployments.get("UsdcJoin")).address;
 
 	// Provide approval.
 
-	// console.log("Approving USDCJoin...");
+	console.log("Approving USDCJoin...");
 
-	// const approveResult = await execute(
-	// 	"USDC", 
-	// 	{from: taskArgs.user, log: true},
-	// 	"approve",
-	// 	usdcJoinAddress, ethers.utils.parseUnits(taskArgs.amount, 6)	// USDC has 6 decimal places.
-	// );
+	const approveResult = await execute(
+		"USDC", 
+		{from: taskArgs.user, log: true},
+		"approve",
+		usdcJoinAddress, ethers.utils.parseUnits(taskArgs.amount, 6)	// USDC has 6 decimal places.
+	);
 
-	// console.log("Approve successful: ", approveResult.transactionHash);
+	console.log("Approve successful: ", approveResult.transactionHash);
 
 	// Execute PSM swap.
 
