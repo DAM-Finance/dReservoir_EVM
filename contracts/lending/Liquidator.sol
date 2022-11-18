@@ -222,8 +222,8 @@ contract Liquidator {
         // We want to ensure that we never end up with an auction with a single bidder where they walk off with all the collateral
         // having only submitted a token bid. To do this, we will encourage auction participants or participate ourselves. However,
         // as a failsafe, we can set a minimum bid as a percentage of the collateral up for auction or the debt to be liquidated. 
-        // E.g. if the debtHaircut is 200 and the collateraHaircut is 280 in dPRIME terms, then with a 50% `collateralFactor`, we 
-        // set the minimum bid to 140, meaning that in order for the auction to conclude, it must raise _at least_ 140 dPRIME. 
+        // E.g. if the debtHaircut is 200 and the collateraHaircut is 280 in d2O terms, then with a 50% `collateralFactor`, we 
+        // set the minimum bid to 140, meaning that in order for the auction to conclude, it must raise _at least_ 140 d2O. 
         // Whilst this still results in a loss to the protocol, the loss is half of what it would have been if no minimum bid was 
         // set. Note that if the `collateralFactor` or `debtFactor` is set to zero, then the minimum bid is effectively zero, 
         // which is a valid value.
@@ -269,11 +269,11 @@ contract Liquidator {
         uint256 id = auctionHouse.start(
             user,                       // Liquidated user address
             lmcv.Treasury(),            // Treasury address
-            askingAmount,               // dPRIME amount to raise including liquidation penalty
+            askingAmount,               // d2O amount to raise including liquidation penalty
             collateralList,             // List of collateral types up for auction
             collateralHaircuts,         // List of collateral amounts up for auction - order matters
             0,                          // Initial bid is always zero
-            minimumBid                  // Minimum bid amount in dPRIME
+            minimumBid                  // Minimum bid amount in d2O
         );   
 
         emit Liquidated(collateralList, collateralHaircuts, user, debtHaircut, askingAmount, id);

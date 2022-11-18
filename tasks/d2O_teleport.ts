@@ -6,8 +6,8 @@ function fwad(wad: string) {
 	return ethers.utils.parseEther(wad); 
 }
 
-task("dprime_teleport", "teleports dPrime from one chain to another")
-  .addParam("amount", "The amount of dPrime to teleport")
+task("d2O_teleport", "teleports d2O from one chain to another")
+  .addParam("amount", "The amount of d2O to teleport")
   .addOptionalParam("sourceChainId", "The source chain id")
   .addOptionalParam("destChainId", "The destination chain id")
   .addParam("user", "The user's address to send from")
@@ -24,10 +24,10 @@ task("dprime_teleport", "teleports dPrime from one chain to another")
 			console.log("SourceChainId and DestChainId must be different.");
 			return;
 		}
-		contractName = taskArgs.sourceChainId == 1 ? "dPrimeConnectorLZOne" : "dPrimeConnectorLZTwo";
+		contractName = taskArgs.sourceChainId == 1 ? "d2OConnectorLZOne" : "d2OConnectorLZTwo";
 		[source, destination] = [taskArgs.sourceChainId, taskArgs.destChainId]
 	} else {
-		contractName = "dPrimeConnectorLZ";
+		contractName = "d2OConnectorLZ";
 		const sourceId: string | undefined = process.env['LAYER_ZERO_CHAIN_ID_GOERLI'];
 		if (!sourceId) {
 			throw new Error("Please set LAYER_ZERO_CHAIN_ID_GOERLI in a .env file");
@@ -63,7 +63,7 @@ task("dprime_teleport", "teleports dPrime from one chain to another")
 
 	// Execute teleport.
 
-	console.log(`Teleporting ${taskArgs.amount} dPrime...`);
+	console.log(`Teleporting ${taskArgs.amount} d2O...`);
 
 	await execute(
 		contractName, 
@@ -80,6 +80,6 @@ task("dprime_teleport", "teleports dPrime from one chain to another")
 
 	console.log("✅ Teleport successful.")
 
-	await hre.run("dprime_balance", {user: taskArgs.user});
+	await hre.run("d2O_balance", {user: taskArgs.user});
 
 });

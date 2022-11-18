@@ -2,26 +2,24 @@
 
 pragma solidity ^0.8.7;
 
-import "hardhat/console.sol";
-
-interface dPrimeLike {
+interface d2OLike {
     function burn(address,uint256) external;
     function mint(address,uint256) external;
 }
 
 interface LMCVLike {
-    function moveDPrime(address src, address dst, uint256 frad) external;
-    function dPrime(address user) external returns (uint256);
+    function moveD2O(address src, address dst, uint256 rad) external;
+    function d2O(address user) external returns (uint256);
 }
 
-contract dPrimeJoin {
+contract d2OJoin {
 
     //
     // --- Interfaces and data ---
     //
 
     LMCVLike    public immutable    lmcv;
-    dPrimeLike  public immutable    dPrime;
+    d2OLike     public immutable    d2O;
     uint256     constant            RAY = 10 ** 27;
     address                         lmcvProxy;
 
@@ -37,7 +35,7 @@ contract dPrimeJoin {
     //
 
     modifier auth {
-        require(msg.sender == lmcvProxy, "dPrimeJoin/not-authorized");
+        require(msg.sender == lmcvProxy, "d2OJoin/not-authorized");
         _;
     }
 
@@ -45,14 +43,14 @@ contract dPrimeJoin {
     // --- Init ---
     //
 
-    constructor(address _lmcv, address _dPrime, address _lmcvProxy) {
+    constructor(address _lmcv, address _d2O, address _lmcvProxy) {
         require(_lmcv != address(0x0)
-            && _dPrime != address(0x0)
+            && _d2O != address(0x0)
             && _lmcvProxy != address(0x0),
-            "dPrimeJoin/Can't be zero address"
+            "d2OJoin/Can't be zero address"
         );
         lmcv = LMCVLike(_lmcv);
-        dPrime = dPrimeLike(_dPrime);
+        d2O = d2OLike(_d2O);
         lmcvProxy = _lmcvProxy;
     }
 
@@ -61,20 +59,20 @@ contract dPrimeJoin {
     //
 
     function join(address usr, uint256 wad) external {
-        lmcv.moveDPrime(address(this), usr, RAY * wad);
-        dPrime.burn(msg.sender, wad);
+        lmcv.moveD2O(address(this), usr, RAY * wad);
+        d2O.burn(msg.sender, wad);
         emit Join(usr, wad);
     }
 
     function exit(address usr, uint256 wad) external {
-        lmcv.moveDPrime(msg.sender, address(this), RAY * wad);
-        dPrime.mint(usr, wad);
+        lmcv.moveD2O(msg.sender, address(this), RAY * wad);
+        d2O.mint(usr, wad);
         emit Exit(usr, wad);
     }
 
     function proxyExit(address usr, uint256 wad) external auth {
-        lmcv.moveDPrime(usr, address(this), RAY * wad);
-        dPrime.mint(usr, wad);
+        lmcv.moveD2O(usr, address(this), RAY * wad);
+        d2O.mint(usr, wad);
         emit Exit(usr, wad);
     }
 }

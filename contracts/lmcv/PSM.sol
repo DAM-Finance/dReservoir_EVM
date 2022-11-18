@@ -3,32 +3,32 @@ pragma solidity ^0.8.7;
 
 import "hardhat/console.sol";
 
-interface dPrimeJoinLike {
+interface d2OJoinLike {
     function join(address user,uint256 wad) external;
     function exit(address user,uint256 wad) external;
-    function dPrime() external returns (address dPrime);
+    function d2O() external returns (address d2O);
 }
 
 interface LMCVLike {
-    function dPrime(address user) external returns (uint256);
+    function d2O(address user) external returns (uint256);
     function loan(
         bytes32[] memory collats,           
         uint256[] memory collateralChange,  // [wad]
-        uint256 dPrimeChange,               // [wad]
+        uint256 d2OChange,               // [wad]
         address user
     ) external;
     function repay(
         bytes32[] memory collats, 
         uint256[] memory collateralChange, 
-        uint256 dPrimeChange,
+        uint256 d2OChange,
         address user
     ) external;
     function approve(address user) external;
     function disapprove(address user) external;
-    function moveDPrime(address src, address dst, uint256 rad) external;
+    function moveD2O(address src, address dst, uint256 rad) external;
 }
 
-interface dPrimeLike {
+interface d2OLike {
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
     function allowance(address owner, address spender) external view returns (uint256);
     function approve(address spender, uint256 amount) external returns (bool);
@@ -48,7 +48,7 @@ interface CollateralJoinLike {
     Peg Stability Module.sol -- For using stablecoins as collateral without
     them being subject to the protocol level interest rate.
 
-    Allows anyone to go between dPrime and the Collateral by pooling stablecoins
+    Allows anyone to go between d2O and the Collateral by pooling stablecoins
     in this contract.
 
 */
@@ -84,8 +84,8 @@ contract PSM {
 
     LMCVLike            immutable public    lmcv;
     CollateralJoinLike  immutable public    collateralJoin;
-    dPrimeLike          immutable public    dPrime;
-    dPrimeJoinLike      immutable public    dPrimeJoin;
+    d2OLike             immutable public    d2O;
+    d2OJoinLike         immutable public    d2OJoin;
     
     bytes32             immutable public    collateralName;
     address             immutable public    treasury;
@@ -123,21 +123,21 @@ contract PSM {
     // --- Init ---
     //
 
-    constructor(address collateralJoin_, address dPrimeJoin_, address treasury_) {
-        require(collateralJoin_ != address(0x0) && dPrimeJoin_ != address(0x0) && treasury_ != address(0x0), "PSM/Can't be zero address");
+    constructor(address collateralJoin_, address d2OJoin_, address treasury_) {
+        require(collateralJoin_ != address(0x0) && d2OJoin_ != address(0x0) && treasury_ != address(0x0), "PSM/Can't be zero address");
         wards[msg.sender] = 1;
         live = 1;
         ArchAdmin = msg.sender;
         emit Rely(msg.sender);
         CollateralJoinLike collateralJoin__ = collateralJoin = CollateralJoinLike(collateralJoin_);
-        dPrimeJoinLike dPrimeJoin__ = dPrimeJoin = dPrimeJoinLike(dPrimeJoin_);
+        d2OJoinLike d2OJoin__ = d2OJoin = d2OJoinLike(d2OJoin_);
         LMCVLike lmcv__ = lmcv = LMCVLike(address(collateralJoin__.lmcv()));
-        dPrimeLike dPrime__ = dPrime = dPrimeLike(address(dPrimeJoin__.dPrime()));
+        d2OLike d2O__ = d2O = d2OLike(address(d2OJoin__.d2O()));
         collateralName = collateralJoin__.collateralName();
         treasury = treasury_;
         to18ConversionFactor = 10 ** (18 - collateralJoin__.dec());
-        require(dPrime__.approve(dPrimeJoin_, 2**256 - 1), "PSM/dPrime approval failed");
-        lmcv__.approve(dPrimeJoin_);
+        require(d2O__.approve(d2OJoin_, 2**256 - 1), "PSM/d2O approval failed");
+        lmcv__.approve(d2OJoin_);
     }
 
     // 
@@ -179,36 +179,36 @@ contract PSM {
     // --- User's functions ---
     //
 
-    function createDPrime(address usr, bytes32[] memory collateral, uint256[] memory collatAmount) external alive {
+    function createD2O(address usr, bytes32[] memory collateral, uint256[] memory collatAmount) external alive {
         require(collateral.length == 1 && collatAmount.length == 1 && collateral[0] == collateralName, "PSM/Incorrect setup");
         uint256 collatAmount18 = collatAmount[0] * to18ConversionFactor; // [wad]
         uint256 fee = _rmul(collatAmount18, mintFee); // rmul(wad, ray) = wad
-        uint256 dPrimeAmt = collatAmount18 - fee;
+        uint256 d2OAmt = collatAmount18 - fee;
 
         collateralJoin.join(address(this), collatAmount[0], msg.sender);
 
         collatAmount[0] = collatAmount18;
         lmcv.loan(collateral, collatAmount, collatAmount18, address(this));
-        lmcv.moveDPrime(address(this), treasury, fee * RAY);
+        lmcv.moveD2O(address(this), treasury, fee * RAY);
 
-        dPrimeJoin.exit(usr, dPrimeAmt);
+        d2OJoin.exit(usr, d2OAmt);
     }
 
     function getCollateral(address usr, bytes32[] memory collateral, uint256[] memory collatAmount) external alive {
         require(collateral.length == 1 && collatAmount.length == 1 && collateral[0] == collateralName, "PSM/Incorrect setup");
         uint256 collatAmount18 = collatAmount[0] * to18ConversionFactor;
         uint256 fee = _rmul(collatAmount18, repayFee); // rmul(wad, ray) = wad
-        uint256 dPrimeAmt = collatAmount18 + fee;
+        uint256 d2OAmt = collatAmount18 + fee;
 
-        require(dPrime.transferFrom(msg.sender, address(this), dPrimeAmt), "PSM/dPrime failed transfer");
-        dPrimeJoin.join(address(this), dPrimeAmt);
+        require(d2O.transferFrom(msg.sender, address(this), d2OAmt), "PSM/d2O failed transfer");
+        d2OJoin.join(address(this), d2OAmt);
 
         uint256 lowDecCollatAmount = collatAmount[0];
         collatAmount[0] = collatAmount18;
         lmcv.repay(collateral, collatAmount, collatAmount18, address(this));
         collateralJoin.exit(usr, lowDecCollatAmount);
         
-        lmcv.moveDPrime(address(this), treasury, fee * RAY);
+        lmcv.moveD2O(address(this), treasury, fee * RAY);
     }
 
 }

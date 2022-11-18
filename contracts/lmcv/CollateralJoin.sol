@@ -23,7 +23,7 @@ interface LMCVLike {
       - `CollateralJoin`: For well behaved ERC20 tokens, with simple transfer
                    semantics.
 
-      - `dPrimeJoin`: For connecting internal Dai balances to an external
+      - `d2OJoin`: For connecting internal d2O balances to an external
                    `DSToken` implementation.
 
     In practice, adapter implementations will be varied and specific to

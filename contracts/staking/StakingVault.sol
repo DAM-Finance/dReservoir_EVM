@@ -13,7 +13,7 @@ interface LMCVLike {
     function unlockedCollateral(address, bytes32) external view returns (uint256 amount);
 }
 
-interface ddPRIMELike{
+interface d3OLike{
     function balanceOf(address) external view returns (uint256 amount);
 }
 
@@ -41,18 +41,18 @@ contract StakingVault {
 
     mapping (address => uint256)                        public lockedStakeable;         // [wad] - staked amount per user
     mapping (address => uint256)                        public unlockedStakeable;       // [wad] - does not count towards staked tokens.
-    mapping (address => uint256)                        public ddPrime;                 // [rad] - user's ddPRIME balance.
+    mapping (address => uint256)                        public d3O;                     // [rad] - user's d3O balance.
 
-    uint256 public totalDDPrime;            // [rad] - Total amount of ddPRIME issued.
+    uint256 public totalD3O;            // [rad] - Total amount of d3O issued.
     uint256 public stakedAmount;            // [wad] - amount staked.
     uint256 public stakedAmountLimit;       // [wad] - max amount allowed to stake
-    uint256 public stakedMintRatio;         // [ray] - ratio of staked tokens per ddPrime
+    uint256 public stakedMintRatio;         // [ray] - ratio of staked tokens per d3O
 
 
     event EditRewardsToken(bytes32 indexed rewardToken, bool accepted, uint256 spot, uint256 position);
     event LiquidationWithdraw(address indexed liquidated, address indexed liquidator, uint256 rad);
     event PullRewards(bytes32 indexed rewardToken, address indexed usr, uint256 wad);
-    event MoveDDPrime(address indexed src, address indexed dst, uint256 rad);
+    event MoveD3O(address indexed src, address indexed dst, uint256 rad);
     event PushRewards(bytes32 indexed rewardToken, uint256 wad);
     event RemoveRewards(bytes32 indexed rewardToken, uint256 wad);
     event UpdateRewards(bytes32 indexed rewardToken, uint256 ray);
@@ -73,8 +73,8 @@ contract StakingVault {
 
     uint256 public stakeLive;
     address public lmcv;
-    bytes32 public ddPRIMEBytes;
-    address public ddPRIMEContract;
+    bytes32 public d3OBytes;
+    address public d3OContract;
 
     modifier auth() {
         require(admins[msg.sender] == 1, "StakingVault/Not Authorized");
@@ -86,11 +86,11 @@ contract StakingVault {
         _;
     }
 
-    constructor(bytes32 _ddPRIMEBytes, address _ddPRIMEContract, address _lmcv) {
-        require(_ddPRIMEContract != address(0), "StakingVault/dPrimeContract address cannot be zero");
-        require(_lmcv != address(0) && _ddPRIMEContract != address(0), "StakingVault/Address cannot be zero");
-        ddPRIMEBytes        = _ddPRIMEBytes;        // bytes32 of ddPRIME in LMCV for lookup in locked collateral list
-        ddPRIMEContract     = _ddPRIMEContract;     // Address of ddPRIME for balance lookup
+    constructor(bytes32 _d3OBytes, address _d3OContract, address _lmcv) {
+        require(_d3OContract != address(0), "StakingVault/d3OContract address cannot be zero");
+        require(_lmcv != address(0) && _d3OContract != address(0), "StakingVault/Address cannot be zero");
+        d3OBytes = _d3OBytes;        // bytes32 of d3O in LMCV for lookup in locked collateral list
+        d3OContract     = _d3OContract;     // Address of d3O for balance lookup
         lmcv                = _lmcv;
         ArchAdmin           = msg.sender;
         stakeLive           = 1;
@@ -219,14 +219,14 @@ contract StakingVault {
     }
 
     //
-    // ddPrime
+    // d3O
     //
 
-    function moveDDPrime(address src, address dst, uint256 rad) external {
-        require(approval(src, msg.sender), "StakingVault/ddPrime move not allowed");
-        ddPrime[src] -= rad;
-        ddPrime[dst] += rad;
-        emit MoveDDPrime(src, dst, rad);
+    function moveD3O(address src, address dst, uint256 rad) external {
+        require(approval(src, msg.sender), "StakingVault/d3O move not allowed");
+        d3O[src] -= rad;
+        d3O[dst] += rad;
+        emit MoveD3O(src, dst, rad);
     }
 
     //
@@ -247,7 +247,7 @@ contract StakingVault {
     //
     function stake(int256 wad, address user) external stakeAlive { // [wad]
         require(approval(user, msg.sender), "StakingVault/Owner must consent");
-        require(getOwnedDDPrime(user) >= lockedStakeable[user] * stakedMintRatio, "StakingVault/Need to own ddPRIME to cover locked amount");
+        require(getOwnedD3O(user) >= lockedStakeable[user] * stakedMintRatio, "StakingVault/Need to own d3O to cover locked amount");
 
         //1. Add locked tokens
         uint256 prevStakedAmount    = lockedStakeable[user]; //[wad]
@@ -259,27 +259,27 @@ contract StakingVault {
         //2. Set reward debts for each token based on current time and staked amount
         _payRewards(user, user, prevStakedAmount);
 
-        //3. Set ddPrime
-        totalDDPrime    = _add(totalDDPrime, wad * _int256(stakedMintRatio));
-        ddPrime[user]   = _add(ddPrime[user], wad * _int256(stakedMintRatio));
+        //3. Set d3O
+        totalD3O    = _add(totalD3O, wad * _int256(stakedMintRatio));
+        d3O[user]   = _add(d3O[user], wad * _int256(stakedMintRatio));
 
         emit Stake(wad, user);
     }
 
-    //This will be how accounts that are liquidated with ddPrime in them are recovered
+    //This will be how accounts that are liquidated with d3O in them are recovered
     //This also implicitly forbids the transfer of your assets anywhere except LMCV and your own wallet
     function liquidationWithdraw(address liquidator, address liquidated, uint256 rad) external stakeAlive {
         require(approval(liquidator, msg.sender), "StakingVault/Owner must consent");
 
-        //1. Check that liquidated does not own ddPrime they claim to
-        require(getOwnedDDPrime(liquidated) <= lockedStakeable[liquidated] * stakedMintRatio - rad, "StakingVault/Account must not have ownership of tokens");
+        //1. Check that liquidated does not own d3O they claim to
+        require(getOwnedD3O(liquidated) <= lockedStakeable[liquidated] * stakedMintRatio - rad, "StakingVault/Account must not have ownership of tokens");
         uint256 liquidatedAmount         = rad / stakedMintRatio; // rad / ray = wad
         uint256 prevStakedAmount         = lockedStakeable[liquidated]; //[wad]
 
-        //2. Take ddPrime from liquidator's account to repay
-        require(ddPrime[liquidator] >= rad, "StakingVault/Insufficient ddPrime to liquidate");
-        ddPrime[liquidator]             -= rad;
-        totalDDPrime                    -= rad;
+        //2. Take d3O from liquidator's account to repay
+        require(d3O[liquidator] >= rad, "StakingVault/Insufficient d3O to liquidate");
+        d3O[liquidator]             -= rad;
+        totalD3O                    -= rad;
 
         //3. Settle staking token amounts
         lockedStakeable[liquidated]     -= liquidatedAmount;
@@ -311,11 +311,11 @@ contract StakingVault {
         }
     }
 
-    function getOwnedDDPrime(address user) public view returns (uint256 rad) {
-        return LMCVLike(lmcv).lockedCollateral(user, ddPRIMEBytes)      * RAY
-            +  LMCVLike(lmcv).unlockedCollateral(user, ddPRIMEBytes)    * RAY
-            +  ddPRIMELike(ddPRIMEContract).balanceOf(user)             * RAY
-            +  ddPrime[user];
+    function getOwnedD3O(address user) public view returns (uint256 rad) {
+        return LMCVLike(lmcv).lockedCollateral(user, d3OBytes)      * RAY
+            +  LMCVLike(lmcv).unlockedCollateral(user, d3OBytes)    * RAY
+            +  d3OLike(d3OContract).balanceOf(user)             * RAY
+            +  d3O[user];
     }
 
     //

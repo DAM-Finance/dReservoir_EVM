@@ -4,8 +4,8 @@ pragma solidity ^0.8.7;
 
 /*
 
-    LMCV.sol -- dPrime CDP database. Handles accounting for the protocol.
-    Keeps track of collateral, debt and dPRIME balances. This should not
+    LMCV.sol -- d2O CDP database. Handles accounting for the protocol.
+    Keeps track of collateral, debt and d2O balances. This should not
     require regular updates. All other anxillary contracts are permissioned
     to call functinos on this contract.
 
@@ -27,11 +27,11 @@ contract LMCV {
     //
 
     struct Collateral {
-        uint256 spotPrice;              // [ray] - dPrime (I.e. USD) price of collateral.
+        uint256 spotPrice;              // [ray] - d2O (I.e. USD) price of collateral.
         uint256 lockedAmount;           // [wad] - amount of collateral locked.
         uint256 lockedAmountLimit;      // [wad] - Protocol Level limit for amount of locked collateral.
         uint256 dustLevel;              // [wad] - Minimum amount of collateral allowed per vault.
-        uint256 creditRatio;            // [ray] - ie. max 70% loaned out as dPrime.
+        uint256 creditRatio;            // [ray] - ie. max 70% loaned out as d2O.
         bool    leveraged;
     }
     mapping (bytes32 => Collateral)                     public CollateralData;
@@ -44,7 +44,7 @@ contract LMCV {
     mapping (address => uint256)                        public normalizedDebt;          // [wad] - Debt amount for each vault in t=0 terms.
     mapping (address => mapping (bytes32 => uint256))   public lockedCollateral;        // [wad] - counts towards portfolio valuation.
     mapping (address => mapping (bytes32 => uint256))   public unlockedCollateral;      // [wad] - does not count towards portfolio valuation.
-    mapping (address => uint256)                        public dPrime;                  // [rad] - user's dPRIME balance.
+    mapping (address => uint256)                        public d2O;                  // [rad] - user's d2O balance.
 
     //
     // Protocol level data.
@@ -52,9 +52,9 @@ contract LMCV {
 
     uint256 public totalNormalizedDebt; // [wad] - Total protocol level debt in t=0 terms.
     uint256 public totalPSMDebt;        // [wad]
-    uint256 public totalDPrime;         // [rad] - Total amount of dPRIME issued.
-    uint256 public ProtocolDebtCeiling; // [rad] - Maximum amount of dPRIME issuable.
-    uint256 public MintFee;             // [ray] - Minting fee as a percentage of a newly issued dPRIME amount.
+    uint256 public totalD2O;         // [rad] - Total amount of d2O issued.
+    uint256 public ProtocolDebtCeiling; // [rad] - Maximum amount of d2O issuable.
+    uint256 public MintFee;             // [ray] - Minting fee as a percentage of a newly issued d2O amount.
     uint256 public AccumulatedRate;     // [ray] - Rename this as this is a cumulative value, rather than the per second compounding rate.
 
     //
@@ -77,24 +77,24 @@ contract LMCV {
 
     event EditAcceptedCollateralType(bytes32 indexed collateralName, uint256 _debtCeiling, uint256 _debtFloor, uint256 _creditRatio, bool _leveraged);
     event Liquidation(address indexed liquidated, address indexed liquidator, uint256 normalDebtChange, bytes32[] collats, uint256[] collateralChange);
-    event LoanRepayment(uint256 indexed dPrimeChange, address indexed user, bytes32[] collats, uint256[] amounts);
-    event Loan(uint256 indexed dPrimeChange, address indexed user, bytes32[] collats, uint256[] amounts);
+    event LoanRepayment(uint256 indexed d2OChange, address indexed user, bytes32[] collats, uint256[] amounts);
+    event Loan(uint256 indexed d2OChange, address indexed user, bytes32[] collats, uint256[] amounts);
     event MoveCollateral(bytes32 indexed collat, address indexed src, address indexed dst, uint256 wad);
-    event Inflate(address indexed debtReceiver, address indexed dPrimeReceiver, uint256 rad);
+    event Inflate(address indexed debtReceiver, address indexed d2OReceiver, uint256 rad);
     event PushCollateral(bytes32 indexed collat, address indexed src, uint256 wad);
     event PullCollateral(bytes32 indexed collat, address indexed src, uint256 wad);
-    event MoveDPrime(address indexed src, address indexed dst, uint256 frad);
+    event MoveD2O(address indexed src, address indexed dst, uint256 frad);
     event LockedAmountLimit(bytes32 indexed collateral, uint256 wad);
     event LiquidationBonus(bytes32 indexed collateral, uint256 ray);
     event MovePortfolio(address indexed src, address indexed dst);
-    event PushLiquidationDPrime(address indexed src, uint256 rad);
-    event PullLiquidationDPrime(address indexed src, uint256 rad);
+    event PushLiquidationD2O(address indexed src, uint256 rad);
+    event PullLiquidationD2O(address indexed src, uint256 rad);
     event SpotUpdate(bytes32 indexed collateral, uint256 spot);
     event CreditRatio(bytes32 indexed collateral, uint256 ray);
-    event AddLoanedDPrime(address indexed user, uint256 rad);
+    event AddLoanedD2O(address indexed user, uint256 rad);
     event DustLevel(bytes32 indexed collateral, uint256 wad);
-    event EnterDPrime(address indexed src, uint256 rad);
-    event ExitDPrime(address indexed src, uint256 rad);
+    event EnterD2O(address indexed src, uint256 rad);
+    event ExitD2O(address indexed src, uint256 rad);
     event Deflate(address indexed u, uint256 rad);
     event UpdateRate(int256 rate);
 
@@ -245,7 +245,7 @@ contract LMCV {
         bytes32 collateralName,
         uint256 _lockedAmountLimit,     // [wad] - Protocol Level
         uint256 _dustLevel,             // [wad] - Account level
-        uint256 _creditRatio,           // [ray] - ie. max 70% loaned out as dPrime
+        uint256 _creditRatio,           // [ray] - ie. max 70% loaned out as d2O
         bool    _leveraged
     ) external auth {
         Collateral memory collateralData    = CollateralData[collateralName];
@@ -286,15 +286,15 @@ contract LMCV {
     }
 
     //
-    // dPRIME transactions.
+    // d2O transactions.
     //
 
-    function moveDPrime(address src, address dst, uint256 rad) external {
-        require(approval(src, msg.sender), "LMCV/dPrime move not allowed");
-        require(dPrime[src] >= rad, "LMCV/Insufficient dPrime to move");
-        dPrime[src] -= rad;
-        dPrime[dst] += rad;
-        emit MoveDPrime(src, dst, rad);
+    function moveD2O(address src, address dst, uint256 rad) external {
+        require(approval(src, msg.sender), "LMCV/d2O move not allowed");
+        require(d2O[src] >= rad, "LMCV/Insufficient d2O to move");
+        d2O[src] -= rad;
+        d2O[dst] += rad;
+        emit MoveD2O(src, dst, rad);
     }
 
     //
@@ -307,11 +307,11 @@ contract LMCV {
      * 1. Update collateral amounts for each collateral type. This is essentially an atomic swap of unlocked
      *    to locked collateral whilst ensuring per collateral limits are not exceeded.
      * 2. Update normalized debt value and check credit limits.
-     * 3. Update the dPRIME ledger and record any minting fees.
+     * 3. Update the d2O ledger and record any minting fees.
      *
      * It can be the case that this function is called with either zero debt change or no collateral change
      * information. The former case allows users to lock more collateral and keep their debt constant. The
-     * latter case allows users to withdraw more dPRIME whilst keeping collateral amounts constant. If this
+     * latter case allows users to withdraw more d2O whilst keeping collateral amounts constant. If this
      * function is called with a `normalizedDebtChange` vlaue of ZERO then technically no "loaning" is
      * happening. Regardless, we think the semantics still make sense.
      */
@@ -367,25 +367,25 @@ contract LMCV {
         totalNormalizedDebt     += normalizedDebtChange;
         require(isWithinCreditLimit(user, rateMult), "LMCV/Exceeded portfolio credit limit");
 
-        // 3. Update the dPRIME ledger and handle minting fees.
+        // 3. Update the d2O ledger and handle minting fees.
         // NormalisedDebt is a present value seen from the perspective of "day 1" and therefore must
         // be multiplied by the total accrued interest to date, to obtain the current value. This
-        // value is equal to the amount of dPRIME issued because vaults accrue interest over time.
-        totalDPrime += normalizedDebtChange * rateMult;
-        require(totalDPrime < ProtocolDebtCeiling, "LMCV/Cannot extend past protocol debt ceiling");
+        // value is equal to the amount of d2O issued because vaults accrue interest over time.
+        totalD2O += normalizedDebtChange * rateMult;
+        require(totalD2O < ProtocolDebtCeiling, "LMCV/Cannot extend past protocol debt ceiling");
 
-        dPrime[Treasury] += mintingFee;
-        dPrime[user] += normalizedDebtChange * rateMult - mintingFee;
+        d2O[Treasury] += mintingFee;
+        d2O[user] += normalizedDebtChange * rateMult - mintingFee;
         emit Loan(normalizedDebt[user], user, collateralList, collateralChange);
     }
 
     // This function allows users to do a combination of things:
     //
     // 1. If there vault is sufficiently over-collateralised, they can unlock some amount of collateral.
-    //    the result being that their credit limit will decrease whilst their dPRIME balance/used credit
+    //    the result being that their credit limit will decrease whilst their d2O balance/used credit
     //    remains the same. I.e. the vault becomes riskier.
-    // 2. Repay some amount of dPRIME whilst keeping the locked collateral balance constant. This has the
-    //    opposite effect of (1). I.e. the vault becomes less risky as the used credit/dPRIME balance
+    // 2. Repay some amount of d2O whilst keeping the locked collateral balance constant. This has the
+    //    opposite effect of (1). I.e. the vault becomes less risky as the used credit/d2O balance
     //    decreases.
     // 3. A combination of the above.
     function repay(
@@ -406,9 +406,9 @@ contract LMCV {
 
         // 1. Update debt balances.
         //@Roger first thing we should be doing is setting owed debts correct
-        require(dPrime[user] >= normalizedDebtChange * rateMult, "LMCV/Insufficient dPrime to repay");
-        dPrime[user]            -= normalizedDebtChange * rateMult;
-        totalDPrime             -= normalizedDebtChange * rateMult;
+        require(d2O[user] >= normalizedDebtChange * rateMult, "LMCV/Insufficient d2O to repay");
+        d2O[user]               -= normalizedDebtChange * rateMult;
+        totalD2O                -= normalizedDebtChange * rateMult;
         normalizedDebt[user]    -= normalizedDebtChange;
         totalNormalizedDebt     -= normalizedDebtChange;
 
@@ -449,7 +449,7 @@ contract LMCV {
     //
 
     /*
-     * If the value of dPRIME issued by a user falls below the credit limit for their vault, then
+     * If the value of d2O issued by a user falls below the credit limit for their vault, then
      * their vault (or a portion of it) can be liquidated. This function provides the liquidation 
      * contract an interface to the LMCV.
      *
@@ -472,21 +472,21 @@ contract LMCV {
         address treasury
     ) external auth {
         require(collateralList.length == collateralHaircuts.length, "LMCV/Missing collateral type or collateral amount");
-        uint256 dPrimeChange = debtHaircut * AccumulatedRate;
+        uint256 d2OChange = debtHaircut * AccumulatedRate;
 
-        // This debt represnts the amount of liquidated user's dPRIME which is still floating around. 
-        // We need to burn the same amount of dPRIME raised via auction. Assuming a successful
+        // This debt represnts the amount of liquidated user's d2O which is still floating around.
+        // We need to burn the same amount of d2O raised via auction. Assuming a successful
         // auction, any increase to `protocolDeficit` will be reversed. An auction which raises less
-        // than the required dPRIME amount will result in some amount of `protocolDeficit` persisting
-        // over time. This means that, on aggregate, dPRIME will be less collateralised than it 
+        // than the required d2O amount will result in some amount of `protocolDeficit` persisting
+        // over time. This means that, on aggregate, d2O will be less collateralised than it
         // previously was.
-        totalProtocolDeficit        += dPrimeChange;
-        protocolDeficit[treasury]   += dPrimeChange;
+        totalProtocolDeficit        += d2OChange;
+        protocolDeficit[treasury]   += d2OChange;
 
         // Here, we reduce the amount of outstanding debt for the liquidated user and the protocol
         // as a whole because we accounted for it above in `protocolDeficit`. This operation and the one
         // above has the effect of moving the debt to where it will be handled by the liquidation contract.
-        // Above, we increase `protocolDeficit` by the dPRIME amount which also takes into account
+        // Above, we increase `protocolDeficit` by the d2O amount which also takes into account
         // accrued interat interest to date.
         normalizedDebt[liquidated]  -= debtHaircut;
         totalNormalizedDebt         -= debtHaircut;
@@ -516,9 +516,9 @@ contract LMCV {
     /*
      * Only the liquidation contract can settle protocol deficit. In the interests of prudence, every time a vault 
      * is liquidated, the LMCV registers a temporary protocol deficit for the amount being liquidated, with the 
-     * intention that the protocol deficit is reversed by the amount of dPRIME raised when the auction concludes.
-     * The amount of dPRIME raised via the auction is burnt when this function is called. As such, the total 
-     * amount of dPRIME issued and protocol deficit is reduced by the same amount.
+     * intention that the protocol deficit is reversed by the amount of d2O raised when the auction concludes.
+     * The amount of d2O raised via the auction is burnt when this function is called. As such, the total
+     * amount of d2O issued and protocol deficit is reduced by the same amount.
      *
      * This is a public external function, so can be called by anyone but only works if the caller has protocol
      * deficit assigned to them. I.e. the protocol treasury account. This functino will only work if there
@@ -527,33 +527,33 @@ contract LMCV {
      */
     function deflate(uint256 rad) external {
         address u = msg.sender;
-        require(dPrime[u] >= rad, "LMCV/Insufficient dPrime to deflate");
+        require(d2O[u] >= rad, "LMCV/Insufficient d2O to deflate");
         protocolDeficit[u]      -= rad;
         totalProtocolDeficit    -= rad;
-        dPrime[u]               -= rad;
-        totalDPrime             -= rad;
+        d2O[u]                  -= rad;
+        totalD2O                -= rad;
 
         emit Deflate(msg.sender, rad);
     }
 
     /*
-     * Debt Receiver is always the protocol's deficit address. The dPRIME receiver can be any address. In effect,
-     * this method can be used to issue dPRIME without calling the `loan` function and so the dPRIME created via
-     * this function does not increase the `normalisedDebt` balance. Any dPRIME created through this function
+     * Debt Receiver is always the protocol's deficit address. The d2O receiver can be any address. In effect,
+     * this method can be used to issue d2O without calling the `loan` function and so the d2O created via
+     * this function does not increase the `normalisedDebt` balance. Any d2O created through this function
      * increases the aggregate LTV of the protocol and so is intended that any resulting increase in protocol
      * deficit be balanced be netted off by an increase in protocol surplus.
      *
-     * For example, if we were to pay interest on dPRIME deposits in V2 of the protocol then we would pay the 
-     * interest via increasing protocol deficit. This deficit would be offset by the surplus dPRIME received
+     * For example, if we were to pay interest on d2O deposits in V2 of the protocol then we would pay the
+     * interest via increasing protocol deficit. This deficit would be offset by the surplus d2O received
      * as users pay stability fees on their vaults.
      */
-    function inflate(address debtReceiver, address dPrimeReceiver, uint256 rad) external auth {
+    function inflate(address debtReceiver, address d2OReceiver, uint256 rad) external auth {
         protocolDeficit[debtReceiver]   += rad;
         totalProtocolDeficit            += rad;
-        dPrime[dPrimeReceiver]          += rad;
-        totalDPrime                     += rad;
+        d2O[d2OReceiver]                += rad;
+        totalD2O                        += rad;
 
-        emit Inflate(debtReceiver, dPrimeReceiver, rad);
+        emit Inflate(debtReceiver, d2OReceiver, rad);
     }
 
     //
@@ -563,8 +563,8 @@ contract LMCV {
     function updateRate(int256 rateIncrease) external auth loanAlive {
         AccumulatedRate     = _add(AccumulatedRate, rateIncrease);
         int256 rad          = _int256(totalNormalizedDebt - totalPSMDebt) * rateIncrease;
-        dPrime[Treasury]    = _add(dPrime[Treasury], rad);
-        totalDPrime         = _add(totalDPrime, rad);
+        d2O[Treasury]       = _add(d2O[Treasury], rad);
+        totalD2O            = _add(totalD2O, rad);
 
         emit UpdateRate(rateIncrease);
     }

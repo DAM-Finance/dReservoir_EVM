@@ -2,8 +2,8 @@ const {expect} = require("chai");
 const {ethers} = require("hardhat");
 
 let owner, addr1, addr2, addrs;
-let dPrimeFactory, dPrime;
-let dPrimeJoinFactory, dPrimeJoin;
+let d2OFactory, d2O;
+let d2OJoinFactory, d2OJoin;
 let LMCVFactory, lmcv;
 let tokenFactory, mockToken;
 let collateralJoinFactory, collateralJoin;
@@ -58,8 +58,8 @@ describe("Testing Setup for functions", function () {
     before(async function () {
         [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
 
-        dPrimeFactory = await ethers.getContractFactory("dPrime");
-        dPrime = await dPrimeFactory.deploy();
+        d2OFactory = await ethers.getContractFactory("d2O");
+        d2O = await d2OFactory.deploy();
 
         LMCVFactory = await ethers.getContractFactory("LMCV");
         lmcv = await LMCVFactory.deploy();
@@ -67,8 +67,8 @@ describe("Testing Setup for functions", function () {
         lmcvProxyFactory = await ethers.getContractFactory("LMCVProxy");
         lmcvProxy = await lmcvProxyFactory.deploy(lmcv.address);
 
-        dPrimeJoinFactory = await ethers.getContractFactory("dPrimeJoin");
-        dPrimeJoin = await dPrimeJoinFactory.deploy(lmcv.address, dPrime.address, lmcvProxy.address);
+        d2OJoinFactory = await ethers.getContractFactory("d2OJoin");
+        d2OJoin = await d2OJoinFactory.deploy(lmcv.address, d2O.address, lmcvProxy.address);
 
         tokenFactory = await ethers.getContractFactory("MockTokenFour");
         mockToken = await tokenFactory.deploy("TSTR");

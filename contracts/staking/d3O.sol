@@ -1,35 +1,29 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-/// dPrime.sol -- dPrime token
+/// d3O.sol -- d3O token
 
-pragma solidity ^0.8.7;
+pragma solidity ^0.8.12;
 
-contract dPrime {
+contract d3O {
     address public ArchAdmin;
     mapping (address => uint256) public admins;
 
     // --- ERC20 Data ---
-    string  public constant name     = "dPrime";
-    string  public constant symbol   = "dPRI";
+    string  public constant name     = "d3O";
+    string  public constant symbol   = "d3O";
     string  public constant version  = "1";
     uint8   public constant decimals = 18;
     uint256 public totalSupply;
-    uint256 public live;
-    uint256 public transferBlockWait;      //Amount of blocks to wait before user can transfer dPrime after minting cross-chain
 
-    mapping (address => uint256)                        public balanceOf;
-    mapping (address => mapping (address => uint256))   public allowance;
-    mapping (address => uint256)                        public nonces;
-    mapping (address => uint256)                        public transferBlockRelease;    //Block number after which user is able to transfer dPrime
+    mapping (address => uint256)                      public balanceOf;
+    mapping (address => mapping (address => uint256)) public allowance;
+    mapping (address => uint256)                      public nonces;
 
     // --- Events ---
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event Approval(address indexed owner, address indexed spender, uint256 value);
     event Transfer(address indexed from, address indexed to, uint256 value);
-    event TransferBlockWait(uint256 blockWait);
-    event Cage(uint256 status);
-    
 
     // --- EIP712 niceties ---
     uint256 public immutable deploymentChainId;
@@ -37,19 +31,13 @@ contract dPrime {
     bytes32 public constant PERMIT_TYPEHASH = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     modifier auth {
-        require(admins[msg.sender] == 1, "dPrime/not-authorized");
-        _;
-    }
-
-    modifier alive {
-        require(live == 1, "dPrime/not-live");
+        require(admins[msg.sender] == 1, "d3O/not-authorized");
         _;
     }
 
     constructor() {
-        live = 1;
-        admins[msg.sender] = 1;
         ArchAdmin = msg.sender;
+        admins[msg.sender] = 1;
         emit Rely(msg.sender);
 
         deploymentChainId = block.chainid;
@@ -73,9 +61,8 @@ contract dPrime {
     }
 
     // --- Administration ---
-
     function setArchAdmin(address newArch) external auth {
-        require(ArchAdmin == msg.sender && newArch != address(0), "dPrime/Must be ArchAdmin");
+        require(ArchAdmin == msg.sender && newArch != address(0), "d3O/Must be ArchAdmin");
         ArchAdmin = newArch;
         admins[ArchAdmin] = 1;
     }
@@ -86,27 +73,16 @@ contract dPrime {
     }
 
     function deny(address usr) external auth {
-        require(usr != ArchAdmin, "dPrime/ArchAdmin cannot lose admin - update ArchAdmin to another address");
+        require(usr != ArchAdmin, "d3O/ArchAdmin cannot lose admin - update ArchAdmin to another address");
         admins[usr] = 0;
         emit Deny(usr);
     }
 
-    function cage(uint256 _live) external auth {
-        live = _live;
-        emit Cage(_live);
-    }
-
-    function setTransferBlockWait(uint256 num) external auth {
-        transferBlockWait = num;
-        emit TransferBlockWait(transferBlockWait);
-    }
-
     // --- ERC20 Mutations ---
-    function transfer(address to, uint256 value) external alive returns (bool) {
-        require(to != address(0) && to != address(this), "dPrime/invalid-address");
-        require(block.number > transferBlockRelease[msg.sender], "dPrime/transfer too soon after cross-chain mint");
+    function transfer(address to, uint256 value) external returns (bool) {
+        require(to != address(0) && to != address(this), "d3O/invalid-address");
         uint256 balance = balanceOf[msg.sender];
-        require(balance >= value, "dPrime/insufficient-balance");
+        require(balance >= value, "d3O/insufficient-balance");
 
         unchecked {
             balanceOf[msg.sender] = balance - value;
@@ -118,16 +94,15 @@ contract dPrime {
         return true;
     }
 
-    function transferFrom(address from, address to, uint256 value) external alive returns (bool) {
-        require(to != address(0) && to != address(this), "dPrime/invalid-address");
-        require(block.number > transferBlockRelease[from], "dPrime/transfer too soon after cross-chain mint");
+    function transferFrom(address from, address to, uint256 value) external returns (bool) {
+        require(to != address(0) && to != address(this), "d3O/invalid-address");
         uint256 balance = balanceOf[from];
-        require(balance >= value, "dPrime/insufficient-balance");
+        require(balance >= value, "d3O/insufficient-balance");
 
         if (from != msg.sender) {
             uint256 allowed = allowance[from][msg.sender];
             if (allowed != type(uint256).max) {
-                require(allowed >= value, "dPrime/insufficient-allowance");
+                require(allowed >= value, "d3O/insufficient-allowance");
 
                 unchecked {
                     allowance[from][msg.sender] = allowed - value;
@@ -163,38 +138,21 @@ contract dPrime {
     }
 
     function decreaseAllowance(address spender, uint256 subtractedValue) external returns (bool) {
-        return _decreaseAllowance(msg.sender, spender, subtractedValue);
-    }
-    
-    function decreaseAllowanceAdmin(address owner, address spender, uint256 subtractedValue) external auth returns (bool) {
-        return _decreaseAllowance(owner, spender, subtractedValue);
-    } 
-
-    function _decreaseAllowance(address owner, address spender, uint256 subtractedValue) internal returns (bool) {
-        uint256 allowed = allowance[owner][spender];
-        require(allowed >= subtractedValue, "dPrime/insufficient-allowance");
+        uint256 allowed = allowance[msg.sender][spender];
+        require(allowed >= subtractedValue, "d3O/insufficient-allowance");
         unchecked{
             allowed = allowed - subtractedValue;
         }
-        allowance[owner][spender] = allowed;
+        allowance[msg.sender][spender] = allowed;
 
-        emit Approval(owner, spender, allowed);
+        emit Approval(msg.sender, spender, allowed);
 
         return true;
     }
 
     // --- Mint/Burn ---
     function mint(address to, uint256 value) external auth {
-        _mint(to, value);
-    }
-
-    function mintAndDelay(address to, uint256 value) external auth {
-        transferBlockRelease[to] = block.number + transferBlockWait;
-        _mint(to, value);
-    }
-
-    function _mint(address to, uint256 value) internal alive {
-        require(to != address(0) && to != address(this), "dPrime/invalid-address");
+        require(to != address(0) && to != address(this), "d3O/invalid-address");
         unchecked {
             balanceOf[to] = balanceOf[to] + value; // note: we don't need an overflow check here b/c balanceOf[to] <= totalSupply and there is an overflow check below
         }
@@ -203,14 +161,14 @@ contract dPrime {
         emit Transfer(address(0), to, value);
     }
 
-    function burn(address from, uint256 value) external alive {
+    function burn(address from, uint256 value) external {
         uint256 balance = balanceOf[from];
-        require(balance >= value, "dPrime/insufficient-balance");
+        require(balance >= value, "d3O/insufficient-balance");
 
         if (from != msg.sender && admins[msg.sender] != 1) {
             uint256 allowed = allowance[from][msg.sender];
             if (allowed != type(uint256).max) {
-                require(allowed >= value, "dPrime/insufficient-allowance");
+                require(allowed >= value, "d3O/insufficient-allowance");
 
                 unchecked {
                     allowance[from][msg.sender] = allowed - value;
@@ -228,7 +186,7 @@ contract dPrime {
 
     // --- Approve by signature ---
     function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external {
-        require(block.timestamp <= deadline, "dPrime/permit-expired");
+        require(block.timestamp <= deadline, "d3O/permit-expired");
 
         uint256 nonce;
         unchecked { nonce = nonces[owner]++; }
@@ -247,7 +205,7 @@ contract dPrime {
                 ))
             ));
 
-        require(owner != address(0) && owner == ecrecover(digest, v, r, s), "dPrime/invalid-permit");
+        require(owner != address(0) && owner == ecrecover(digest, v, r, s), "d3O/invalid-permit");
 
         allowance[owner][spender] = value;
         emit Approval(owner, spender, value);
