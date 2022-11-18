@@ -120,7 +120,7 @@ contract HyperlanePipe is Router, AuthAdmin("HyperlanePipe") {
     function _handle(
         uint32 _origin,
         bytes32,
-        bytes memory _message
+        bytes calldata _message
     ) internal override alive {
 
         (address recipient, uint256 amount) = abi.decode(
