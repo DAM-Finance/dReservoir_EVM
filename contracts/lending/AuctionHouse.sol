@@ -132,8 +132,20 @@ contract AuctionHouse {
     //
     
     uint256 constant RAY = 10 ** 27;
+    uint256 constant WAD = 10 ** 18;
+    // Can only be used sensibly with the following combination of units:
+    // - `_radmul(ray, ray) -> ray`
+    // - `_radmul(rad, ray) -> rad`
+    function _radmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        x = x / WAD;
+        z = x * y;
+        require(y == 0 || z / y == x);
+        z = z / RAY * WAD;
+    }
 
-    function rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+    // Can only be used sensibly with the following combination of units:
+    // - `_wadmul(wad, ray) -> wad`
+    function _wadmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         z = x * y;
         require(y == 0 || z / y == x);
         z = z / RAY;
@@ -237,11 +249,11 @@ contract AuctionHouse {
         // New lot bids must be lower than the current lot bid.
         require(collateralBid < auctions[id].collateralBid, "AuctionHouse/collateralBid not lower");
         // New lot bids must be lower than the minimum decrease.
-        require(rmul(collateralBid, RAY) <= rmul(minimumBidDecrease, auctions[id].collateralBid), "AuctionHouse/Insufficient decrease");
+        require(collateralBid <= _radmul(minimumBidDecrease, auctions[id].collateralBid), "AuctionHouse/Insufficient decrease");
 
         // Return collateral to the user - difference between last collateralBid and current collateralBid.
         for(uint256 i = 0; i < auctions[id].lotList.length; i++) {
-            uint256 portionToReturn = rmul(auctions[id].lotValues[i], (auctions[id].collateralBid - collateralBid)); 
+            uint256 portionToReturn = _wadmul(auctions[id].lotValues[i], (auctions[id].collateralBid - collateralBid)); 
             lmcv.moveCollateral(auctions[id].lotList[i], address(this), auctions[id].liquidated, portionToReturn);
         }
 
@@ -271,7 +283,7 @@ contract AuctionHouse {
 
         // The highest bidder gets whatever collateral is left over after stage two of the auction.
         for(uint256 i = 0; i < auctions[id].lotList.length; i++) {
-            uint256 remainingCollateral = rmul(auctions[id].lotValues[i], auctions[id].collateralBid);
+            uint256 remainingCollateral = _wadmul(auctions[id].lotValues[i], auctions[id].collateralBid);
             lmcv.moveCollateral(auctions[id].lotList[i], address(this), auctions[id].currentWinner, remainingCollateral);
         }
         delete auctions[id];

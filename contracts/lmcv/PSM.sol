@@ -145,7 +145,7 @@ contract PSM {
     //
 
     uint256 constant RAY = 10 ** 27;
-    function _rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+    function _wadmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         z = x * y;
         require(y == 0 || z / y == x);
         z = z / RAY;
@@ -182,7 +182,7 @@ contract PSM {
     function createD2O(address usr, bytes32[] memory collateral, uint256[] memory collatAmount) external alive {
         require(collateral.length == 1 && collatAmount.length == 1 && collateral[0] == collateralName, "PSM/Incorrect setup");
         uint256 collatAmount18 = collatAmount[0] * to18ConversionFactor; // [wad]
-        uint256 fee = _rmul(collatAmount18, mintFee); // rmul(wad, ray) = wad
+        uint256 fee = _wadmul(collatAmount18, mintFee); // _wadmul(wad, ray) = wad
         uint256 d2OAmt = collatAmount18 - fee;
 
         collateralJoin.join(address(this), collatAmount[0], msg.sender);
@@ -197,7 +197,7 @@ contract PSM {
     function getCollateral(address usr, bytes32[] memory collateral, uint256[] memory collatAmount) external alive {
         require(collateral.length == 1 && collatAmount.length == 1 && collateral[0] == collateralName, "PSM/Incorrect setup");
         uint256 collatAmount18 = collatAmount[0] * to18ConversionFactor;
-        uint256 fee = _rmul(collatAmount18, repayFee); // rmul(wad, ray) = wad
+        uint256 fee = _wadmul(collatAmount18, repayFee); // _wadmul(wad, ray) = wad
         uint256 d2OAmt = collatAmount18 + fee;
 
         require(d2O.transferFrom(msg.sender, address(this), d2OAmt), "PSM/d2O failed transfer");

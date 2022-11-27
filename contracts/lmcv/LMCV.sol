@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import "hardhat/console.sol";
+
 pragma solidity ^0.8.7;
 
 /*
@@ -52,7 +54,7 @@ contract LMCV {
 
     uint256 public totalNormalizedDebt; // [wad] - Total protocol level debt in t=0 terms.
     uint256 public totalPSMDebt;        // [wad]
-    uint256 public totalD2O;         // [rad] - Total amount of d2O issued.
+    uint256 public totalD2O;            // [rad] - Total amount of d2O issued.
     uint256 public ProtocolDebtCeiling; // [rad] - Maximum amount of d2O issuable.
     uint256 public MintFee;             // [ray] - Minting fee as a percentage of a newly issued d2O amount.
     uint256 public AccumulatedRate;     // [ray] - Rename this as this is a cumulative value, rather than the per second compounding rate.
@@ -162,14 +164,15 @@ contract LMCV {
     //
 
     uint256 constant RAY = 10 ** 27;
+    uint256 constant WAD = 10 ** 18;
     // Can only be used sensibly with the following combination of units:
-    // - `rmul(wad, ray) -> wad`
-    // - `rmul(ray, ray) -> ray`
-    // - `rmul(rad, ray) -> rad`
-    function _rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+    // - `_radmul(ray, ray) -> ray`
+    // - `_radmul(rad, ray) -> rad`
+    function _radmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        x = x / WAD;
         z = x * y;
         require(y == 0 || z / y == x);
-        z = z / RAY;
+        z = z / RAY * WAD;
     }
 
     function _add(uint256 x, int256 y) internal pure returns (uint256 z) {
@@ -355,7 +358,7 @@ contract LMCV {
 
         // If the PSM calls this function then we set fees and interest rate to zero.
         uint256 rateMult   = AccumulatedRate;
-        uint256 mintingFee = _rmul(normalizedDebtChange * rateMult, MintFee);
+        uint256 mintingFee = _radmul(normalizedDebtChange * rateMult, MintFee);
         if(PSMAddresses[user]){
             rateMult = RAY;
             mintingFee = 0;
@@ -596,11 +599,11 @@ contract LMCV {
                 uint256 collateralValue = lockedCollateral[user][lockedList[i]] * collateralData.spotPrice; // wad*ray -> rad
 
                 if(!collateralData.leveraged){
-                    creditLimit += _rmul(collateralValue, collateralData.creditRatio);
+                    creditLimit += _radmul(collateralValue, collateralData.creditRatio);
                     noLeverageTotal += collateralValue / RAY;
                 } else {
                     leverageTotal += collateralValue;
-                    leverTokenCreditLimit += _rmul(collateralValue, collateralData.creditRatio);
+                    leverTokenCreditLimit += _radmul(collateralValue, collateralData.creditRatio);
                 }
             }
         }
@@ -615,7 +618,7 @@ contract LMCV {
         }
 
         uint256 leverageMultiple = noLeverageTotal == 0 && leverageTotal == 0 ? RAY : RAY + leverageTotal / noLeverageTotal;
-        if (_rmul(creditLimit, leverageMultiple) >= (normalizedDebt[user] * rate)) {
+        if (_radmul(creditLimit, leverageMultiple) >= (normalizedDebt[user] * rate)) {
             return true;
         }
         return false;
