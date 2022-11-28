@@ -83,19 +83,19 @@ task("setup_contracts_moonbase", "sets up contracts ready for use on Moonbase")
 	// ---------------------------
 
 	await transaction(
-		"dPrime",
+		"d2O",
 		"rely",
-		deployedContracts["dPrimeConnectorLZ"].address
+		deployedContracts["LayerZeroPipe"].address
 	);
 
 	await transaction(
-		"dPrime",
+		"d2O",
 		"rely",
-		deployedContracts["dPrimeConnectorHyperlane"].address
+		deployedContracts["HyperlanePipe"].address
 	);
 
 	await transaction(
-		"dPrimeConnectorHyperlane",
+		"HyperlanePipe",
 		"initialize",
 		hyperlaneConnectionManagerAddress, hyperlaneInterchainGasMasterAddress, deployedContracts["dPrime"].address
 	);
@@ -105,13 +105,13 @@ task("setup_contracts_moonbase", "sets up contracts ready for use on Moonbase")
 	// -----------------
 
 	await transaction(
-		"dPrimeConnectorLZ",
+		"LayerZeroPipe",
 		"setTrustedRemoteAddress",
 		lzGoerliChainId, lzGoerliConnectorAddress
 	);
 
 	await transaction(
-		"dPrimeConnectorHyperlane",
+		"HyperlanePipe",
 		"enrollRemoteRouter",
 		hyperlaneDomainIdentifierGoerli, ethers.utils.hexZeroPad(hyperlaneGoerliConnectorAddress, 32)
 	);

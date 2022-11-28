@@ -24,8 +24,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 	// Collateral
 	// ----------
 
-	let usdcName 	= ethers.utils.formatBytes32String("USD Coin");
-	let usdcSymbol 	= ethers.utils.formatBytes32String("USDC");
+	let usdcName 	= ethers.utils.formatBytes32String("DAM USD Coin");
+	let usdcSymbol 	= ethers.utils.formatBytes32String("USDC-DAM");
 
 	const usdc = await deploy('USDC', {
 		from: deployer,
@@ -74,16 +74,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 	const d2OAddress = d2O.receipt?.contractAddress;
 
-	const d2OGuardian = await deploy('d20Guardian', {
+	const d2OGuardian = await deploy('d2OGuardian', {
 		from: deployer,
 		args: [d2OAddress],
 		log: true,
 		autoMine: true,
-		contract: "d20Guardian"
+		contract: "d2OGuardian"
 	});
 
 	const d2OGuardianAddress = d2OGuardian.receipt?.contractAddress;
-
 
 	// d2O connector layer-zero
 
@@ -92,7 +91,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 		args: [layerZeroEndpointAddress, d2OAddress],
 		log: true,
 		autoMine: true,
-		contract: "d2OConnectorLZ"
+		contract: "LayerZeroPipe"
 	});
 
 	const LayerZeroPipeAddress = LayerZeroPipe.receipt?.contractAddress;

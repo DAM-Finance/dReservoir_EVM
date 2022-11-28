@@ -33,7 +33,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 	const d2OAddress = d2O.receipt?.contractAddress;
 
-	const d2OGuardian = await deploy('d20Guardian', {
+	const d2OGuardian = await deploy('d2OGuardian', {
 		from: deployer,
 		args: [d2OAddress],
 		log: true,

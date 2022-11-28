@@ -26,8 +26,8 @@ task("d2O_teleport", "teleports d2O from one chain to another")
 		}
 		contractName = taskArgs.sourceChainId == 1 ? "d2OConnectorLZOne" : "d2OConnectorLZTwo";
 		[source, destination] = [taskArgs.sourceChainId, taskArgs.destChainId]
-	} else {
-		contractName = "d2OConnectorLZ";
+	} else if (hre.network.name === "goerli") {
+		contractName = "LayerZeroPipe";
 		const sourceId: string | undefined = process.env['LAYER_ZERO_CHAIN_ID_GOERLI'];
 		if (!sourceId) {
 			throw new Error("Please set LAYER_ZERO_CHAIN_ID_GOERLI in a .env file");
@@ -38,6 +38,21 @@ task("d2O_teleport", "teleports d2O from one chain to another")
 		}
 		[source, destination] = [sourceId, destId]
 		console.log(destination)
+	} else if (hre.network.name === "moonbase") {
+		contractName = "LayerZeroPipe";
+		const sourceId: string | undefined = process.env['LAYER_ZERO_CHAIN_ID_GOERLI'];
+		if (!sourceId) {
+			throw new Error("Please set LAYER_ZERO_CHAIN_ID_GOERLI in a .env file");
+		}
+		const destId: string | undefined = process.env['LAYER_ZERO_CHAIN_ID_MOONBASE'];
+		if (!destId) {
+			throw new Error("Please set LAYER_ZERO_CHAIN_ID_MOONBASE in a .env file");
+		}
+		[destination, source] = [sourceId, destId]
+		console.log(destination)
+	} else {
+		console.log("Unsupported network");
+		return;
 	}
 
 	const {deployments, getNamedAccounts} = hre;

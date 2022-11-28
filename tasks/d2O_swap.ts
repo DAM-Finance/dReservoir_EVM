@@ -6,7 +6,7 @@ function fwad(wad: string) {
 	return ethers.utils.parseEther(wad); 
 }
 
-let usdcBytes = ethers.utils.formatBytes32String("PSM-USDC");	
+let usdcBytes = ethers.utils.formatBytes32String("PSM-USDC-DAM");	
 
 task("d2O_swap", "teleports d2O from one chain to another")
   .addParam("amount", "The amount of d2O to swap")
@@ -15,7 +15,7 @@ task("d2O_swap", "teleports d2O from one chain to another")
 	const {deployments, getNamedAccounts} = hre;
 	const {execute} = deployments;
 
-	const usdcJoinAddress = await (await deployments.get("UsdcJoin")).address;
+	const usdcJoinAddress = await (await deployments.get("usdcJoin")).address;
 
 	// Provide approval.
 

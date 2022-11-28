@@ -85,25 +85,25 @@ task("setup_contracts_goerli", "sets up contracts ready for use on Goerli")
 	// ---------------------------
 
 	await transaction(
-		"dPrime", 
+		"d2O", 
 		"rely", 
-		deployedContracts["dPrimeJoin"].address
+		deployedContracts["d2OJoin"].address
 	);
 
 	await transaction(
-		"dPrime",
+		"d2O",
 		"rely",
-		deployedContracts["dPrimeConnectorLZ"].address
+		deployedContracts["LayerZeroPipe"].address
 	);
 
 	await transaction(
-		"dPrime",
+		"d2O",
 		"rely",
-		deployedContracts["dPrimeConnectorHyperlane"].address
+		deployedContracts["HyperlanePipe"].address
 	);
 
 	await transaction(
-		"dPrimeConnectorHyperlane",
+		"HyperlanePipe",
 		"initialize",
 		hyperlaneConnectionManagerAddress, hyperlaneInterchainGasMasterAddress, deployedContracts["dPrime"].address
 	);
@@ -114,14 +114,14 @@ task("setup_contracts_goerli", "sets up contracts ready for use on Goerli")
 
 	await transaction(
 		"LMCVProxy",
-		"setDPrimeJoin",
-		deployedContracts["dPrimeJoin"].address
+		"setD2OJoin",
+		deployedContracts["d2OJoin"].address
 	);
 
 	await transaction(
 		"LMCVProxy",
-		"setDPrime",
-		deployedContracts["dPrime"].address
+		"setD2O",
+		deployedContracts["d2O"].address
 	);
 
 	// ----------
@@ -131,7 +131,7 @@ task("setup_contracts_goerli", "sets up contracts ready for use on Goerli")
 	await transaction(
 		"LMCV",
 		"administrate",
-		deployedContracts["dPrimeJoin"].address, 1
+		deployedContracts["d2OJoin"].address, 1
 	);
 
 	await transaction(
@@ -179,13 +179,13 @@ task("setup_contracts_goerli", "sets up contracts ready for use on Goerli")
 	// -----------------
 
 	await transaction(
-		"dPrimeConnectorLZ",
+		"LayerZeroPipe",
 		"setTrustedRemoteAddress",
 		lzMoonbaseChainId, lzMoonbaseConnectorAddress
 	);
 
 	await transaction(
-		"dPrimeConnectorHyperlane",
+		"HyperlanePipe",
 		"enrollRemoteRouter",
 		hyperlaneDomainIdentifierMoonbase, ethers.utils.hexZeroPad(hyperlaneMoonbaseConnectorAddress, 32)
 	);
