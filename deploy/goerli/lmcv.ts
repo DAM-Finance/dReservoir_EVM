@@ -74,6 +74,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 	const d2OAddress = d2O.receipt?.contractAddress;
 
+	const d2OGuardian = await deploy('d20Guardian', {
+		from: deployer,
+		args: [d2OAddress],
+		log: true,
+		autoMine: true,
+		contract: "d20Guardian"
+	});
+
+	const d2OGuardianAddress = d2OGuardian.receipt?.contractAddress;
+
+
 	// d2O connector layer-zero
 
 	const LayerZeroPipe = await deploy('LayerZeroPipe', {
