@@ -38,7 +38,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 		args: [d2OAddress],
 		log: true,
 		autoMine: true,
-		contract: "d20Guardian"
+		contract: "d2OGuardian"
 	});
 
 	const d2OGuardianAddress = d2OGuardian.receipt?.contractAddress;

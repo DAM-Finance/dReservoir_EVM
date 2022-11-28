@@ -123,7 +123,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 		args: [d2O_OneAddress],
 		log: true,
 		autoMine: true,
-		contract: "d20Guardian"
+		contract: "d2OGuardian"
 	});
 
 	const d2OGuardian_OneAddress = d2OGuardian_One.receipt?.contractAddress;
@@ -133,7 +133,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 		args: [d2O_TwoAddress],
 		log: true,
 		autoMine: true,
-		contract: "d20Guardian"
+		contract: "d2OGuardian"
 	});
 
 	const d2OGuardian_TwoAddress = d2OGuardian_Two.receipt?.contractAddress;
