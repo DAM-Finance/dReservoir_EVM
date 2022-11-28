@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import "hardhat/console.sol";
 
 pragma solidity ^0.8.7;
 
@@ -114,10 +115,15 @@ contract RatesUpdater {
         z = int(x) - int(y);
         require(int(x) >= 0 && int(y) >= 0);
     }
-    function _rmul(uint x, uint y) internal pure returns (uint z) {
+    uint256 constant WAD = 10 ** 18;
+    // Can only be used sensibly with the following combination of units:
+    // - `_radmul(ray, ray) -> ray`
+    // - `_radmul(rad, ray) -> rad`
+    function _radmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        x = x / WAD;
         z = x * y;
         require(y == 0 || z / y == x);
-        z = z / ONE;
+        z = z / ONE * WAD;
     }
 
     //
@@ -142,7 +148,7 @@ contract RatesUpdater {
       uint256 prevAccrualTime = lastAccrual;
       lastAccrual = block.timestamp;
       uint256 prev = lmcv.AccumulatedRate();
-      rate = _rmul(_rpow(stabilityRate, block.timestamp - prevAccrualTime, ONE), prev);
+      rate = _radmul(_rpow(stabilityRate, block.timestamp - prevAccrualTime, ONE), prev);
       lmcv.updateRate(_diff(rate, prev));
     }
 }

@@ -184,8 +184,18 @@ contract Liquidator {
     //
 
     uint256 constant RAY = 10 ** 27;
+    uint256 constant WAD = 10 ** 18;
+    // Can only be used sensibly with the following combination of units:
+    // - `_radmul(ray, ray) -> ray`
+    // - `_radmul(rad, ray) -> rad`
+    function _radmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        x = x / WAD;
+        z = x * y;
+        require(y == 0 || z / y == x);
+        z = z / RAY * WAD;
+    }
 
-    function rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+    function _wadmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         z = x * y;
         require(y == 0 || z / y == x);
         z = z / RAY;
@@ -234,19 +244,19 @@ contract Liquidator {
         uint256[] memory collateralHaircuts = new uint256[](collateralListLength);
         for(uint256 i = 0; i < collateralListLength; i++) {
             uint256 amount          = lmcv.lockedCollateral(user, collateralList[i]);
-            collateralHaircuts[i]   = rmul(amount, debtHaircut * RAY / normalizedDebt); // wad * (wad * RAY / wad -> ray)
+            collateralHaircuts[i]   = _wadmul(amount, debtHaircut * RAY / normalizedDebt); // wad * (wad * RAY / wad -> ray)
             require(collateralHaircuts[i] > 0, "Liquidator/Collateral haircut must be positive.");
 
             // For calculating the minBid we must know the aggregate value of the collateral haircuts.
             (uint256 spotPrice,,,,,) = lmcv.CollateralData(collateralList[i]);
-            liquidatedCollateralValue += rmul(collateralHaircuts[i], spotPrice);
+            liquidatedCollateralValue += _radmul(collateralHaircuts[i], spotPrice);
         }
 
         // Seize the collateral and mark the outstanding debt as a potential protocol deficit.
         lmcv.seize(collateralList, collateralHaircuts, debtHaircut, user, address(this), lmcv.Treasury());
 
         // Calculate the asking amount which includes the accrued interest and liquidation penalty.
-        uint256 askingAmount = rmul(debtHaircut * stabilityRate, liquidationPenalty);
+        uint256 askingAmount = _radmul(debtHaircut * stabilityRate, liquidationPenalty); // _radmul (wad * ray) , ray = rad
 
         // If the asking amount is somewhat less than the liquidated collateral value then the minimum bid can typically 
         // be a percentage of the askingAmount. In most cases we would expect that the liquidated collateral value 
@@ -259,8 +269,8 @@ contract Liquidator {
         // end up with a value which is greater than the value of the collateral for sale.
         // TODO: Double check the maths here.
         uint256 minimumBid = 0;
-        if (rmul(askingAmount, debtGrossUpFactor) / RAY < liquidatedCollateralValue) {
-            minimumBid = rmul(askingAmount, debtFactor);
+        if (_radmul(askingAmount, debtGrossUpFactor) / RAY < liquidatedCollateralValue) {
+            minimumBid = _radmul(askingAmount, debtFactor);
         } else {
             minimumBid = liquidatedCollateralValue * collateralFactor;
         }

@@ -6,6 +6,8 @@
 // - `ray`: fixed point decimal with 27 decimals (for precise quantites, e.g. ratios)
 // - `rad`: fixed point decimal with 45 decimals (result of integer multiplication with a `wad` and a `ray`)
 
+import "hardhat/console.sol";
+
 pragma solidity ^0.8.12;
 
 interface LMCVLike {
@@ -129,12 +131,10 @@ contract StakingVault {
     // Math.
     //
 
-    uint256 private constant RAY = 10 ** 27;
+    uint256 constant RAY = 10 ** 27;
     // Can only be used sensibly with the following combination of units:
-    // - `rmul(wad, ray) -> wad`
-    // - `rmul(ray, ray) -> ray`
-    // - `rmul(rad, ray) -> rad`
-    function _rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+    // - `wadmul(wad, ray) -> wad`
+    function _wadmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         z = x * y;
         require(y == 0 || z / y == x);
         z = z / RAY;
@@ -298,11 +298,11 @@ contract StakingVault {
 
             //Save prev reward debt and set new reward debt
             uint256 prevRewardDebt = rewardDebt[from][RewardTokenList[i]]; // [wad]
-            rewardDebt[from][RewardTokenList[i]] = _rmul(lockedStakeable[from], tokenData.accumulatedRewardPerStaked); // rmul(wad, ray) = wad;
+            rewardDebt[from][RewardTokenList[i]] = _wadmul(lockedStakeable[from], tokenData.accumulatedRewardPerStaked); // wadmul(wad, ray) = wad;
 
             //Pay out rewards
             if(previousAmount > 0){
-                uint256 payout = _rmul(previousAmount, tokenData.accumulatedRewardPerStaked) - prevRewardDebt; // rmul(wad,ray) - wad = wad;
+                uint256 payout = _wadmul(previousAmount, tokenData.accumulatedRewardPerStaked) - prevRewardDebt; // wadmul(wad,ray) - wad = wad;
 
                 if(payout > 0){
                     withdrawableRewards[to][RewardTokenList[i]] += payout;

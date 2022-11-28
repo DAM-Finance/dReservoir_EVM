@@ -70,7 +70,7 @@ describe("Testing LMCV", function () {
         USDCMock = await tokenFactory.deploy("TSTR", 10);
         collateralJoin = await collateralJoinFactory.deploy(lmcv.address, lmcvProxy.address, USDCMockBytes, USDCMock.address);
         await lmcv.administrate(collateralJoin.address, 1);
-        await lmcv.editAcceptedCollateralType(USDCMockBytes, fwad("10000"), fwad("1"), fray("1"), false);
+        await lmcv.editAcceptedCollateralType(USDCMockBytes, fwad("100000000000000000000000000000"), fwad("1"), fray("1"), false);
         await lmcv.updateSpotPrice(USDCMockBytes, fray("1"));
 
         //TOken setup
@@ -82,7 +82,7 @@ describe("Testing LMCV", function () {
 
         await setupUser(addr1, ["4000", "4000", "2000"]);
 
-        debtCeiling = frad("50000");
+        debtCeiling = frad("5000000000000000000000");
         await lmcv.setProtocolDebtCeiling(debtCeiling);
 
         await d2O.rely(d2OJoin.address);
@@ -97,7 +97,7 @@ describe("Testing LMCV", function () {
     });
 
     describe("PSM testing", function () {
-        it("Should properly add collateral, loan, and exit with d2O", async function () {
+        it.only("Should properly add collateral, loan, and exit with d2O", async function () {
             await lmcv.setPSMAddress(psm.address, true);
 
             // console.log(await psm.lmcv());
@@ -115,12 +115,33 @@ describe("Testing LMCV", function () {
 
             expect(await psm.collateralJoin()).to.equal(collateralJoin.address);
             await collateralJoin.rely(psm.address);
+            let total = 0;
 
-            await userPSM.createD2O(addr1.address, [USDCMockBytes],["9990000000000"]); //10 zeroes not 18
+            for (let i = 0; i < 50; i++) {
+                // console.log(i);
+                let amount = Math.random();
+                let amountMult = Math.round(amount*4000000000000);
+                total = total + amountMult;
 
-            expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("999"));
-            expect(await d2O.balanceOf(addr1.address)).to.equal(fwad("999"));
-            expect(await lmcv.totalPSMDebt()).to.equal(fwad("999"));
+                await userPSM.createD2O(addr1.address, [USDCMockBytes],[amountMult]); 
+                if(i%10 == 0){
+                    // console.log(i);
+                    // console.log(await lmcv.lockedCollateral(psm.address, USDCMockBytes));
+                    let proper = fwad("" + (total / 10000000000));
+                    // console.log(proper);
+
+                    let gottem = await lmcv.lockedCollateral(psm.address, USDCMockBytes);
+                    console.log(gottem);
+
+                    expect(gottem).to.equal(proper);
+                }
+              }
+
+            // await userPSM.createD2O(addr1.address, [USDCMockBytes],["9990000000000"]); //10 zeroes not 18
+
+            // expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("999"));
+            // expect(await d2O.balanceOf(addr1.address)).to.equal(fwad("999"));
+            // expect(await lmcv.totalPSMDebt()).to.equal(fwad("999"));
         });
 
         it("Should properly add collateral, loan, and exit with d2O", async function () {
