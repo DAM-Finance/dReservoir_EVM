@@ -21,7 +21,8 @@ task("usdc_mint", "mints USDC for a specified user")
 			await execute("USDC", {from: taskArgs.user, log: true}, "mint", taskArgs.user, amount);
 			break;
 		default:
-			console.log(`Network ${network} not supported for task usdc_mint.`)
+			console.log(`Network ${network} not supported for task usdc_mint.`);
+			return;
 	}
 	
 	console.log("✅ Mint successful.")

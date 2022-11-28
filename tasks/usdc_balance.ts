@@ -18,7 +18,8 @@ task("usdc_balance", "gets the USDC balance for an account")
 				balance = await read("USDC", {from: taskArgs.user}, "balanceOf", taskArgs.user);
 				break;
 			default:
-				console.log(`Network ${network} not supported for task usdc_balance.`)
+				console.log(`Network ${network} not supported for task usdc_balance.`);
+				return;
 		}
 		
 		console.log(`User ${taskArgs.user.substring(0, 10)} USDC balance:`, ethers.utils.formatUnits(balance.toString(), 6));
