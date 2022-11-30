@@ -9,7 +9,7 @@ interface d2OLike {
     function cage(uint256) external;
 }
 
-contract d2OGuardian is AuthAdmin("d2OGuardian") {
+contract d2OGuardian is AuthAdmin("d2OGuardian", msg.sender) {
 
     //HYP, LZ, etc -> address deployed on this chain
     mapping (bytes32 => address) public pipeAddresses;

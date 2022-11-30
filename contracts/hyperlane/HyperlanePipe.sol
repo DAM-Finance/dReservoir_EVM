@@ -16,7 +16,7 @@ interface d2OLike {
  * @author Abacus Works
  * @dev Supply on each chain is not constant but the aggregate supply across all chains is.
  */
-contract HyperlanePipe is Router, AuthAdmin("HyperlanePipe") {
+contract HyperlanePipe is Router, AuthAdmin("HyperlanePipe", msg.sender) {
 
     // Origin chain -> recipient address -> nonce -> amount
     mapping (uint32 => mapping(address => mapping(uint256 => uint256))) failedMessages;
