@@ -14,7 +14,7 @@ interface d2OLike {
     function mintAndDelay(address,uint256) external;
 }
 
-contract LayerZeroPipe is OFTCore, IOFT, AuthAdmin("LayerZeroPipe") {
+contract LayerZeroPipe is OFTCore, IOFT, AuthAdmin("LayerZeroPipe", msg.sender) {
 
     address public immutable d2OContract;
 

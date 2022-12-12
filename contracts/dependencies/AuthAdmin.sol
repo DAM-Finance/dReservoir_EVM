@@ -23,12 +23,12 @@ contract AuthAdmin {
         _;
     }
 
-    constructor(string memory contractName) {
+    constructor(string memory contractName, address deployer) {
         parentContractName = contractName;
         live = 1;
-        admins[msg.sender] = 1;
-        ArchAdmin = msg.sender;
-        emit Rely(msg.sender);
+        admins[deployer] = 1;
+        ArchAdmin = deployer;
+        emit Rely(deployer);
     }
 
     function setArchAdmin(address newArch) external auth {
