@@ -8,6 +8,8 @@ function frad(rad) { return ethers.utils.parseEther(rad).mul("100000000000000000
 
 // Token types.
 let USDCBytes = ethers.utils.formatBytes32String("PSM-USDC")
+let WumboBytes = ethers.utils.formatBytes32String("WMBO")
+let DonkBytes = ethers.utils.formatBytes32String("DONK")
 
 // Hyperlane Addresses
 const goerliConnectionManager = process.env['HYPERLANE_CONNECTION_MANAGER_GOERLI'];
@@ -28,6 +30,8 @@ let psmFactory, psm;
 
 let collatFactory, collat1, collat2;
 let collateralJoinFactory, collatJoin1, collatJoin2;
+
+let ratesUpdaterFactory, ratesUpdater;
 
 
 // LMCV settings.
@@ -51,6 +55,7 @@ async function main(){
     psmFactory                  = await ethers.getContractFactory("PSM");
     collatFactory               = await ethers.getContractFactory("MockTokenFour");
     collateralJoinFactory       = await ethers.getContractFactory("CollateralJoin");
+    ratesUpdaterFactory         = await ethers.getContractFactory("RatesUpdater");
 
     [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners();
 }
@@ -69,6 +74,10 @@ async function attach(){
     psm             = await psmFactory.attach(process.env['PSM_USDC_GOERLI']);
     collat1         = await collatFactory.attach(process.env['WMBO_GOERLI']);
     collat2         = await collatFactory.attach(process.env['DONK_GOERLI']);
+    // collatJoin1     = await collateralJoinFactory.attach(process.env['WUMBOJOIN_GOERLI'])
+    collatJoin2     = await collateralJoinFactory.attach(process.env['DONKJOIN_GOERLI'])
+    ratesUpdater    = await ratesUpdaterFactory.attach(process.env['RATES_UPDATER_GOERLI'])
+    
 
     console.log();
     console.log("Deployer:              ", deployer.address);
@@ -115,20 +124,68 @@ async function deployJoins(){
     // 0xAa4bD76455C5bbb93c8a2c3aa632409758A534d7
 
     console.log("First join");
-    let res = await collateralJoinFactory.deploy(process.env['LMCV_GOERLI'], process.env['LMCVPROXY_GOERLI'], ethers.utils.formatBytes32String("WUMBO"), process.env['WMBO_GOERLI']);
+    let res = await collateralJoinFactory.deploy(process.env['LMCV_GOERLI'], process.env['LMCVPROXY_GOERLI'], ethers.utils.formatBytes32String("WMBO"), process.env['WMBO_GOERLI']);
     console.log(res);
 
 
 
-    console.log("Second join");
-    let res2 = await collateralJoinFactory.deploy(process.env['LMCV_GOERLI'], process.env['LMCVPROXY_GOERLI'], ethers.utils.formatBytes32String("DONK"), process.env['DONK_GOERLI']);
-    console.log(res2);
+    // console.log("Second join");
+    // let res2 = await collateralJoinFactory.deploy(process.env['LMCV_GOERLI'], process.env['LMCVPROXY_GOERLI'], ethers.utils.formatBytes32String("DONK"), process.env['DONK_GOERLI']);
+    // console.log(res2);
 }
+
+async function deployRatesUpdater(){
+    console.log("deploying rates");
+    let res = await ratesUpdaterFactory.deploy(process.env['LMCV_GOERLI']);
+    console.log(res);
+}
+
+async function changeRate(){
+    console.log("deploying change in rate");
+    let res = await ratesUpdater.changeStabilityRate(fray("1.0000000057774228"));
+    console.log(res);
+}
+
+async function giveTokens(){
+    let res = await collat1.mint(fwad("10000"));
+    console.log(res);
+    // console.log(await lmcv.CollateralData(ethers.utils.formatBytes32String("WMBO")));
+}
+
+async function pushLatestRate(){
+    console.log("keeper rate updating");
+    let res = await ratesUpdater.accrueInterest({gasLimit: 60000});
+    console.log(await res.wait());
+}
+
+async function checkRate(){
+    console.log(await lmcv.AccumulatedRate());
+    console.log(await lmcv.CollateralData(ethers.utils.formatBytes32String("WMBO")));
+}
+
+async function addCollateral(){
+    // let res  = await collat1.approve(process.env['WUMBOJOIN_GOERLI'], MAX_INT);
+    // console.log(await res.wait());
+
+    let res2 = await collatJoin1.join(owner.address, fwad("295"));
+    console.log(await res2.wait());
+}
+
+async function createLoan(){
+    // let res  = await lmcv.loan([WumboBytes], [fwad("291")], fwad("3"), owner.address);
+    // console.log(await res.wait());
+
+    console.log(await lmcv.unlockedCollateral(owner.address, ethers.utils.formatBytes32String("WMBO")));
+    // console.log(await lmcv.admins("0x4daeb014BC54e2C8f87b6D17998d358011408dFb"));
+}
+
+
 
 // Attach to exist contracts setup 
 main()
     .then(() => attach())
     .then(() => deployJoins())
+    // .then(() => checkRate())
     .then(() => process.exit(0))
     .catch((error) => {
         console.error(error);
