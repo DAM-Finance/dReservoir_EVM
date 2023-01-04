@@ -29,6 +29,7 @@ contract d2O {
     event Approval(address indexed owner, address indexed spender, uint256 value);
     event Transfer(address indexed from, address indexed to, uint256 value);
     event TransferBlockWait(uint256 blockWait);
+    event TransferBlockUpdate(address indexed user, uint256 blockNumer);
     event LockupTriggerAmount(uint256 amount);
     event Cage(uint256 status);
     
@@ -101,6 +102,11 @@ contract d2O {
     function setTransferBlockWait(uint256 num) external auth {
         transferBlockWait = num;
         emit TransferBlockWait(transferBlockWait);
+    }
+
+    function setTransferBlockRelease(address user, uint256 blockNumber) external auth {
+        transferBlockRelease[user] = blockNumber;
+        emit TransferBlockUpdate(user, blockNumber);
     }
 
     function setLockupTriggerAmount(uint256 amount) external auth {

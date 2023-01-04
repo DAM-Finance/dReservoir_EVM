@@ -97,7 +97,7 @@ describe("Testing LMCV", function () {
     });
 
     describe("PSM testing", function () {
-        it.only("Should properly add collateral, loan, and exit with d2O", async function () {
+        it("Should properly add collateral, loan, and exit with d2O", async function () {
             await lmcv.setPSMAddress(psm.address, true);
 
             // console.log(await psm.lmcv());
@@ -130,10 +130,9 @@ describe("Testing LMCV", function () {
                     let proper = fwad("" + (total / 10000000000));
                     // console.log(proper);
 
-                    let gottem = await lmcv.lockedCollateral(psm.address, USDCMockBytes);
-                    console.log(gottem);
+                    let result = await lmcv.lockedCollateral(psm.address, USDCMockBytes);
 
-                    expect(gottem).to.equal(proper);
+                    expect(result).to.equal(proper);
                 }
               }
 
