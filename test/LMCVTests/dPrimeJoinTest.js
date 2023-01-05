@@ -16,6 +16,7 @@ let userD2O, userD2OJoin;
 let userLMCV;
 let lmcvProxy, lmcvProxyFactory;
 let userTwoLMCV, userTwoD2OJoin;
+let d2OGuardian, d2oGuardianFactory;
 
 const MAX_INT = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 
@@ -49,6 +50,7 @@ describe("d2O Testing", function () {
         liquidatorFactory       = await ethers.getContractFactory("Liquidator");
         auctionHouseFactory     = await ethers.getContractFactory("AuctionHouse");
         lmcvProxyFactory        = await ethers.getContractFactory("LMCVProxy");
+        d2oGuardianFactory      = await ethers.getContractFactory("d2OGuardian");
     });
 
     beforeEach(async function () {
@@ -61,6 +63,7 @@ describe("d2O Testing", function () {
         lmcvProxy = await lmcvProxyFactory.deploy(lmcv.address);
         mockToken = await tokenFactory.deploy("TSTR");
         collateralJoin = await collateralJoinFactory.deploy(lmcv.address, lmcvProxy.address, mockTokenBytes, mockToken.address);
+        d2OGuardian = await d2oGuardianFactory.deploy(d2O.address);
 
         await lmcv.administrate(collateralJoin.address, 1);
         await lmcv.administrate(d2OJoin.address, 1);
@@ -78,6 +81,8 @@ describe("d2O Testing", function () {
         await lmcv.updateSpotPrice(mockTokenBytes, fray("10"));
 
         await d2O.rely(d2OJoin.address);
+        await d2O.rely(d2OGuardian.address);
+        
 
         await setupUser(addr1, "1000");
         await setupUser(addr2, "1000");
@@ -222,6 +227,35 @@ describe("d2O Testing", function () {
             expect(await d2O.balanceOf(addr1.address)).to.equal(fwad("500"));
             expect(await d2O.transferBlockRelease(addr1.address)).to.equal(0);
 
+            await userD2O.transfer(addr2.address, fwad("100"));
+            expect(await d2O.balanceOf(addr2.address)).to.equal(fwad("100"));
+
+            await user2D2O.transferFrom(addr1.address, addr2.address, fwad("100"));
+            expect(await d2O.balanceOf(addr2.address)).to.equal(fwad("200"));
+        });
+
+        it("d2O Guardian should prevent user from being able to transfer and admin can reset", async function () {
+            userD2O = d2O.connect(addr1);
+            let user2D2O = d2O.connect(addr2);
+
+            await userD2O.approve(addr2.address, MAX_INT);
+
+            await d2O.mintAndDelay(addr1.address, fwad("500"));
+            expect(await d2O.balanceOf(addr1.address)).to.equal(fwad("500"));
+            expect(await d2O.transferBlockRelease(addr1.address)).to.equal(0);
+
+            //Guardian blocks
+            await d2OGuardian.cageUser(addr1.address);
+
+            await expect(userD2O.transfer(addr2.address, fwad("100"))).to.be.revertedWith("d2O/transfer too soon after cross-chain mint");
+            expect(await d2O.transferBlockRelease(addr1.address)).to.equal(MAX_INT);
+            
+
+            //Admin resets in case of incorrect false mint
+            await d2O.setTransferBlockRelease(addr1.address, 0);
+
+
+            //Transfers working again
             await userD2O.transfer(addr2.address, fwad("100"));
             expect(await d2O.balanceOf(addr2.address)).to.equal(fwad("100"));
 
