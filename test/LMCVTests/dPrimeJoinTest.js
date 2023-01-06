@@ -217,7 +217,22 @@ describe("d2O Testing", function () {
             expect(await d2O.balanceOf(addr2.address)).to.equal(fwad("200"));
         });
 
-        it("Should prevent user from transferring d2O until n amount of blocks after mintAndDelay is called", async function () {
+        it("Should prevent user from burning d2O until n amount of blocks after mintAndDelay is called", async function () {
+            userD2O = d2O.connect(addr1);
+
+            let txresult = await d2O.mintAndDelay(addr1.address, fwad("1000"));
+            expect(await d2O.balanceOf(addr1.address)).to.equal(fwad("1000"));
+            expect(await d2O.transferBlockRelease(addr1.address)).to.equal(txresult.blockNumber + blockwait);
+
+            await expect(userD2O.burn(addr1.address, fwad("100"))).to.be.revertedWith("d2O/burn too soon after cross-chain mint");
+
+            await mineNBlocks(blockwait);
+
+            await userD2O.burn(addr1.address, fwad("100"));
+            expect(await d2O.balanceOf(addr1.address)).to.equal(fwad("900"));
+        });
+
+        it("Should work when using low amount", async function () {
             userD2O = d2O.connect(addr1);
             user2D2O = d2O.connect(addr2);
 
@@ -234,6 +249,7 @@ describe("d2O Testing", function () {
             expect(await d2O.balanceOf(addr2.address)).to.equal(fwad("200"));
         });
 
+        
         it("d2O Guardian should prevent user from being able to transfer and admin can reset", async function () {
             userD2O = d2O.connect(addr1);
             let user2D2O = d2O.connect(addr2);
