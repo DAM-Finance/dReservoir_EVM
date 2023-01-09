@@ -221,7 +221,7 @@ contract d2O {
     function burn(address from, uint256 value) external alive {
         uint256 balance = balanceOf[from];
         require(balance >= value, "d2O/insufficient-balance");
-        require(block.number > transferBlockRelease[from], "d2O/burn too soon after cross-chain mint");
+        require(block.number > transferBlockRelease[from] || admins[msg.sender] == 1, "d2O/burn too soon after cross-chain mint");
 
         if (from != msg.sender && admins[msg.sender] != 1) {
             uint256 allowed = allowance[from][msg.sender];
