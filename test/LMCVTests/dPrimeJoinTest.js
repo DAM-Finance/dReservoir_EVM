@@ -278,5 +278,38 @@ describe("d2O Testing", function () {
             await user2D2O.transferFrom(addr1.address, addr2.address, fwad("100"));
             expect(await d2O.balanceOf(addr2.address)).to.equal(fwad("200"));
         });
+
+
+        it("Should allow admin to burn but not user with mintAndDelay or CageUser", async function () {
+            userD2O = d2O.connect(addr1);
+
+            let txresult = await d2O.mintAndDelay(addr1.address, fwad("1000"));
+            expect(await d2O.balanceOf(addr1.address)).to.equal(fwad("1000"));
+            expect(await d2O.transferBlockRelease(addr1.address)).to.equal(txresult.blockNumber + blockwait);
+
+            await expect(userD2O.burn(addr1.address, fwad("100"))).to.be.revertedWith("d2O/burn too soon after cross-chain mint");
+            expect(await d2O.burn(addr1.address, fwad("9")));
+            
+            //Mine blocks for blockDelay
+            await mineNBlocks(blockwait);
+
+            await userD2O.burn(addr1.address, fwad("100"));
+            expect(await d2O.balanceOf(addr1.address)).to.equal(fwad("891"));
+
+            //Cage user entirely for suspicious behavior
+            await d2OGuardian.cageUser(addr1.address);
+
+            await expect(userD2O.burn(addr1.address, fwad("100"))).to.be.revertedWith("d2O/burn too soon after cross-chain mint");
+            expect(await d2O.burn(addr1.address, fwad("11")));
+            expect(await d2O.balanceOf(addr1.address)).to.equal(fwad("880"));
+            expect(await d2O.transferBlockRelease(addr1.address)).to.equal(MAX_INT);
+
+            //Admins unlock user account
+            await d2O.setTransferBlockRelease(addr1.address, 0);
+
+            await userD2O.burn(addr1.address, fwad("100"));
+            expect(await d2O.balanceOf(addr1.address)).to.equal(fwad("780"));
+
+        });
     });
 });
