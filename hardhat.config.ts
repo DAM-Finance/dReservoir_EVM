@@ -58,17 +58,17 @@ const config: HardhatUserConfig = {
 			url: node_url('moonbase'),
 			accounts: accounts('moonbase'),
 			deploy: ['deploy/moonbase']
-		}
-		// ethereum: {
-		// 	url: node_url('ethereum'),
-		// 	accounts: accounts('ethereum'),
-		// 	deploy: ['deploy/mainnet']
-		// },
-		// moonbeam: {
-		// 	url: node_url('moonbeam'),
-		// 	accounts: accounts('moonbeam'),
-		// 	deploy: ['deploy/mainnet']
-		// },
+		},
+		ethereum: {
+			url: node_url('ethereum'),
+			accounts: accounts('ethereum'),
+			deploy: ['deploy/ethereum']
+		},
+		moonbeam: {
+			url: node_url('moonbeam'),
+			accounts: accounts('moonbeam'),
+			deploy: ['deploy/moonbeam']
+		},
 
 	}),
   paths: {
