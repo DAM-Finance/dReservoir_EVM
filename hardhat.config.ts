@@ -16,6 +16,8 @@ import './tasks/usdc_balance.ts'
 import './tasks/eth_balance.ts'
 import './tasks/setup_contracts_goerli.ts'
 import './tasks/setup_contracts_moonbase.ts'
+import './tasks/setup_contracts_ethereum.ts'
+import './tasks/setup_contracts_moonbeam.ts'
 import './tasks/swap_archadmin.ts'
 
 const config: HardhatUserConfig = {
@@ -58,17 +60,17 @@ const config: HardhatUserConfig = {
 			url: node_url('moonbase'),
 			accounts: accounts('moonbase'),
 			deploy: ['deploy/moonbase']
-		}
-		// ethereum: {
-		// 	url: node_url('ethereum'),
-		// 	accounts: accounts('ethereum'),
-		// 	deploy: ['deploy/mainnet']
-		// },
-		// moonbeam: {
-		// 	url: node_url('moonbeam'),
-		// 	accounts: accounts('moonbeam'),
-		// 	deploy: ['deploy/mainnet']
-		// },
+		},
+		ethereum: {
+			url: node_url('ethereum'),
+			accounts: accounts('ethereum'),
+			deploy: ['deploy/ethereum']
+		},
+		moonbeam: {
+			url: node_url('moonbeam'),
+			accounts: accounts('moonbeam'),
+			deploy: ['deploy/moonbeam']
+		},
 
 	}),
   paths: {
