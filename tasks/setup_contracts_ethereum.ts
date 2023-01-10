@@ -64,77 +64,77 @@ task("setup_contracts_ethereum", "sets up contracts ready for use on Goerli")
 	// Setup dPrime and connectors
 	// ---------------------------
 
-	// await transaction(
-	// 	"d2O", 
-	// 	"rely", 
-	// 	deployedContracts["d2OJoin"].address
-	// );
+	await transaction(
+		"d2O", 
+		"rely", 
+		deployedContracts["d2OJoin"].address
+	);
 
-	// await transaction(
-	// 	"d2O",
-	// 	"rely",
-	// 	deployedContracts["LayerZeroPipe"].address
-	// );
+	await transaction(
+		"d2O",
+		"rely",
+		deployedContracts["LayerZeroPipe"].address
+	);
 
 	// ---------------
 	// Setup LMCVProxy
 	// ---------------
 
-	// await transaction(
-	// 	"LMCVProxy",
-	// 	"setD2OJoin",
-	// 	deployedContracts["d2OJoin"].address
-	// );
+	await transaction(
+		"LMCVProxy",
+		"setD2OJoin",
+		deployedContracts["d2OJoin"].address
+	);
 
-	// await transaction(
-	// 	"LMCVProxy",
-	// 	"setD2O",
-	// 	deployedContracts["d2O"].address
-	// );
+	await transaction(
+		"LMCVProxy",
+		"setD2O",
+		deployedContracts["d2O"].address
+	);
 
 	// ----------
 	// Setup LMCV
 	// ----------
 
-	// await transaction(
-	// 	"LMCV",
-	// 	"administrate",
-	// 	deployedContracts["d2OJoin"].address, 1
-	// );
+	await transaction(
+		"LMCV",
+		"administrate",
+		deployedContracts["d2OJoin"].address, 1
+	);
 
-	// await transaction(
-	// 	"LMCV",
-	// 	"administrate",
-	// 	deployedContracts["usdcJoin"].address, 1
-	// );
+	await transaction(
+		"LMCV",
+		"administrate",
+		deployedContracts["usdcJoin"].address, 1
+	);
 
-	// await transaction(
-	// 	"LMCV",
-	// 	"setProtocolDebtCeiling",
-	// 	frad("1000000000")
-	// );
+	await transaction(
+		"LMCV",
+		"setProtocolDebtCeiling",
+		frad("1000000000")
+	);
 	
-	// await transaction(
-	// 	"LMCV",
-	// 	"editAcceptedCollateralType",
-	// 	usdcPsmBytes, fwad("1000000000"), fwad("1"), fray("1"), false
-	// );
+	await transaction(
+		"LMCV",
+		"editAcceptedCollateralType",
+		usdcPsmBytes, fwad("1000000000"), fwad("1"), fray("1"), false
+	);
 	
-	// await transaction(
-	// 	"LMCV",
-	// 	"updateSpotPrice",
-	// 	usdcPsmBytes, fray("1")
-	// );
+	await transaction(
+		"LMCV",
+		"updateSpotPrice",
+		usdcPsmBytes, fray("1")
+	);
 
 	// ---------
 	// Setup PSM
 	// ---------
 
-	// await transaction(
-	// 	"LMCV",
-	// 	"setPSMAddress",
-	// 	deployedContracts["PSM"].address, true
-	// );
+	await transaction(
+		"LMCV",
+		"setPSMAddress",
+		deployedContracts["PSM"].address, true
+	);
 
 	await transaction(
 		"usdcJoin",
@@ -146,10 +146,10 @@ task("setup_contracts_ethereum", "sets up contracts ready for use on Goerli")
 	// Set up connectors
 	// -----------------
 
-	// await transaction(
-	// 	"LayerZeroPipe",
-	// 	"setTrustedRemoteAddress",
-	// 	lzMoonbeamChainId, lzMoonbeamPipeAddress
-	// );
+	await transaction(
+		"LayerZeroPipe",
+		"setTrustedRemoteAddress",
+		lzMoonbeamChainId, lzMoonbeamPipeAddress
+	);
 });
 
