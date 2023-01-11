@@ -18,7 +18,9 @@ import './tasks/setup_contracts_goerli.ts'
 import './tasks/setup_contracts_moonbase.ts'
 import './tasks/setup_contracts_ethereum.ts'
 import './tasks/setup_contracts_moonbeam.ts'
-import './tasks/swap_archadmin.ts'
+import './tasks/_swap_archadmin.ts'
+import './tasks/swap_archadmin_ethereum.ts'
+import './tasks/swap_archadmin_moonbeam.ts'
 
 const config: HardhatUserConfig = {
 	solidity: {
