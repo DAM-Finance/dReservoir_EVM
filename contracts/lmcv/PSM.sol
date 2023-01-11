@@ -88,7 +88,7 @@ contract PSM {
     d2OJoinLike         immutable public    d2OJoin;
     
     bytes32             immutable public    collateralName;
-    address             immutable public    treasury;
+    address                       public    treasury;
 
     uint256             immutable internal  to18ConversionFactor;
 
@@ -161,6 +161,12 @@ contract PSM {
         repayFee = repayRay;
         emit MintRepayFee(mintRay, repayRay);
     }
+
+    function setTreasury(address _treasury) external auth {
+        require(_treasury != address(0x0), "PSM/Can't be zero address");
+        treasury = _treasury;
+    }
+
 
     function setLive(uint256 status) external auth {
         live = status;

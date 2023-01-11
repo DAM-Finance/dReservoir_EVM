@@ -358,6 +358,13 @@ describe("Testing LMCV", function () {
             expect(await collatJoinTwo.ArchAdmin()).to.equal(addr1.address);
         });
 
+        it.only("Admin can change treasury and regular user cannot", async function () {
+            await psm.setTreasury(addr3.address);
+            expect(await psm.treasury()).to.be.equal(addr3.address);
+
+            await expect(userPSM.setTreasury(addr1.address)).to.be.reverted;
+        });
+
     });
 });
 
