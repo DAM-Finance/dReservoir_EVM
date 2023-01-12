@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.7;
 
-import "hardhat/console.sol";
-
 interface ERC20Like {
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
     function allowance(address owner, address spender) external view returns (uint256);

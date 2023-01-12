@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.7;
 
-import "hardhat/console.sol";
-
 interface d2OJoinLike {
     function join(address user,uint256 wad) external;
     function exit(address user,uint256 wad) external;

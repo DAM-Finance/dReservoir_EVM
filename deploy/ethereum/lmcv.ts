@@ -5,7 +5,7 @@ import { ethers } from 'ethers';
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 	const {deployments, getNamedAccounts} = hre;
 	const {deploy} = deployments;
-	const {deployer, treasury, user} = await getNamedAccounts();
+	const {deployer, user} = await getNamedAccounts();
 
 	// LayerZero End-Point address.
 	const layerZeroEndpointEthereumAddress: string | undefined = process.env['LAYER_ZERO_ENDPOINT_ETHEREUM'];
@@ -24,6 +24,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 	const usdcAddressEthereum: string | undefined = process.env['USDC_ADDRESS_ETHEREUM'];
 	if (!usdcAddressEthereum) {
 		throw new Error("Please set USDC_ADDRESS_ETHEREUM in a .env file");
+	}
+
+	// Treasury address.
+	const treasury: string | undefined = process.env['TREASURY_ETHEREUM'];
+	if (!treasury) {
+		throw new Error("Please set TREASURY_ETHEREUM in a .env file");
 	}
 
 	// ----
@@ -97,7 +103,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 	});
 
 	const usdcJoinAddress = usdcJoin.receipt?.contractAddress;
-
 
 	// USDC PSM
 
