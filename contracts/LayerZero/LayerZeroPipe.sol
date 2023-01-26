@@ -50,7 +50,7 @@ contract LayerZeroPipe is OFTCore, IOFT, AuthAdmin("LayerZeroPipe", msg.sender) 
     }
 
     function setTeleportFee(uint256 _teleportFee) external auth {
-        require(_teleportFee < RAY, "PSM/Fees must be less than 100%");
+        require(_teleportFee < RAY, "d2OConnectorLZ/Fees must be less than 100%");
         teleportFee = _teleportFee;
         emit SetTeleportFee(teleportFee);
     } 
