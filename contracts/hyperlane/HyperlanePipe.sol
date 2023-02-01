@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.7;
 
-import {Router} from "@hyperlane-xyz/app/contracts/Router.sol";
+import {Router} from "@hyperlane-xyz/core/contracts/Router.sol";
+import {TypeCasts} from "@hyperlane-xyz/core/contracts/libs/TypeCasts.sol";
+import {Message} from "./Message.sol";
 import "../dependencies/AuthAdmin.sol";
 
 interface d2OLike {
@@ -17,9 +19,16 @@ interface d2OLike {
  * @dev Supply on each chain is not constant but the aggregate supply across all chains is.
  */
 contract HyperlanePipe is Router, AuthAdmin("HyperlanePipe", msg.sender) {
+    using TypeCasts for bytes32;
+    using Message for bytes;
+
+    /**
+     * @notice Gas amount to use for destination chain processing
+     */
+    uint256 internal gasAmount;
 
     // Origin chain -> recipient address -> nonce -> amount
-    mapping (uint32 => mapping(address => mapping(uint256 => uint256))) failedMessages;
+    mapping (uint32 => mapping(bytes32 => mapping(uint256 => uint256))) failedMessages;
     address public d2OContract;
     uint256 public nonce;
 
@@ -31,7 +40,7 @@ contract HyperlanePipe is Router, AuthAdmin("HyperlanePipe", msg.sender) {
      */
     event SentTransferRemote(
         uint32 indexed destination,
-        address indexed recipient,
+        bytes32 indexed recipient,
         uint256 amount
     );
 
@@ -43,7 +52,7 @@ contract HyperlanePipe is Router, AuthAdmin("HyperlanePipe", msg.sender) {
      */
     event ReceivedTransferRemote(
         uint32 indexed origin,
-        address indexed recipient,
+        bytes32 indexed recipient,
         uint256 amount
     );
 
@@ -56,33 +65,36 @@ contract HyperlanePipe is Router, AuthAdmin("HyperlanePipe", msg.sender) {
      */
     event FailedTransferRemote(
         uint32 indexed origin,
-        address indexed recipient,
+        bytes32 indexed recipient,
         uint256 nonce,
         uint256 amount
     );
 
     /**
      * @notice Initializes the Hyperlane router, ERC20 metadata, and mints initial supply to deployer.
-     * @param _abacusConnectionManager The address of the connection manager contract.
+     * @param _mailbox The address of the mailbox contract.
      * @param _interchainGasPaymaster The address of the interchain gas paymaster contract.
+     * @param _d2OContract d2o contract address
+     * @param _gasAmount default gas amount to send to destination chain
      */
     function initialize(
-        address _abacusConnectionManager,
+        address _mailbox,
         address _interchainGasPaymaster,
-        address _d2OContract
-    ) external initializer auth {
-        require(_abacusConnectionManager != address(0) 
+        address _d2OContract, 
+        uint256 _gasAmount
+    ) external initializer {
+        require(_mailbox != address(0) 
         && _interchainGasPaymaster != address(0) 
         && _d2OContract != address(0), 
         "d2OConnectorHyperlane/invalid address");
 
-        // Set ownable to sender
         _transferOwnership(msg.sender);
-        // Set ACM contract address
-        _setAbacusConnectionManager(_abacusConnectionManager);
-        // Set IGP contract address
-        _setInterchainGasPaymaster(_interchainGasPaymaster);
+        __HyperlaneConnectionClient_initialize(
+            _mailbox,
+            _interchainGasPaymaster
+        );
 
+        gasAmount = _gasAmount;
         d2OContract = _d2OContract;
     }
 
@@ -97,16 +109,18 @@ contract HyperlanePipe is Router, AuthAdmin("HyperlanePipe", msg.sender) {
      */
     function transferRemote(
         uint32 _destination,
-        address _recipient,
+        bytes32 _recipient,
         uint256 _amount
     ) external payable alive {
         require(_amount > 0, "d2OConnectorHyperlane/Amount cannot be zero");
-        require(_recipient != address(0), "d2OConnectorHyperlane/Recipient address cannot be zero");
+        require(_recipient != bytes32(""), "d2OConnectorHyperlane/Recipient address cannot be blank");
         d2OLike(d2OContract).burn(msg.sender, _amount);
         _dispatchWithGas(
             _destination,
-            abi.encode(_recipient, _amount),
-            msg.value
+            Message.format(_recipient, _amount, bytes("")),
+            gasAmount,
+            msg.value,
+            msg.sender
         );
         emit SentTransferRemote(_destination, _recipient, _amount);
     }
@@ -123,12 +137,10 @@ contract HyperlanePipe is Router, AuthAdmin("HyperlanePipe", msg.sender) {
         bytes calldata _message
     ) internal override alive {
 
-        (address recipient, uint256 amount) = abi.decode(
-            _message,
-            (address, uint256)
-        );
+        bytes32 recipient = _message.recipient();
+        uint256 amount = _message.amount();
 
-        try d2OLike(d2OContract).mintAndDelay(recipient, amount) {
+        try d2OLike(d2OContract).mintAndDelay(recipient.bytes32ToAddress(), amount) {
             emit ReceivedTransferRemote(_origin, recipient, amount);
         } catch {
             failedMessages[_origin][recipient][nonce] = amount;
@@ -143,11 +155,11 @@ contract HyperlanePipe is Router, AuthAdmin("HyperlanePipe", msg.sender) {
      * @param _origin The identifier of the origin chain.
      * @param _recipient The address of the recipient on receiving chain.
      */
-    function retry(uint32 _origin, address _recipient, uint256 _nonce) external alive {
+    function retry(uint32 _origin, bytes32 _recipient, uint256 _nonce) external alive {
         uint256 amount = failedMessages[_origin][_recipient][_nonce];
         require(amount > 0, "d2OConnectorHyperlane/Amount must be greater than 0 to retry");
 
-        try d2OLike(d2OContract).mintAndDelay(_recipient, amount) {
+        try d2OLike(d2OContract).mintAndDelay(_recipient.bytes32ToAddress(), amount) {
             delete failedMessages[_origin][_recipient][_nonce];
             emit ReceivedTransferRemote(_origin, _recipient, amount);
         } catch {
