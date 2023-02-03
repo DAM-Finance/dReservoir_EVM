@@ -26,13 +26,14 @@ contract LayerZeroPipe is OFTCore, IOFT, AuthAdmin("LayerZeroPipe", msg.sender) 
     event BurnLayerZero(address indexed from, uint256 amount, uint16 _dstChainId);
     event SetTeleportFee(uint256 teleportFee);
 
-    constructor(address _lzEndpoint, address _d2OContract) OFTCore(_lzEndpoint) {
-        require(_lzEndpoint != address(0) && _d2OContract != address(0), "d2OConnectorLZ/invalid address");
+    constructor(address _lzEndpoint, address _d2OContract, address _treasury) OFTCore(_lzEndpoint) {
+        require(_lzEndpoint != address(0) && _d2OContract != address(0) && _treasury != address(0), "d2OConnectorLZ/invalid address");
         d2OContract = _d2OContract;
+        treasury = _treasury;
     }
 
     //
-    // -- Maths ---
+    // --- Maths ---
     //
     
     uint256 constant RAY = 10 ** 27;

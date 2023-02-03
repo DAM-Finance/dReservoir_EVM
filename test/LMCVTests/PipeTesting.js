@@ -45,22 +45,20 @@ describe("Testing LMCV", function () {
 
         srcd2o          = await d2oFactory.deploy();
         srcLZEndpoint   = await lzMockEndpointFactory.deploy("1");
-        srcLZPipe       = await LZPipeFactory.deploy(srcLZEndpoint.address, srcd2o.address);
+        srcLZPipe       = await LZPipeFactory.deploy(srcLZEndpoint.address, srcd2o.address, owner.address);
         
         dstd2o          = await d2oFactory.deploy();
         dstLZEndpoint   = await lzMockEndpointFactory.deploy("2");
-        dstLZPipe       = await LZPipeFactory.deploy(dstLZEndpoint.address, dstd2o.address);
+        dstLZPipe       = await LZPipeFactory.deploy(dstLZEndpoint.address, dstd2o.address, owner.address);
 
         await srcd2o.rely(srcLZPipe.address);
         await dstd2o.rely(dstLZPipe.address);
 
-        await srcLZPipe.setTreasury(owner.address);
         await srcLZPipe.setTeleportFee(fray("0.003"));
         await srcLZPipe.setTrustedRemoteAddressAuth("2", dstLZPipe.address);
         await srcLZEndpoint.setDestLzEndpoint(dstLZPipe.address, dstLZEndpoint.address);
         
 
-        await dstLZPipe.setTreasury(owner.address);
         await dstLZPipe.setTeleportFee(fray("0.003"));
         await dstLZPipe.setTrustedRemoteAddressAuth("1", srcLZPipe.address);
         await dstLZEndpoint.setDestLzEndpoint(srcLZPipe.address, srcLZEndpoint.address);

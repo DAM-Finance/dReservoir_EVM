@@ -11,6 +11,7 @@ interface d2OLike {
     function totalSupply() external view returns (uint256 supply);
     function burn(address,uint256) external;
     function mintAndDelay(address,uint256) external;
+    function mint(address,uint256) external;
 }
 
 /**
@@ -29,46 +30,16 @@ contract HyperlanePipe is Router, AuthAdmin("HyperlanePipe", msg.sender) {
 
     // Origin chain -> recipient address -> nonce -> amount
     mapping (uint32 => mapping(bytes32 => mapping(uint256 => uint256))) failedMessages;
+
     address public d2OContract;
+    address public treasury;
     uint256 public nonce;
+    uint256 public teleportFee; // [ray]
 
-    /**
-     * @dev Emitted on `transferRemote` when a transfer message is dispatched.
-     * @param destination The identifier of the destination chain.
-     * @param recipient The address of the recipient on the destination chain.
-     * @param amount The amount of tokens burnt on the origin chain.
-     */
-    event SentTransferRemote(
-        uint32 indexed destination,
-        bytes32 indexed recipient,
-        uint256 amount
-    );
-
-    /**
-     * @dev Emitted on `_handle` when a transfer message is processed.
-     * @param origin The identifier of the origin chain.
-     * @param recipient The address of the recipient on the destination chain.
-     * @param amount The amount of tokens minted on the destination chain.
-     */
-    event ReceivedTransferRemote(
-        uint32 indexed origin,
-        bytes32 indexed recipient,
-        uint256 amount
-    );
-
-    /**
-     * @dev Emitted on `_handle` when a transfer message has failed.
-     * @param origin The identifier of the origin chain.
-     * @param recipient The address of the recipient on the destination chain.
-     * @param nonce The nonce of the message to avoid overwrites
-     * @param amount The amount of tokens to be minted on the destination chain.
-     */
-    event FailedTransferRemote(
-        uint32 indexed origin,
-        bytes32 indexed recipient,
-        uint256 nonce,
-        uint256 amount
-    );
+    event FailedTransferRemote(uint32 indexed origin, bytes32 indexed recipient, uint256 nonce, uint256 amount);
+    event SentTransferRemote(uint32 indexed destination, bytes32 indexed recipient, uint256 amount);
+    event ReceivedTransferRemote(uint32 indexed origin, bytes32 indexed recipient, uint256 amout);
+    event SetTeleportFee(uint256 teleportFee);
 
     /**
      * @notice Initializes the Hyperlane router, ERC20 metadata, and mints initial supply to deployer.
@@ -81,7 +52,8 @@ contract HyperlanePipe is Router, AuthAdmin("HyperlanePipe", msg.sender) {
         address _mailbox,
         address _interchainGasPaymaster,
         address _d2OContract, 
-        uint256 _gasAmount
+        uint256 _gasAmount,
+        address _treasury
     ) external initializer {
         require(_mailbox != address(0) 
         && _interchainGasPaymaster != address(0) 
@@ -96,9 +68,31 @@ contract HyperlanePipe is Router, AuthAdmin("HyperlanePipe", msg.sender) {
 
         gasAmount = _gasAmount;
         d2OContract = _d2OContract;
+        treasury = _treasury;
     }
 
-    
+    //
+    // --- Maths ---
+    //
+    uint256 constant RAY = 10 ** 27;
+    // Can only be used sensibly with the following combination of units:
+    // - `_wadmul(wad, ray) -> wad`
+    function _wadmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        z = x * y;
+        require(y == 0 || z / y == x);
+        z = z / RAY;
+    }
+
+    function setTreasury(address _treasury) external auth {
+        require(_treasury != address(0x0), "d2OConnectorLZ/Can't be zero address");
+        treasury = _treasury;
+    }
+
+    function setTeleportFee(uint256 _teleportFee) external auth {
+        require(_teleportFee < RAY, "d2OConnectorLZ/Fees must be less than 100%");
+        teleportFee = _teleportFee;
+        emit SetTeleportFee(teleportFee);
+    }
 
     /**
      * @notice Transfers `_amount` of tokens from `msg.sender` to `_recipient` on the `_destination` chain.
@@ -139,9 +133,12 @@ contract HyperlanePipe is Router, AuthAdmin("HyperlanePipe", msg.sender) {
         bytes calldata _message
     ) internal override alive {
 
-        bytes32 recipient = _message.recipient();
-        uint256 amount = _message.amount();
+        bytes32 recipient   = _message.recipient();
+        uint256 amount      = _message.amount();
+        uint256 feeAmount   = _wadmul(amount, teleportFee); // wadmul(wad * ray) = wad
+        amount             -= feeAmount;
 
+        d2OLike(d2OContract).mint(treasury, feeAmount);
         try d2OLike(d2OContract).mintAndDelay(recipient.bytes32ToAddress(), amount) {
             emit ReceivedTransferRemote(_origin, recipient, amount);
         } catch {
