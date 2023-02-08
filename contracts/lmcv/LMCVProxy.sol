@@ -14,23 +14,23 @@ interface CollateralJoinLike {
     function proxyExit(address user,uint256 wad) external;
 }
 
-interface d2OJoinLike {
+interface d2oJoinLike {
     function join(address user,uint256 wad) external;
     function proxyExit(address user,uint256 wad) external;
 }
 
 interface LMCVLike {
-    function d2O(address user) external returns (uint256);
+    function d2o(address user) external returns (uint256);
     function loan(
         bytes32[] calldata collats,           
         uint256[] calldata collateralChange,  // [wad]
-        uint256 d2OChange,               // [wad]
+        uint256 d2oChange,               // [wad]
         address user
     ) external;
     function repay(
         bytes32[] calldata collats, 
         uint256[] calldata collateralChange, 
-        uint256 d2OChange,
+        uint256 d2oChange,
         address user
     ) external;
 }
@@ -44,14 +44,14 @@ contract LMCVProxy {
 
     uint256 private constant RAY = 10 ** 27;
     address public lmcv;
-    address public d2OJoin;
-    address public d2O;
+    address public d2oJoin;
+    address public d2o;
     uint256 public live;
 
     // --- Events ---
     event EditCollateral(bytes32 indexed name, address collateralJoin, address indexed collateralContract);
-    event SetD2OJoin(address indexed d2OJoin);
-    event SetD2O(address indexed d2O);
+    event SetD2oJoin(address indexed d2oJoin);
+    event SetD2o(address indexed d2o);
     event SetLMCV(address indexed lmcv);
     event Cage(uint256 indexed status);
     event Rely(address indexed usr);
@@ -83,16 +83,16 @@ contract LMCVProxy {
         emit SetLMCV(lmcv);
     }
 
-    function setD2OJoin(address _d2OJoin) external auth {
-        require(_d2OJoin != address(0x0), "LMCVProxy/Can't be zero address");
-        d2OJoin = _d2OJoin;
-        emit SetD2OJoin(d2OJoin);
+    function setD2oJoin(address _d2oJoin) external auth {
+        require(_d2oJoin != address(0x0), "LMCVProxy/Can't be zero address");
+        d2oJoin = _d2oJoin;
+        emit SetD2oJoin(d2oJoin);
     }
 
-    function setD2O(address _d2O) external auth {
-        require(_d2O != address(0x0), "LMCVProxy/Can't be zero address");
-        d2O = _d2O;
-        emit SetD2O(d2O);
+    function setD2o(address _d2o) external auth {
+        require(_d2o != address(0x0), "LMCVProxy/Can't be zero address");
+        d2o = _d2o;
+        emit SetD2o(d2o);
     }
 
     // --- Administration ---
@@ -134,14 +134,14 @@ contract LMCVProxy {
             CollateralJoinLike(collateralJoins[collaterals[i]]).join(msg.sender, amounts[i]);
         }
         LMCVLike(lmcv).loan(collaterals, amounts, wad, msg.sender);
-        d2OJoinLike(d2OJoin).proxyExit(msg.sender, (LMCVLike(lmcv).d2O(msg.sender) / RAY));
+        d2oJoinLike(d2oJoin).proxyExit(msg.sender, (LMCVLike(lmcv).d2o(msg.sender) / RAY));
     }
 
     function repayLoan(bytes32[] calldata collaterals, uint256[] calldata amounts, uint256 wad) external alive {
         require(collaterals.length == amounts.length, "LMCVProxy/Not the same length");
 
-        require(ERC20Like(d2O).transferFrom(msg.sender, address(this), wad), "LMCVProxy/d2O transfer failed");
-        d2OJoinLike(d2OJoin).join(msg.sender, wad);
+        require(ERC20Like(d2o).transferFrom(msg.sender, address(this), wad), "LMCVProxy/d2o transfer failed");
+        d2oJoinLike(d2oJoin).join(msg.sender, wad);
         LMCVLike(lmcv).repay(collaterals, amounts, wad, msg.sender);
 
         for(uint256 i = 0; i < collaterals.length; i++){

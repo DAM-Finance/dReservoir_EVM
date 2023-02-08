@@ -4,8 +4,8 @@ const {ethers} = require("hardhat");
 
 
 let owner, addr1, addr2, addr3, addrs;
-let d2OFactory, d2O;
-let d2OJoinFactory, d2OJoin;
+let d2oFactory, d2o;
+let d2oJoinFactory, d2oJoin;
 let LMCVFactory, lmcv;
 let tokenFactory, mockToken, mockTokenTwo, mockTokenThree;
 let collateralJoinFactory, collateralJoin;
@@ -46,10 +46,10 @@ async function setupUser(addr, amounts){
 describe("Testing LMCVProxy", function () {
 
     before(async function () {
-        d2OFactory = await ethers.getContractFactory("d2O");
+        d2oFactory = await ethers.getContractFactory("d2o");
         LMCVFactory = await ethers.getContractFactory("LMCV");
-        d2OJoinFactory = await ethers.getContractFactory("d2OJoin");
-        tokenFactory = await ethers.getContractFactory("TestERC20TWO");
+        d2oJoinFactory = await ethers.getContractFactory("d2oJoin");
+        tokenFactory = await ethers.getContractFactory("TestERC20");
         collateralJoinFactory = await ethers.getContractFactory("CollateralJoin");
         lmcvProxyFactory = await ethers.getContractFactory("LMCVProxy");
     });
@@ -58,10 +58,10 @@ describe("Testing LMCVProxy", function () {
         [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners();
 
        
-        d2O = await d2OFactory.deploy();
+        d2o = await d2oFactory.deploy();
         lmcv = await LMCVFactory.deploy();
         lmcvProxy = await lmcvProxyFactory.deploy(lmcv.address);
-        d2OJoin = await d2OJoinFactory.deploy(lmcv.address, d2O.address, lmcvProxy.address);
+        d2oJoin = await d2oJoinFactory.deploy(lmcv.address, d2o.address, lmcvProxy.address);
 
         mockToken = await tokenFactory.deploy("Tester", "TSTR");
         collateralJoin = await collateralJoinFactory.deploy(lmcv.address, lmcvProxy.address, mockTokenBytes, mockToken.address);
@@ -76,8 +76,8 @@ describe("Testing LMCVProxy", function () {
         await lmcv.administrate(collateralJoin.address, 1);
         await lmcv.administrate(collatJoinTwo.address, 1);
         await lmcv.administrate(collatJoinThree.address, 1);
-        await lmcv.administrate(d2OJoin.address, 1);
-        await d2O.rely(d2OJoin.address);
+        await lmcv.administrate(d2oJoin.address, 1);
+        await d2o.rely(d2oJoin.address);
 
         debtCeiling = frad("50000");
         await lmcv.setProtocolDebtCeiling(debtCeiling);
@@ -91,8 +91,8 @@ describe("Testing LMCVProxy", function () {
         await lmcv.updateSpotPrice(mockToken2Bytes, fray("20"));
         await lmcv.updateSpotPrice(mockToken3Bytes, fray("10"));
 
-        await lmcvProxy.setD2OJoin(d2OJoin.address);
-        await lmcvProxy.setD2O(d2O.address);
+        await lmcvProxy.setD2oJoin(d2oJoin.address);
+        await lmcvProxy.setD2o(d2o.address);
 
         userLMCV = lmcv.connect(addr1);
         userTwoLMCV = lmcv.connect(addr2);
@@ -109,15 +109,15 @@ describe("Testing LMCVProxy", function () {
             userLMCVProxy = lmcvProxy.connect(addr1);
         });
 
-        it("Should properly add collateral, loan, and exit with d2O", async function () {
+        it("Should properly add collateral, loan, and exit with d2o", async function () {
             //Below calls are what website would have to do
             await setupUser(addr1, ["1000", "1000", "1000"]);
-            await userLMCV.approveMultiple([lmcvProxy.address, d2OJoin.address]);
+            await userLMCV.approveMultiple([lmcvProxy.address, d2oJoin.address]);
 
             await userLMCVProxy.createLoan(collateralBytesList, [fwad("100"), fwad("200"), fwad("300")], fwad("1000"));
 
-            expect(await lmcv.d2O(owner.address)).to.equal(frad("10"));
-            expect(await d2O.balanceOf(addr1.address)).to.equal(fwad("990"));
+            expect(await lmcv.d2o(owner.address)).to.equal(frad("10"));
+            expect(await d2o.balanceOf(addr1.address)).to.equal(fwad("990"));
             expect(await mockToken.balanceOf(collateralJoin.address)).to.equal(fwad("100"));
             expect(await mockTokenTwo.balanceOf(collatJoinTwo.address)).to.equal(fwad("200"));
             expect(await mockTokenThree.balanceOf(collatJoinThree.address)).to.equal(fwad("300"));
@@ -139,7 +139,7 @@ describe("Testing LMCVProxy", function () {
         it("Should break when account doesn't have enough collateral", async function () {
             //Below calls are what website would have to do
             await setupUser(addr1, ["10", "1000", "1000"]);
-            await userLMCV.approveMultiple([lmcvProxy.address, d2OJoin.address]);
+            await userLMCV.approveMultiple([lmcvProxy.address, d2oJoin.address]);
 
             await expect(
                 userLMCVProxy.createLoan(collateralBytesList, [fwad("100"), fwad("200"), fwad("300")], fwad("1000"))
@@ -148,7 +148,7 @@ describe("Testing LMCVProxy", function () {
 
         it("Should break when not live", async function () {
             await setupUser(addr1, ["10", "1000", "1000"]);
-            await userLMCV.approveMultiple([lmcvProxy.address, d2OJoin.address]);
+            await userLMCV.approveMultiple([lmcvProxy.address, d2oJoin.address]);
 
             await lmcvProxy.setLive(0);
 
@@ -167,37 +167,37 @@ describe("Testing LMCVProxy", function () {
 
     describe("repayLoan function testing", function () {
 
-        let userD2O;
-        let userTwoLMCV, userTwoLMCVProxy, userTwoD2O;
+        let userD2o;
+        let userTwoLMCV, userTwoLMCVProxy, userTwoD2o;
 
         beforeEach(async function () {
             userLMCVProxy = lmcvProxy.connect(addr1);
-            userD2O = d2O.connect(addr1);
+            userD2o = d2o.connect(addr1);
 
             userTwoLMCV = lmcv.connect(addr2);
             userTwoLMCVProxy = lmcvProxy.connect(addr2);
-            userTwoD2O = d2O.connect(addr2);
+            userTwoD2o = d2o.connect(addr2);
         });
 
-        it("Should properly add collateral, loan, and exit with d2O", async function () {
+        it("Should properly add collateral, loan, and exit with d2o", async function () {
             await setupUser(addr1, ["1000", "1000", "1000"]);
-            await userLMCV.approveMultiple([lmcvProxy.address, d2OJoin.address]);
+            await userLMCV.approveMultiple([lmcvProxy.address, d2oJoin.address]);
             await userLMCVProxy.createLoan(collateralBytesList, [fwad("100"), fwad("200"), fwad("300")], fwad("1000"));
 
             await setupUser(addr2, ["1000", "1000", "1000"]);
-            await userTwoLMCV.approveMultiple([lmcvProxy.address, d2OJoin.address]);
+            await userTwoLMCV.approveMultiple([lmcvProxy.address, d2oJoin.address]);
             await userTwoLMCVProxy.createLoan(collateralBytesList, [fwad("100"), fwad("200"), fwad("300")], fwad("1000"));
-            await userTwoD2O.transfer(addr1.address, fwad("990"));
+            await userTwoD2o.transfer(addr1.address, fwad("990"));
 
-            expect(await d2O.balanceOf(addr1.address)).to.equal(fwad("1980"));
+            expect(await d2o.balanceOf(addr1.address)).to.equal(fwad("1980"));
 
-            // Has to approve d2O
-            await userD2O.approve(lmcvProxy.address, MAX_INT);
+            // Has to approve d2o
+            await userD2o.approve(lmcvProxy.address, MAX_INT);
             await userLMCVProxy.repayLoan(collateralBytesList, [fwad("100"), fwad("200"), fwad("300")], fwad("1000"));
 
             await expect(userTwoLMCV.lockedCollateralList(addr1.address, 0)).to.be.reverted;
 
-            expect(await lmcv.d2O(addr1.address)).to.equal("0");
+            expect(await lmcv.d2o(addr1.address)).to.equal("0");
             expect(await lmcv.normalizedDebt(addr1.address)).to.equal("0");
 
             expect( await mockToken.balanceOf(addr1.address)).to.equal(fwad("1000"));
@@ -207,20 +207,20 @@ describe("Testing LMCVProxy", function () {
 
         it("Should be able to not repay one coin and still finish loan", async function () {
             await setupUser(addr1, ["1000", "1000", "1000"]);
-            await userLMCV.approveMultiple([lmcvProxy.address, d2OJoin.address]);
+            await userLMCV.approveMultiple([lmcvProxy.address, d2oJoin.address]);
             await userLMCVProxy.createLoan(collateralBytesList, [fwad("100"), fwad("200"), fwad("300")], fwad("1000"));
 
             await setupUser(addr2, ["1000", "1000", "1000"]);
-            await userTwoLMCV.approveMultiple([lmcvProxy.address, d2OJoin.address]);
+            await userTwoLMCV.approveMultiple([lmcvProxy.address, d2oJoin.address]);
             await userTwoLMCVProxy.createLoan(collateralBytesList, [fwad("100"), fwad("200"), fwad("300")], fwad("1000"));
-            await userTwoD2O.transfer(addr1.address, fwad("990"));
+            await userTwoD2o.transfer(addr1.address, fwad("990"));
 
-            // Has to approve d2O
-            await userD2O.approve(lmcvProxy.address, MAX_INT);
+            // Has to approve d2o
+            await userD2o.approve(lmcvProxy.address, MAX_INT);
             await userLMCVProxy.repayLoan([mockTokenBytes, mockToken2Bytes], [fwad("100"), fwad("200")], fwad("800"));
 
-            expect(await lmcv.d2O(owner.address)).to.equal(frad("20"));
-            expect(await d2O.balanceOf(addr1.address)).to.equal(fwad("1180"));
+            expect(await lmcv.d2o(owner.address)).to.equal(frad("20"));
+            expect(await d2o.balanceOf(addr1.address)).to.equal(fwad("1180"));
             expect(await mockToken.balanceOf(collateralJoin.address)).to.equal(fwad("100"));
             expect(await mockTokenTwo.balanceOf(collatJoinTwo.address)).to.equal(fwad("200"));
             expect(await mockTokenThree.balanceOf(collatJoinThree.address)).to.equal(fwad("600"));
@@ -236,7 +236,7 @@ describe("Testing LMCVProxy", function () {
             expect(await lmcv.lockedCollateral(addr1.address, mockToken2Bytes)).to.equal(fwad("0"));
             expect(await lmcv.lockedCollateral(addr1.address, mockToken3Bytes)).to.equal(fwad("300"));
 
-            expect(await lmcv.d2O(addr1.address)).to.equal(frad("0"));
+            expect(await lmcv.d2o(addr1.address)).to.equal(frad("0"));
             expect(await lmcv.normalizedDebt(addr1.address)).to.equal(fwad("200"));
 
             expect( await mockToken.balanceOf(addr1.address)).to.equal(fwad("1000"));
@@ -247,7 +247,7 @@ describe("Testing LMCVProxy", function () {
 
             await expect(userTwoLMCV.lockedCollateralList(addr1.address, 0)).to.be.reverted;
 
-            expect(await lmcv.d2O(addr1.address)).to.equal("0");
+            expect(await lmcv.d2o(addr1.address)).to.equal("0");
             expect(await lmcv.normalizedDebt(addr1.address)).to.equal("0");
 
             expect( await mockToken.balanceOf(addr1.address)).to.equal(fwad("1000"));

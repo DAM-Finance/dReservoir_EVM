@@ -34,7 +34,7 @@ async function setupUser(addr, amounts){
 describe("Testing LMCV", function () {
 
     before(async function () {
-        d2oFactory                  = await ethers.getContractFactory("d2O");
+        d2oFactory                  = await ethers.getContractFactory("d2o");
         hyperlanePipeFactory        = await ethers.getContractFactory("HyperlanePipe");
         LZPipeFactory               = await ethers.getContractFactory("LayerZeroPipe");
         lzMockEndpointFactory       = await ethers.getContractFactory("LZEndpointMock");
@@ -64,17 +64,11 @@ describe("Testing LMCV", function () {
         await dstLZEndpoint.setDestLzEndpoint(srcLZPipe.address, srcLZEndpoint.address);
 
         userd2o = srcd2o.connect(addr1);
-
-
-
     });
 
     describe("Layer Zero Pipe testing", function () {
 
         it("Should properly transfer using mock endpoint with fees", async function () {
-            console.log("Treasury:" + await srcLZPipe.treasury());
-            console.log("Teleport Fee:" + await srcLZPipe.teleportFee());
-
             let userSrcLZPipe = srcLZPipe.connect(addr1);
 
             await srcd2o.mint(addr1.address, fwad("10000"));
@@ -93,9 +87,7 @@ describe("Testing LMCV", function () {
             expect(await srcd2o.balanceOf(addr1.address)).to.equal(fwad("9000"));
             expect(await srcd2o.balanceOf(owner.address)).to.equal(fwad("0"));
         });
-    });
-
-    
+    }); 
 
 });
 

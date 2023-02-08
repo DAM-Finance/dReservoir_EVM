@@ -2,17 +2,17 @@ const {expect} = require("chai");
 const {ethers} = require("hardhat");
 
 let owner, addr1, addr2, addr3, addrs;
-let d2OFactory, d2O;
-let d2OJoinFactory, d2OJoin;
+let d2oFactory, d2o;
+let d2oJoinFactory, d2oJoin;
 let LMCVFactory, lmcv;
 let tokenFactory, mockToken;
 let collateralJoinFactory, collateralJoin;
 let glmrBytes = ethers.utils.formatBytes32String("MOCKTOKEN");
 let dotBytes = ethers.utils.formatBytes32String("MOCKTOKENTWO");
-let d2OBytes = ethers.utils.formatBytes32String("MOCKTOKENTHREE");
+let d2oBytes = ethers.utils.formatBytes32String("MOCKTOKENTHREE");
 let tokenTwo, tokenThree;
 let collatJoinTwo, collatJoinThree;
-let collateralBytesList = [glmrBytes, dotBytes, d2OBytes];
+let collateralBytesList = [glmrBytes, dotBytes, d2oBytes];
 let debtCeiling;
 let userLMCV, userTwoLMCV, userThreeLMCV;
 let lmcvProxy, lmcvProxyFactory;
@@ -54,9 +54,9 @@ async function setupUser(addr, amounts){
 describe("Testing LMCV", function () {
 
     before(async function () {
-        d2OFactory = await ethers.getContractFactory("d2O");
+        d2oFactory = await ethers.getContractFactory("d2o");
         LMCVFactory = await ethers.getContractFactory("LMCV");
-        d2OJoinFactory = await ethers.getContractFactory("d2OJoin");
+        d2oJoinFactory = await ethers.getContractFactory("d2oJoin");
         tokenFactory = await ethers.getContractFactory("MockTokenFour");
         collateralJoinFactory = await ethers.getContractFactory("CollateralJoin");
         lmcvProxyFactory = await ethers.getContractFactory("LMCVProxy");
@@ -65,10 +65,10 @@ describe("Testing LMCV", function () {
     beforeEach(async function () {
         [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners();
 
-        d2O = await d2OFactory.deploy();
+        d2o = await d2oFactory.deploy();
         lmcv = await LMCVFactory.deploy();
         lmcvProxy = await lmcvProxyFactory.deploy(lmcv.address);
-        d2OJoin = await d2OJoinFactory.deploy(lmcv.address, d2O.address, lmcvProxy.address);
+        d2oJoin = await d2oJoinFactory.deploy(lmcv.address, d2o.address, lmcvProxy.address);
 
         mockToken = await tokenFactory.deploy("TSTR");
         tokenTwo = await tokenFactory.deploy("TST2");
@@ -76,7 +76,7 @@ describe("Testing LMCV", function () {
 
         collateralJoin = await collateralJoinFactory.deploy(lmcv.address, "0x6961D457fA5DBc3968DFBeD0b2df2D0954332a01", glmrBytes, mockToken.address);
         collatJoinTwo = await collateralJoinFactory.deploy(lmcv.address, "0x6961D457fA5DBc3968DFBeD0b2df2D0954332a01", dotBytes, tokenTwo.address);
-        collatJoinThree = await collateralJoinFactory.deploy(lmcv.address, "0x6961D457fA5DBc3968DFBeD0b2df2D0954332a01", d2OBytes, tokenThree.address);
+        collatJoinThree = await collateralJoinFactory.deploy(lmcv.address, "0x6961D457fA5DBc3968DFBeD0b2df2D0954332a01", d2oBytes, tokenThree.address);
 
         await lmcv.administrate(collateralJoin.address, 1);
         await lmcv.administrate(collatJoinTwo.address, 1);
@@ -91,11 +91,11 @@ describe("Testing LMCV", function () {
 
         await lmcv.editAcceptedCollateralType(glmrBytes, fwad("10000"), fwad("1"), fray("0.5"), false);
         await lmcv.editAcceptedCollateralType(dotBytes, fwad("10000"), fwad("1"), fray("0.5"), false);
-        await lmcv.editAcceptedCollateralType(d2OBytes, fwad("10000"), fwad("1"), fray("0.6"), true);
+        await lmcv.editAcceptedCollateralType(d2oBytes, fwad("10000"), fwad("1"), fray("0.6"), true);
 
         await lmcv.updateSpotPrice(glmrBytes, fray("1"));
         await lmcv.updateSpotPrice(dotBytes, fray("8"));
-        await lmcv.updateSpotPrice(d2OBytes, fray("1"));
+        await lmcv.updateSpotPrice(d2oBytes, fray("1"));
 
         userLMCV = lmcv.connect(addr1);
         userTwoLMCV = lmcv.connect(addr2);
@@ -104,65 +104,65 @@ describe("Testing LMCV", function () {
 
     describe("Leverage testing", function () {
         it("getPortfolioValue should work", async function () {
-            let collateralType3 = await lmcv.CollateralData(d2OBytes);
+            let collateralType3 = await lmcv.CollateralData(d2oBytes);
             expect(collateralType3['leveraged']).to.be.true;
 
             await lmcv.updateRate(fray(".1"));
 
             //First collateral loan
             await userLMCV.loan([glmrBytes, dotBytes], [fwad("1000"), fwad("200")], fwad("1181.8181818"), addr1.address);
-            expect(await lmcv.d2O(addr1.address)).to.equal(frad("1299.99999998"));
+            expect(await lmcv.d2o(addr1.address)).to.equal(frad("1299.99999998"));
 
-            // //Loaning mockup of d2O
-            await userLMCV.loan([d2OBytes], [fwad("1300")], fwad("590.90909"), addr1.address);
-            expect(await lmcv.d2O(addr1.address)).to.equal(frad("1949.99999898"));
+            // //Loaning mockup of d2o
+            await userLMCV.loan([d2oBytes], [fwad("1300")], fwad("590.90909"), addr1.address);
+            expect(await lmcv.d2o(addr1.address)).to.equal(frad("1949.99999898"));
         });
 
         it("Loan and repayment should work with lower spot price - no minting fee or rate", async function () {
-            let collateralType3 = await lmcv.CollateralData(d2OBytes);
+            let collateralType3 = await lmcv.CollateralData(d2oBytes);
             expect(collateralType3['leveraged']).to.be.true;
 
             await lmcv.updateRate(fray(".1"));
             await userLMCV.loan([glmrBytes, dotBytes], [fwad("1000"), fwad("200")], fwad("1181.8181818"), addr1.address);
-            expect(await lmcv.d2O(addr1.address)).to.equal(frad("1299.99999998"));
-            await userLMCV.loan([d2OBytes], [fwad("1300")], fwad("590.90909"), addr1.address);
-            expect(await lmcv.d2O(addr1.address)).to.equal(frad("1949.99999898"));
+            expect(await lmcv.d2o(addr1.address)).to.equal(frad("1299.99999998"));
+            await userLMCV.loan([d2oBytes], [fwad("1300")], fwad("590.90909"), addr1.address);
+            expect(await lmcv.d2o(addr1.address)).to.equal(frad("1949.99999898"));
 
             await lmcv.updateSpotPrice(dotBytes, fray("6"));
-            await userLMCV.repay([glmrBytes, dotBytes, d2OBytes], [fwad("1000"), fwad("200"), fwad("1300")], await lmcv.normalizedDebt(addr1.address), addr1.address);
-            expect(await lmcv.d2O(addr1.address)).to.equal(0);
+            await userLMCV.repay([glmrBytes, dotBytes, d2oBytes], [fwad("1000"), fwad("200"), fwad("1300")], await lmcv.normalizedDebt(addr1.address), addr1.address);
+            expect(await lmcv.d2o(addr1.address)).to.equal(0);
         });
 
         it("Loan and repayment should work - with rate", async function () {
-            let collateralType3 = await lmcv.CollateralData(d2OBytes);
+            let collateralType3 = await lmcv.CollateralData(d2oBytes);
             expect(collateralType3['leveraged']).to.be.true;
 
             await lmcv.updateRate(fray(".1"));
             await userLMCV.loan([glmrBytes, dotBytes], [fwad("1000"), fwad("200")], fwad("1181.8181818"), addr1.address);
-            expect(await lmcv.d2O(addr1.address)).to.equal(frad("1299.99999998"));
-            await userLMCV.loan([d2OBytes], [fwad("1300")], fwad("590.90909"), addr1.address);
-            expect(await lmcv.d2O(addr1.address)).to.equal(frad("1949.99999898"));
+            expect(await lmcv.d2o(addr1.address)).to.equal(frad("1299.99999998"));
+            await userLMCV.loan([d2oBytes], [fwad("1300")], fwad("590.90909"), addr1.address);
+            expect(await lmcv.d2o(addr1.address)).to.equal(frad("1949.99999898"));
 
             await lmcv.updateSpotPrice(dotBytes, fray("6"));
 
             await userTwoLMCV.loan([glmrBytes], [fwad("2000")], fwad("909.09090909"), addr2.address);
-            expect(await lmcv.d2O(addr2.address)).to.equal(frad("999.999999999"));
+            expect(await lmcv.d2o(addr2.address)).to.equal(frad("999.999999999"));
 
-            await userTwoLMCV.moveD2O(addr2.address, addr1.address, frad("999.999999999"));
-            expect(await userLMCV.d2O(addr1.address)).to.equal(frad("2949.999998979"));
+            await userTwoLMCV.moveD2o(addr2.address, addr1.address, frad("999.999999999"));
+            expect(await userLMCV.d2o(addr1.address)).to.equal(frad("2949.999998979"));
 
             await lmcv.updateRate(fray(".1"));
 
-            await userLMCV.repay([glmrBytes, dotBytes, d2OBytes], [fwad("1000"), fwad("200"), fwad("1300")], await lmcv.normalizedDebt(addr1.address), addr1.address);
-            expect(await lmcv.d2O(addr1.address)).to.equal(frad("822.727272819"));
+            await userLMCV.repay([glmrBytes, dotBytes, d2oBytes], [fwad("1000"), fwad("200"), fwad("1300")], await lmcv.normalizedDebt(addr1.address), addr1.address);
+            expect(await lmcv.d2o(addr1.address)).to.equal(frad("822.727272819"));
         });
 
         it("Lever tokens only", async function () {
-            let collateralType3 = await lmcv.CollateralData(d2OBytes);
+            let collateralType3 = await lmcv.CollateralData(d2oBytes);
             expect(collateralType3['leveraged']).to.be.true;
 
-            await userLMCV.loan([d2OBytes], [fwad("1000")], fwad("600"), addr1.address);
-            expect(await lmcv.d2O(addr1.address)).to.equal(frad("600"));
+            await userLMCV.loan([d2oBytes], [fwad("1000")], fwad("600"), addr1.address);
+            expect(await lmcv.d2o(addr1.address)).to.equal(frad("600"));
         });
     });
 });

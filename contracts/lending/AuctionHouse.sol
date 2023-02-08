@@ -5,7 +5,7 @@ pragma solidity ^0.8.7;
 import "hardhat/console.sol";
 
 interface LMCVLike {
-    function moveD2O(address src, address dst, uint256 rad) external;
+    function moveD2o(address src, address dst, uint256 rad) external;
     function moveCollateral(bytes32 collateral, address src, address dst, uint256 wad) external;
 }
 
@@ -42,9 +42,9 @@ contract AuctionHouse {
     struct Auction {
         bytes32[]   lotList;            // Collateral types being liquidated
         uint256[]   lotValues;          // collateral amount up for auction             [wad]
-        uint256     askingAmount;       // Target d2O amount                         [rad]
+        uint256     askingAmount;       // Target d2o amount                         [rad]
 
-        uint256     debtBid;            // Highest d2O paid                          [rad]
+        uint256     debtBid;            // Highest d2o paid                          [rad]
         uint256     collateralBid;      // Percentage of collateral in return for bid   [ray]
         uint256     minBid;             // Debt bids must be above this minimum amount  [rad]
 
@@ -216,13 +216,13 @@ contract AuctionHouse {
         require(bid >= auctions[id].minBid, "AuctionHouse/Bid lower than minimum bid");
         
         // Refund the previous highest bidder if there was one and move the increased amount to
-        // the treasury. For the first bid, "debtBid" will be zero, so no D2O is moved to the
+        // the treasury. For the first bid, "debtBid" will be zero, so no d2o is moved to the
         // liquidator contract and the whole bid amount is moved from the bidder to the treasury.
         if (msg.sender != auctions[id].currentWinner) {
-            lmcv.moveD2O(msg.sender, auctions[id].currentWinner, auctions[id].debtBid);
+            lmcv.moveD2o(msg.sender, auctions[id].currentWinner, auctions[id].debtBid);
             auctions[id].currentWinner = msg.sender;
         }
-        lmcv.moveD2O(msg.sender, auctions[id].treasury, bid - auctions[id].debtBid);
+        lmcv.moveD2o(msg.sender, auctions[id].treasury, bid - auctions[id].debtBid);
 
         auctions[id].debtBid = bid;
         auctions[id].bidExpiry = uint256(block.timestamp) + bidExpiry;
@@ -230,10 +230,10 @@ contract AuctionHouse {
 
     /**
      * In this stage of the auction, participants compete on how much collateral they are willing to accept
-     * for a fixed amount of d2O. To do this they submit decreasing bids to the auction. Each bid represents
-     * the percentage of collateral which the auction user is willing to receive in return for the fixed d2O
+     * for a fixed amount of d2o. To do this they submit decreasing bids to the auction. Each bid represents
+     * the percentage of collateral which the auction user is willing to receive in return for the fixed d2o
      * amount, e.g. a bid of 0.80 means the user is willing to accept 80% of the collatera lup for auction in 
-     * return for the fixed d2O price, meaning that 20% of the collateral goes back to the liquidated vault
+     * return for the fixed d2o price, meaning that 20% of the collateral goes back to the liquidated vault
      * user.
      */
     function converge(uint256 id, uint256 collateralBid) external {
@@ -261,9 +261,9 @@ contract AuctionHouse {
         auctions[id].bidExpiry = uint256(block.timestamp) + bidExpiry;
 
         // The lowest bidder at this stage, if not the highest bidder in the first stage has to move the
-        // amount of d2O decided in the first stage to the prior highest bidder.
+        // amount of d2o decided in the first stage to the prior highest bidder.
         if (msg.sender != auctions[id].currentWinner) {
-            lmcv.moveD2O(msg.sender, auctions[id].currentWinner, auctions[id].debtBid);
+            lmcv.moveD2o(msg.sender, auctions[id].currentWinner, auctions[id].debtBid);
             auctions[id].currentWinner = msg.sender;
         }
     }

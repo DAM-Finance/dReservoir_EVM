@@ -2,8 +2,8 @@ const {expect} = require("chai");
 const {ethers} = require("hardhat");
 
 let owner, addr1, addr2, addr3, addrs;
-let d2OFactory, d2O;
-let d2OJoinFactory, d2OJoin;
+let d2oFactory, d2o;
+let d2oJoinFactory, d2oJoin;
 let LMCVFactory, lmcv;
 let tokenFactory, USDCMock;
 let collateralJoinFactory, collateralJoin;
@@ -13,7 +13,7 @@ let userLMCV, userTwoLMCV, userThreeLMCV;
 let lmcvProxy, lmcvProxyFactory;
 let psm, psmFactory;
 let userPSM;
-let userD2O;
+let userD2o;
 
 let regularTokenFactory, regularCollateralJoinFactory;
 let mockToken2Bytes = ethers.utils.formatBytes32String("MOCKTOKENTWO");
@@ -43,12 +43,12 @@ async function setupUser(addr, amounts){
     await mockToken2Connect.mint(fwad(amounts.at(0)));
 }
 
-describe("Testing LMCV", function () {
+describe("Testing PSM", function () {
 
     before(async function () {
-        d2OFactory = await ethers.getContractFactory("d2O");
+        d2oFactory = await ethers.getContractFactory("d2o");
         LMCVFactory = await ethers.getContractFactory("LMCV");
-        d2OJoinFactory = await ethers.getContractFactory("d2OJoin");
+        d2oJoinFactory = await ethers.getContractFactory("d2oJoin");
         tokenFactory = await ethers.getContractFactory("MockTokenThree");
         collateralJoinFactory = await ethers.getContractFactory("CollateralJoinDecimals");
         lmcvProxyFactory = await ethers.getContractFactory("LMCVProxy");
@@ -61,10 +61,10 @@ describe("Testing LMCV", function () {
     beforeEach(async function () {
         [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners();
 
-        d2O = await d2OFactory.deploy();
+        d2o = await d2oFactory.deploy();
         lmcv = await LMCVFactory.deploy();
         lmcvProxy = await lmcvProxyFactory.deploy(lmcv.address);
-        d2OJoin = await d2OJoinFactory.deploy(lmcv.address, d2O.address, lmcvProxy.address);
+        d2oJoin = await d2oJoinFactory.deploy(lmcv.address, d2o.address, lmcvProxy.address);
 
         //TOken setup
         USDCMock = await tokenFactory.deploy("TSTR", 10);
@@ -85,33 +85,20 @@ describe("Testing LMCV", function () {
         debtCeiling = frad("5000000000000000000000");
         await lmcv.setProtocolDebtCeiling(debtCeiling);
 
-        await d2O.rely(d2OJoin.address);
+        await d2o.rely(d2oJoin.address);
 
         userLMCV = lmcv.connect(addr1);
         userTwoLMCV = lmcv.connect(addr2);
         userThreeLMCV = lmcv.connect(addr3);
 
-        psm = await psmFactory.deploy(collateralJoin.address, d2OJoin.address, owner.address);
+        psm = await psmFactory.deploy(collateralJoin.address, d2oJoin.address, owner.address);
         userPSM = psm.connect(addr1);
-        userD2O = d2O.connect(addr1);
+        userD2o = d2o.connect(addr1);
     });
 
     describe("PSM testing", function () {
-        it("Should properly add collateral, loan, and exit with d2O", async function () {
+        it("Should properly add collateral, loan, and exit with d2o", async function () {
             await lmcv.setPSMAddress(psm.address, true);
-
-            // console.log(await psm.lmcv());
-            // console.log(await psm.collateralJoin());
-            // console.log(await psm.d2O());
-            // console.log(await psm.d2OJoin());
-            // console.log(await psm.collateralName());
-            // console.log(await psm.treasury() + "\n");
-
-            // console.log(await collateralJoin.lmcv());
-            // console.log(await collateralJoin.collateralContract());
-            // console.log(await collateralJoin.lmcvProxy());
-            // console.log(await collateralJoin.dec());
-            // console.log(await collateralJoin.collateralName() + "\n");
 
             expect(await psm.collateralJoin()).to.equal(collateralJoin.address);
             await collateralJoin.rely(psm.address);
@@ -123,33 +110,22 @@ describe("Testing LMCV", function () {
                 let amountMult = Math.round(amount*4000000000000);
                 total = total + amountMult;
 
-                await userPSM.createD2O(addr1.address, [USDCMockBytes],[amountMult]); 
+                await userPSM.createD2o(addr1.address, [USDCMockBytes],[amountMult]); 
                 if(i%10 == 0){
-                    // console.log(i);
-                    // console.log(await lmcv.lockedCollateral(psm.address, USDCMockBytes));
                     let proper = fwad("" + (total / 10000000000));
-                    // console.log(proper);
-
                     let result = await lmcv.lockedCollateral(psm.address, USDCMockBytes);
-
                     expect(result).to.equal(proper);
                 }
               }
-
-            // await userPSM.createD2O(addr1.address, [USDCMockBytes],["9990000000000"]); //10 zeroes not 18
-
-            // expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("999"));
-            // expect(await d2O.balanceOf(addr1.address)).to.equal(fwad("999"));
-            // expect(await lmcv.totalPSMDebt()).to.equal(fwad("999"));
         });
 
-        it("Should properly add collateral, loan, and exit with d2O", async function () {
+        it("Should properly add collateral, loan, and exit with d2o", async function () {
 
             //Set PSM in LMCV for no fee or interest
             await lmcv.setPSMAddress(psm.address, true);
 
             //Approve PSM from user perspective to transfer out
-            await userD2O.approve(psm.address, fray("100000"));
+            await userD2o.approve(psm.address, fray("100000"));
 
             expect(await psm.collateralJoin()).to.equal(collateralJoin.address);
 
@@ -158,18 +134,18 @@ describe("Testing LMCV", function () {
 
             expect(await USDCMock.balanceOf(addr1.address)).to.equal("4000000000000000000000")
 
-            await userPSM.createD2O(addr1.address, [USDCMockBytes],["10000000000000"]); //10 zeroes not 18
-            await userPSM.createD2O(addr2.address, [USDCMockBytes],["10000000000000"]); //10 zeroes not 18
+            await userPSM.createD2o(addr1.address, [USDCMockBytes],["10000000000000"]); //10 zeroes not 18
+            await userPSM.createD2o(addr2.address, [USDCMockBytes],["10000000000000"]); //10 zeroes not 18
 
-            expect(await d2O.balanceOf(addr1.address)).to.equal(fwad("1000"));
-            expect(await d2O.balanceOf(addr2.address)).to.equal(fwad("1000"));
+            expect(await d2o.balanceOf(addr1.address)).to.equal(fwad("1000"));
+            expect(await d2o.balanceOf(addr2.address)).to.equal(fwad("1000"));
             expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("2000"));
             expect(await lmcv.totalPSMDebt()).to.equal(fwad("2000"));
 
             await userPSM.getCollateral(addr1.address, [USDCMockBytes], ["10000000000000"]);
 
-            expect(await d2O.balanceOf(addr1.address)).to.equal(0);
-            expect(await d2O.balanceOf(addr2.address)).to.equal(fwad("1000"));
+            expect(await d2o.balanceOf(addr1.address)).to.equal(0);
+            expect(await d2o.balanceOf(addr2.address)).to.equal(fwad("1000"));
             expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("1000"));
             expect(await USDCMock.balanceOf(addr1.address)).to.equal("3999999990000000000000")
             expect(await lmcv.totalPSMDebt()).to.equal(fwad("1000"));
@@ -177,7 +153,7 @@ describe("Testing LMCV", function () {
 
         it("Should work properly with fee", async function () {
             await lmcv.setPSMAddress(psm.address, true);
-            await userD2O.approve(psm.address, fray("100000"));
+            await userD2o.approve(psm.address, fray("100000"));
             expect(await psm.collateralJoin()).to.equal(collateralJoin.address);
             await collateralJoin.rely(psm.address);
 
@@ -185,26 +161,26 @@ describe("Testing LMCV", function () {
 
             expect(await USDCMock.balanceOf(addr1.address)).to.equal("4000000000000000000000")
 
-            await userPSM.createD2O(addr1.address, [USDCMockBytes],["10000000000000"]); //10 zeroes not 18
-            await userPSM.createD2O(addr2.address, [USDCMockBytes],["10000000000000"]); //10 zeroes not 18
+            await userPSM.createD2o(addr1.address, [USDCMockBytes],["10000000000000"]); //10 zeroes not 18
+            await userPSM.createD2o(addr2.address, [USDCMockBytes],["10000000000000"]); //10 zeroes not 18
 
-            expect(await d2O.balanceOf(addr1.address)).to.equal(fwad("990"));
-            expect(await d2O.balanceOf(addr2.address)).to.equal(fwad("990"));
-            expect(await lmcv.d2O(owner.address)).to.equal(frad("20"));
+            expect(await d2o.balanceOf(addr1.address)).to.equal(fwad("990"));
+            expect(await d2o.balanceOf(addr2.address)).to.equal(fwad("990"));
+            expect(await lmcv.d2o(owner.address)).to.equal(frad("20"));
             expect(await lmcv.totalPSMDebt()).to.equal(fwad("2000"));
 
             expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("2000"));
 
-            let user2d2O = d2O.connect(addr2);
-            await user2d2O.transfer(addr1.address, fwad("20"));
+            let user2d2o = d2o.connect(addr2);
+            await user2d2o.transfer(addr1.address, fwad("20"));
 
             await userPSM.getCollateral(addr1.address, [USDCMockBytes], ["10000000000000"]);
 
             expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("1000"));
 
-            expect(await d2O.balanceOf(addr1.address)).to.equal(0);
-            expect(await d2O.balanceOf(addr2.address)).to.equal(fwad("970"));
-            expect(await lmcv.d2O(owner.address)).to.equal(frad("30"));
+            expect(await d2o.balanceOf(addr1.address)).to.equal(0);
+            expect(await d2o.balanceOf(addr2.address)).to.equal(fwad("970"));
+            expect(await lmcv.d2o(owner.address)).to.equal(frad("30"));
             expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("1000"));
             expect(await USDCMock.balanceOf(addr1.address)).to.equal("3999999990000000000000")
             expect(await lmcv.totalPSMDebt()).to.equal(fwad("1000"));
@@ -212,7 +188,7 @@ describe("Testing LMCV", function () {
 
         it("Loan and repay work properly with rate increase but no other accounts", async function () {
             await lmcv.setPSMAddress(psm.address, true);
-            await userD2O.approve(psm.address, fray("100000"));
+            await userD2o.approve(psm.address, fray("100000"));
             expect(await psm.collateralJoin()).to.equal(collateralJoin.address);
             await collateralJoin.rely(psm.address);
 
@@ -220,18 +196,18 @@ describe("Testing LMCV", function () {
 
             expect(await USDCMock.balanceOf(addr1.address)).to.equal("4000000000000000000000")
 
-            await userPSM.createD2O(addr1.address, [USDCMockBytes],["10000000000000"]); //10 zeroes not 18
-            await userPSM.createD2O(addr2.address, [USDCMockBytes],["10000000000000"]); //10 zeroes not 18
+            await userPSM.createD2o(addr1.address, [USDCMockBytes],["10000000000000"]); //10 zeroes not 18
+            await userPSM.createD2o(addr2.address, [USDCMockBytes],["10000000000000"]); //10 zeroes not 18
 
-            expect(await d2O.balanceOf(addr1.address)).to.equal(fwad("990"));
-            expect(await d2O.balanceOf(addr2.address)).to.equal(fwad("990"));
-            expect(await lmcv.d2O(owner.address)).to.equal(frad("20"));
+            expect(await d2o.balanceOf(addr1.address)).to.equal(fwad("990"));
+            expect(await d2o.balanceOf(addr2.address)).to.equal(fwad("990"));
+            expect(await lmcv.d2o(owner.address)).to.equal(frad("20"));
             expect(await lmcv.totalPSMDebt()).to.equal(fwad("2000"));
 
             expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("2000"));
 
-            let user2d2O = d2O.connect(addr2);
-            await user2d2O.transfer(addr1.address, fwad("20"));
+            let user2d2o = d2o.connect(addr2);
+            await user2d2o.transfer(addr1.address, fwad("20"));
 
             await lmcv.updateRate(fray(".1"));
 
@@ -239,9 +215,9 @@ describe("Testing LMCV", function () {
 
             expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("1000"));
 
-            expect(await d2O.balanceOf(addr1.address)).to.equal(0);
-            expect(await d2O.balanceOf(addr2.address)).to.equal(fwad("970"));
-            expect(await lmcv.d2O(owner.address)).to.equal(frad("30"));
+            expect(await d2o.balanceOf(addr1.address)).to.equal(0);
+            expect(await d2o.balanceOf(addr2.address)).to.equal(fwad("970"));
+            expect(await lmcv.d2o(owner.address)).to.equal(frad("30"));
             expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("1000"));
             expect(await USDCMock.balanceOf(addr1.address)).to.equal("3999999990000000000000")
             expect(await lmcv.totalPSMDebt()).to.equal(fwad("1000"));
@@ -249,32 +225,32 @@ describe("Testing LMCV", function () {
 
         it("Loan and repay work properly with rate increase with normal accounts", async function () {
             await lmcv.setPSMAddress(psm.address, true);
-            await userD2O.approve(psm.address, fray("100000"));
+            await userD2o.approve(psm.address, fray("100000"));
             await collateralJoin.rely(psm.address);
 
             await psm.setMintRepayFees(fray(".01"), fray(".01"));
 
             expect(await USDCMock.balanceOf(addr1.address)).to.equal("4000000000000000000000")
 
-            await userPSM.createD2O(addr1.address, [USDCMockBytes],["10000000000000"]); //10 zeroes not 18
-            await userPSM.createD2O(addr2.address, [USDCMockBytes],["10000000000000"]); //10 zeroes not 18
+            await userPSM.createD2o(addr1.address, [USDCMockBytes],["10000000000000"]); //10 zeroes not 18
+            await userPSM.createD2o(addr2.address, [USDCMockBytes],["10000000000000"]); //10 zeroes not 18
 
-            expect(await d2O.balanceOf(addr1.address)).to.equal(fwad("990"));
-            expect(await d2O.balanceOf(addr2.address)).to.equal(fwad("990"));
-            expect(await lmcv.d2O(owner.address)).to.equal(frad("20"));
+            expect(await d2o.balanceOf(addr1.address)).to.equal(fwad("990"));
+            expect(await d2o.balanceOf(addr2.address)).to.equal(fwad("990"));
+            expect(await lmcv.d2o(owner.address)).to.equal(frad("20"));
 
 
             expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("2000"));
 
-            let user2d2O = d2O.connect(addr2);
-            await user2d2O.transfer(addr1.address, fwad("20"));
+            let user2d2o = d2o.connect(addr2);
+            await user2d2o.transfer(addr1.address, fwad("20"));
 
             let collatJoin2Connect = collatJoinTwo.connect(addr1);
             await collatJoin2Connect.join(addr1.address, fwad("1000"));
             await userLMCV.loan([mockToken2Bytes], [fwad("1000")], fwad("500"), addr1.address);
 
             expect(await lmcv.totalPSMDebt()).to.equal(fwad("2000"));
-            expect(await lmcv.totalD2O()).to.equal(frad("2500"));
+            expect(await lmcv.totalD2o()).to.equal(frad("2500"));
 
 
             await lmcv.updateRate(fray(".1"));
@@ -283,14 +259,14 @@ describe("Testing LMCV", function () {
 
             expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("1000"));
 
-            expect(await d2O.balanceOf(addr1.address)).to.equal(0);
-            expect(await d2O.balanceOf(addr2.address)).to.equal(fwad("970"));
+            expect(await d2o.balanceOf(addr1.address)).to.equal(0);
+            expect(await d2o.balanceOf(addr2.address)).to.equal(fwad("970"));
             expect(await lmcv.lockedCollateral(psm.address, USDCMockBytes)).to.equal(fwad("1000"));
             expect(await USDCMock.balanceOf(addr1.address)).to.equal("3999999990000000000000");
             expect(await lmcv.totalPSMDebt()).to.equal(fwad("1000"));
 
-            expect(await lmcv.d2O(owner.address)).to.equal(frad("80"))
-            expect(await lmcv.totalD2O()).to.equal(frad("1550"));
+            expect(await lmcv.d2o(owner.address)).to.equal(frad("80"))
+            expect(await lmcv.totalD2o()).to.equal(frad("1550"));
         });
     });
 
@@ -298,14 +274,14 @@ describe("Testing LMCV", function () {
 
         it("Should break when not live", async function () {
             await lmcv.setPSMAddress(psm.address, true);
-            await userD2O.approve(psm.address, fray("100000"));
+            await userD2o.approve(psm.address, fray("100000"));
             expect(await psm.collateralJoin()).to.equal(collateralJoin.address);
             await collateralJoin.rely(psm.address);
 
             await psm.setLive(0);
 
             await expect(
-                userPSM.createD2O(addr1.address, [USDCMockBytes],["10000000000000"])
+                userPSM.createD2o(addr1.address, [USDCMockBytes],["10000000000000"])
             ).to.be.revertedWith("PSM/not-live");
         });
 
@@ -322,14 +298,14 @@ describe("Testing LMCV", function () {
 
         it("CollateralJoinDecimals should break when not live", async function () {
             await lmcv.setPSMAddress(psm.address, true);
-            await userD2O.approve(psm.address, fray("100000"));
+            await userD2o.approve(psm.address, fray("100000"));
             expect(await psm.collateralJoin()).to.equal(collateralJoin.address);
             await collateralJoin.rely(psm.address);
 
             await collateralJoin.cage(0);
 
             await expect(
-                userPSM.createD2O(addr1.address, [USDCMockBytes],["10000000000000"])
+                userPSM.createD2o(addr1.address, [USDCMockBytes],["10000000000000"])
             ).to.be.revertedWith("CollateralJoin/not-live");
         });
 
