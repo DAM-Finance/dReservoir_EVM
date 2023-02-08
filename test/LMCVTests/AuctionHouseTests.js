@@ -18,8 +18,8 @@ let bazBytes = ethers.utils.formatBytes32String("BAZ");
 let userOne, userTwo, userThree, treasury;
 
 // Contracts and contract factories.
-let d2OFactory, d2O;
-let d2OJoinFactory, d2OJoin;
+let d2oFactory, d2o;
+let d2oJoinFactory, d2oJoin;
 let LMCVFactory, lmcv;
 let tokenFactory, foo, bar, baz;
 let liquidatorFactory, liquidator;
@@ -65,9 +65,9 @@ let checkUint256Value = async (fun, val, units = NumType.WAD) => {
 describe("AuctionHouse testing", function () {
 
     before(async function () {
-        d2OFactory              = await ethers.getContractFactory("d2O");
+        d2oFactory              = await ethers.getContractFactory("d2o");
         LMCVFactory             = await ethers.getContractFactory("LMCV");
-        d2OJoinFactory          = await ethers.getContractFactory("d2OJoin");
+        d2oJoinFactory          = await ethers.getContractFactory("d2oJoin");
         tokenFactory            = await ethers.getContractFactory("MockTokenFour");
         collateralJoinFactory   = await ethers.getContractFactory("CollateralJoin");
         liquidatorFactory       = await ethers.getContractFactory("Liquidator");
@@ -85,10 +85,10 @@ describe("AuctionHouse testing", function () {
         baz = await tokenFactory.deploy("BAZ");
 
         // Deploy protocol contracts.
-        d2O          = await d2OFactory.deploy();
+        d2o          = await d2oFactory.deploy();
         lmcv            = await LMCVFactory.deploy();
         lmcvProxy       = await lmcvProxyFactory.deploy(lmcv.address);
-        d2OJoin      = await d2OJoinFactory.deploy(lmcv.address, d2O.address, lmcvProxy.address);
+        d2oJoin      = await d2oJoinFactory.deploy(lmcv.address, d2o.address, lmcvProxy.address);
         fooJoin         = await collateralJoinFactory.deploy(lmcv.address, lmcvProxy.address, fooBytes, foo.address);
         barJoin         = await collateralJoinFactory.deploy(lmcv.address, lmcvProxy.address, barBytes, bar.address);
         bazJoin         = await collateralJoinFactory.deploy(lmcv.address, lmcvProxy.address, bazBytes, baz.address);
@@ -194,7 +194,7 @@ describe("AuctionHouse testing", function () {
         await expect(userTwoAuctionHouse.raise(1, frad("300.0"))).to.be.revertedWith("AuctionHouse/Bid higher than asking amount");
     });
 
-    it("Insufficient D2O", async function () {
+    it("Insufficient D2o", async function () {
         let userOneLMCV = lmcv.connect(userOne);
         let userTwoLiquidator = liquidator.connect(userTwo);
         let userTwoAuctionHouse = auctionHouse.connect(userTwo);
@@ -208,7 +208,7 @@ describe("AuctionHouse testing", function () {
         await lmcv.updateSpotPrice(fooBytes, fray("3.00"));
         await userTwoLiquidator.liquidate(userOne.address);
 
-        // UserTwo doesn't have any D2O.
+        // UserTwo doesn't have any D2o.
         await expect(userTwoAuctionHouse.raise(1, frad("200.0"))).to.be.reverted;
     });
 
@@ -225,10 +225,10 @@ describe("AuctionHouse testing", function () {
         let userTwoLiquidator = liquidator.connect(userTwo);
         let userTwoAuctionHouse = auctionHouse.connect(userTwo);
 
-        // Auction house must be given approval to move D2O from participant's account.
+        // Auction house must be given approval to move D2o from participant's account.
         await userTwoLMCV.approve(auctionHouse.address);
 
-        // Generate some D2O for user two via inflation. This is OK for testing.
+        // Generate some D2o for user two via inflation. This is OK for testing.
         await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
 
         // Set up liquidator.
@@ -253,10 +253,10 @@ describe("AuctionHouse testing", function () {
         let userTwoLiquidator = liquidator.connect(userTwo);
         let userTwoAuctionHouse = auctionHouse.connect(userTwo);
 
-        // Auction house must be given approval to move D2O from participant's account.
+        // Auction house must be given approval to move D2o from participant's account.
         await userTwoLMCV.approve(auctionHouse.address);
 
-        // Generate some D2O for user two via inflation. This is OK for testing.
+        // Generate some D2o for user two via inflation. This is OK for testing.
         await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
 
         // Set up liquidator.
@@ -271,20 +271,20 @@ describe("AuctionHouse testing", function () {
         // Bid equal to asking amount should succeed.
         await userTwoAuctionHouse.raise(1, frad("275.0"));
 
-        await checkUint256Value(() => lmcv.d2O(userTwo.address), "225.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(treasury.address), "275.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(userTwo.address), "225.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(treasury.address), "275.0", NumType.RAD);
     });
 
-    it("First bid can be any amount and should move D2O to treasury account", async function () {
+    it("First bid can be any amount and should move D2o to treasury account", async function () {
         let userOneLMCV = lmcv.connect(userOne);
         let userTwoLMCV = lmcv.connect(userTwo);
         let userTwoLiquidator = liquidator.connect(userTwo);
         let userTwoAuctionHouse = auctionHouse.connect(userTwo);
 
-        // Auction house must be given approval to move D2O from participant's account.
+        // Auction house must be given approval to move D2o from participant's account.
         await userTwoLMCV.approve(auctionHouse.address);
 
-        // Generate some D2O for user two via inflation. This is OK for testing.
+        // Generate some D2o for user two via inflation. This is OK for testing.
         await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
 
         // Set up liquidator.
@@ -302,9 +302,9 @@ describe("AuctionHouse testing", function () {
         // Any initial bid amount is valid.
         await userTwoAuctionHouse.raise(1, frad("1.0"));
 
-        // 50 D2O should move from user two to the treasury.
-        await checkUint256Value(() => lmcv.d2O(userTwo.address), "499.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(treasury.address), "1.0", NumType.RAD);
+        // 50 D2o should move from user two to the treasury.
+        await checkUint256Value(() => lmcv.d2o(userTwo.address), "499.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(treasury.address), "1.0", NumType.RAD);
 
         // Check auction values are updated as expected.
         let auctionStruct = await auctionHouse.auctions(1);
@@ -323,11 +323,11 @@ describe("AuctionHouse testing", function () {
         let userTwoAuctionHouse = auctionHouse.connect(userTwo);
         let userThreeAuctionHouse = auctionHouse.connect(userThree);
 
-        // Auction house must be given approval to move D2O from participant's account.
+        // Auction house must be given approval to move D2o from participant's account.
         await userTwoLMCV.approve(auctionHouse.address);
         await userThreeLMCV.approve(auctionHouse.address);
 
-        // Generate some D2O for user two and three via inflation. This is OK for testing.
+        // Generate some D2o for user two and three via inflation. This is OK for testing.
         await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
         await lmcv.inflate(treasury.address, userThree.address, frad("500.0"));
 
@@ -346,16 +346,16 @@ describe("AuctionHouse testing", function () {
         // Any initial bid amount is valid.
         await userTwoAuctionHouse.raise(1, frad("50.0"));
 
-        // 50 D2O should move from user two to the treasury.
-        await checkUint256Value(() => lmcv.d2O(userTwo.address), "450.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(treasury.address), "50.0", NumType.RAD);
+        // 50 D2o should move from user two to the treasury.
+        await checkUint256Value(() => lmcv.d2o(userTwo.address), "450.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(treasury.address), "50.0", NumType.RAD);
 
         // Second bid comes in. First bidder is refunded by second bidder.
         await userThreeAuctionHouse.raise(1, frad("75.0"));
 
-        await checkUint256Value(() => lmcv.d2O(userTwo.address), "500.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(treasury.address), "75.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(userThree.address), "425.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(userTwo.address), "500.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(treasury.address), "75.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(userThree.address), "425.0", NumType.RAD);
     });
 
     it("If next highest bidder is the same then only send the incremental amount to treasury", async function () {
@@ -364,10 +364,10 @@ describe("AuctionHouse testing", function () {
         let userTwoLiquidator = liquidator.connect(userTwo);
         let userTwoAuctionHouse = auctionHouse.connect(userTwo);
 
-        // Auction house must be given approval to move D2O from participant's account.
+        // Auction house must be given approval to move D2o from participant's account.
         await userTwoLMCV.approve(auctionHouse.address);
 
-        // Generate some D2O for user two via inflation. This is OK for testing.
+        // Generate some D2o for user two via inflation. This is OK for testing.
         await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
 
         // Set up liquidator.
@@ -385,16 +385,16 @@ describe("AuctionHouse testing", function () {
         // Any initial bid amount is valid.
         await userTwoAuctionHouse.raise(1, frad("10.0"));
 
-        // 50 D2O should move from user two to the treasury.
-        await checkUint256Value(() => lmcv.d2O(userTwo.address), "490.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(treasury.address), "10.0", NumType.RAD);
+        // 50 D2o should move from user two to the treasury.
+        await checkUint256Value(() => lmcv.d2o(userTwo.address), "490.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(treasury.address), "10.0", NumType.RAD);
 
         // Any initial bid amount is valid.
         await userTwoAuctionHouse.raise(1, frad("25.0"));
 
-        // 50 D2O should move from user two to the treasury.
-        await checkUint256Value(() => lmcv.d2O(userTwo.address), "475.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(treasury.address), "25.0", NumType.RAD);
+        // 50 D2o should move from user two to the treasury.
+        await checkUint256Value(() => lmcv.d2o(userTwo.address), "475.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(treasury.address), "25.0", NumType.RAD);
     });
 
     it("Can't place a bid after bid expiry", async function () {
@@ -403,10 +403,10 @@ describe("AuctionHouse testing", function () {
         let userTwoLiquidator = liquidator.connect(userTwo);
         let userTwoAuctionHouse = auctionHouse.connect(userTwo);
 
-        // Auction house must be given approval to move D2O from participant's account.
+        // Auction house must be given approval to move D2o from participant's account.
         await userTwoLMCV.approve(auctionHouse.address);
 
-        // Generate some D2O for user two via inflation. This is OK for testing.
+        // Generate some D2o for user two via inflation. This is OK for testing.
         await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
 
         // Set up liquidator.
@@ -424,9 +424,9 @@ describe("AuctionHouse testing", function () {
         // Initial bid.
         await userTwoAuctionHouse.raise(1, frad("10.0"));
 
-        // 10 D2O should move from user two to the treasury.
-        await checkUint256Value(() => lmcv.d2O(userTwo.address), "490.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(treasury.address), "10.0", NumType.RAD);
+        // 10 D2o should move from user two to the treasury.
+        await checkUint256Value(() => lmcv.d2o(userTwo.address), "490.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(treasury.address), "10.0", NumType.RAD);
 
         // Advancing time by three hours should enable us to
         // end the auction because the bid expiry time is reached.
@@ -442,10 +442,10 @@ describe("AuctionHouse testing", function () {
         let userTwoLiquidator = liquidator.connect(userTwo);
         let userTwoAuctionHouse = auctionHouse.connect(userTwo);
 
-        // Auction house must be given approval to move D2O from participant's account.
+        // Auction house must be given approval to move D2o from participant's account.
         await userTwoLMCV.approve(auctionHouse.address);
 
-        // Generate some D2O for user two via inflation. This is OK for testing.
+        // Generate some D2o for user two via inflation. This is OK for testing.
         await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
 
         // Set up liquidator.
@@ -480,10 +480,10 @@ describe("AuctionHouse testing", function () {
         let userTwoLiquidator = liquidator.connect(userTwo);
         let userTwoAuctionHouse = auctionHouse.connect(userTwo);
 
-        // Auction house must be given approval to move D2O from participant's account.
+        // Auction house must be given approval to move D2o from participant's account.
         await userTwoLMCV.approve(auctionHouse.address);
 
-        // Generate some D2O for user two via inflation. This is OK for testing.
+        // Generate some D2o for user two via inflation. This is OK for testing.
         await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
 
         // Set up liquidator.
@@ -535,10 +535,10 @@ describe("AuctionHouse testing", function () {
         let userTwoLiquidator = liquidator.connect(userTwo);
         let userTwoAuctionHouse = auctionHouse.connect(userTwo);
 
-        // Auction house must be given approval to move D2O from participant's account.
+        // Auction house must be given approval to move D2o from participant's account.
         await userTwoLMCV.approve(auctionHouse.address);
 
-        // Generate some D2O for user two via inflation. This is OK for testing.
+        // Generate some D2o for user two via inflation. This is OK for testing.
         await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
 
         // Set up liquidator.
@@ -565,12 +565,12 @@ describe("AuctionHouse testing", function () {
         await userTwoAuctionHouse.end(1);
 
         // User two should now have the collateral. User one should have lost it.
-        // Treasury should have the 1.0 D2O paid for the collateral.
+        // Treasury should have the 1.0 D2o paid for the collateral.
         // UserTwo had 250 foo to begin with.
         await checkUint256Value(() => lmcv.unlockedCollateral(userTwo.address, fooBytes), "300.0", NumType.WAD);
         await checkUint256Value(() => lmcv.lockedCollateral(userOne.address, fooBytes), "0.0", NumType.WAD);
-        await checkUint256Value(() => lmcv.d2O(userTwo.address), "499.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(treasury.address), "1.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(userTwo.address), "499.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(treasury.address), "1.0", NumType.RAD);
 
         // Auction 1 has been removed now, everything has been zeroed etc.
         // Gas cost of this???
@@ -587,10 +587,10 @@ describe("AuctionHouse testing", function () {
         // Set bid expiry to some enormously long time so we hit auction expiry first.
         await auctionHouse.setBidExpiry(10000);
 
-        // Auction house must be given approval to move D2O from participant's account.
+        // Auction house must be given approval to move D2o from participant's account.
         await userTwoLMCV.approve(auctionHouse.address);
 
-        // Generate some D2O for user two via inflation. This is OK for testing.
+        // Generate some D2o for user two via inflation. This is OK for testing.
         await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
 
         // Set up liquidator.
@@ -617,12 +617,12 @@ describe("AuctionHouse testing", function () {
         await userTwoAuctionHouse.end(1);
 
         // User two should now have the collateral. User one should have lost it.
-        // Treasury should have the 1.0 D2O paid for the collateral.
+        // Treasury should have the 1.0 D2o paid for the collateral.
         // UserTwo had 250 foo to begin with.
         await checkUint256Value(() => lmcv.unlockedCollateral(userTwo.address, fooBytes), "300.0", NumType.WAD);
         await checkUint256Value(() => lmcv.lockedCollateral(userOne.address, fooBytes), "0.0", NumType.WAD);
-        await checkUint256Value(() => lmcv.d2O(userTwo.address), "499.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(treasury.address), "1.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(userTwo.address), "499.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(treasury.address), "1.0", NumType.RAD);
 
         // Auction 1 has been removed now, everything has been zeroed etc.
         // Gas cost of this???
@@ -667,10 +667,10 @@ describe("AuctionHouse testing", function () {
         // Set bid expiry to some enormously long time so we hit auction expiry first.
         await auctionHouse.setBidExpiry(10000);
 
-        // Auction house must be given approval to move D2O from participant's account.
+        // Auction house must be given approval to move D2o from participant's account.
         await userTwoLMCV.approve(auctionHouse.address);
 
-        // Generate some D2O for user two via inflation. This is OK for testing.
+        // Generate some D2o for user two via inflation. This is OK for testing.
         await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
 
         // Set up liquidator.
@@ -706,10 +706,10 @@ describe("AuctionHouse testing", function () {
         let userTwoLiquidator = liquidator.connect(userTwo);
         let userTwoAuctionHouse = auctionHouse.connect(userTwo);
 
-        // Auction house must be given approval to move D2O from participant's account.
+        // Auction house must be given approval to move D2o from participant's account.
         await userTwoLMCV.approve(auctionHouse.address);
 
-        // Generate some D2O for user two via inflation. This is OK for testing.
+        // Generate some D2o for user two via inflation. This is OK for testing.
         await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
 
         // Set up liquidator.
@@ -732,8 +732,8 @@ describe("AuctionHouse testing", function () {
 
         // Bid full amount.
         await userTwoAuctionHouse.raise(1, frad("275.0"));
-        await checkUint256Value(() => lmcv.d2O(userTwo.address), "225.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(treasury.address), "275.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(userTwo.address), "225.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(treasury.address), "275.0", NumType.RAD);
 
         // Submit bid to converge stage.
         await userTwoAuctionHouse.converge(1, fray("0.90"));
@@ -747,10 +747,10 @@ describe("AuctionHouse testing", function () {
         let userTwoLiquidator = liquidator.connect(userTwo);
         let userTwoAuctionHouse = auctionHouse.connect(userTwo);
 
-        // Auction house must be given approval to move D2O from participant's account.
+        // Auction house must be given approval to move D2o from participant's account.
         await userTwoLMCV.approve(auctionHouse.address);
 
-        // Generate some D2O for user two via inflation. This is OK for testing.
+        // Generate some D2o for user two via inflation. This is OK for testing.
         await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
 
         // Set up liquidator.
@@ -782,10 +782,10 @@ describe("AuctionHouse testing", function () {
         let userTwoLiquidator = liquidator.connect(userTwo);
         let userTwoAuctionHouse = auctionHouse.connect(userTwo);
 
-        // Auction house must be given approval to move D2O from participant's account.
+        // Auction house must be given approval to move D2o from participant's account.
         await userTwoLMCV.approve(auctionHouse.address);
 
-        // Generate some D2O for user two via inflation. This is OK for testing.
+        // Generate some D2o for user two via inflation. This is OK for testing.
         await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
 
         // Set up liquidator.
@@ -814,10 +814,10 @@ describe("AuctionHouse testing", function () {
         let userTwoLiquidator = liquidator.connect(userTwo);
         let userTwoAuctionHouse = auctionHouse.connect(userTwo);
 
-        // Auction house must be given approval to move D2O from participant's account.
+        // Auction house must be given approval to move D2o from participant's account.
         await userTwoLMCV.approve(auctionHouse.address);
 
-        // Generate some D2O for user two via inflation. This is OK for testing.
+        // Generate some D2o for user two via inflation. This is OK for testing.
         await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
 
         // Set up liquidator.
@@ -843,10 +843,10 @@ describe("AuctionHouse testing", function () {
         let userTwoLiquidator = liquidator.connect(userTwo);
         let userTwoAuctionHouse = auctionHouse.connect(userTwo);
 
-        // Auction house must be given approval to move D2O from participant's account.
+        // Auction house must be given approval to move D2o from participant's account.
         await userTwoLMCV.approve(auctionHouse.address);
 
-        // Generate some D2O for user two via inflation. This is OK for testing.
+        // Generate some D2o for user two via inflation. This is OK for testing.
         await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
 
         // Set up liquidator.
@@ -873,10 +873,10 @@ describe("AuctionHouse testing", function () {
         let userTwoLiquidator = liquidator.connect(userTwo);
         let userTwoAuctionHouse = auctionHouse.connect(userTwo);
 
-        // Auction house must be given approval to move D2O from participant's account.
+        // Auction house must be given approval to move D2o from participant's account.
         await userTwoLMCV.approve(auctionHouse.address);
 
-        // Generate some D2O for user two via inflation. This is OK for testing.
+        // Generate some D2o for user two via inflation. This is OK for testing.
         await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
 
         // Set up liquidator.
@@ -899,7 +899,7 @@ describe("AuctionHouse testing", function () {
         await userTwoAuctionHouse.converge(1, fray("0.9025"));
     });
 
-    it("Correct D2O and collateral amounts are transferred.", async function () {
+    it("Correct D2o and collateral amounts are transferred.", async function () {
         let userOneLMCV = lmcv.connect(userOne);
         let userTwoLMCV = lmcv.connect(userTwo);
         let userThreeLMCV = lmcv.connect(userThree);
@@ -907,11 +907,11 @@ describe("AuctionHouse testing", function () {
         let userTwoAuctionHouse = auctionHouse.connect(userTwo);
         let userThreeAuctionHouse = auctionHouse.connect(userThree);
 
-        // Auction house must be given approval to move D2O from participant's account.
+        // Auction house must be given approval to move D2o from participant's account.
         await userTwoLMCV.approve(auctionHouse.address);
         await userThreeLMCV.approve(auctionHouse.address);
 
-        // Generate some D2O for user two and three via inflation. This is OK for testing.
+        // Generate some D2o for user two and three via inflation. This is OK for testing.
         await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
         await lmcv.inflate(treasury.address, userThree.address, frad("500.0"));
 
@@ -929,36 +929,36 @@ describe("AuctionHouse testing", function () {
 
         // Bid full amount to progress to converge phase.
         await userTwoAuctionHouse.raise(1, frad("10.0"));
-        await checkUint256Value(() => lmcv.d2O(userTwo.address), "490.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(userThree.address), "500.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(treasury.address), "10.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(userTwo.address), "490.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(userThree.address), "500.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(treasury.address), "10.0", NumType.RAD);
 
         await userThreeAuctionHouse.raise(1, frad("50.0"));
-        await checkUint256Value(() => lmcv.d2O(userTwo.address), "500.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(userThree.address), "450.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(treasury.address), "50.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(userTwo.address), "500.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(userThree.address), "450.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(treasury.address), "50.0", NumType.RAD);
 
         await userTwoAuctionHouse.raise(1, frad("100.0"));
-        await checkUint256Value(() => lmcv.d2O(userTwo.address), "400.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(userThree.address), "500.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(treasury.address), "100.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(userTwo.address), "400.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(userThree.address), "500.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(treasury.address), "100.0", NumType.RAD);
 
         await userThreeAuctionHouse.raise(1, frad("275.0"));
-        await checkUint256Value(() => lmcv.d2O(userTwo.address), "500.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(userThree.address), "225.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(treasury.address), "275.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(userTwo.address), "500.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(userThree.address), "225.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(treasury.address), "275.0", NumType.RAD);
 
         // Submit converge bids.
         await userTwoAuctionHouse.converge(1, fray("0.90"));
-        await checkUint256Value(() => lmcv.d2O(userTwo.address), "225.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(userThree.address), "500.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(treasury.address), "275.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(userTwo.address), "225.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(userThree.address), "500.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(treasury.address), "275.0", NumType.RAD);
         await checkUint256Value(() => lmcv.unlockedCollateral(userOne.address, fooBytes), "5.0", NumType.WAD);
 
         await userThreeAuctionHouse.converge(1, fray("0.85"));
-        await checkUint256Value(() => lmcv.d2O(userTwo.address), "500.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(userThree.address), "225.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(treasury.address), "275.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(userTwo.address), "500.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(userThree.address), "225.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(treasury.address), "275.0", NumType.RAD);
         await checkUint256Value(() => lmcv.unlockedCollateral(userOne.address, fooBytes), "7.5", NumType.WAD);
 
         // Advancing time by two days should enable us to end
@@ -966,9 +966,9 @@ describe("AuctionHouse testing", function () {
         await network.provider.send("evm_increaseTime", [60 * 60 * 24 * 2]);
 
         await userThreeAuctionHouse.end(1);
-        await checkUint256Value(() => lmcv.d2O(userTwo.address), "500.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(userThree.address), "225.0", NumType.RAD);
-        await checkUint256Value(() => lmcv.d2O(treasury.address), "275.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(userTwo.address), "500.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(userThree.address), "225.0", NumType.RAD);
+        await checkUint256Value(() => lmcv.d2o(treasury.address), "275.0", NumType.RAD);
         await checkUint256Value(() => lmcv.unlockedCollateral(userOne.address, fooBytes), "7.5", NumType.WAD);
         await checkUint256Value(() => lmcv.unlockedCollateral(userThree.address, fooBytes), "42.5", NumType.WAD);
     });
@@ -979,10 +979,10 @@ describe("AuctionHouse testing", function () {
         let userTwoLiquidator = liquidator.connect(userTwo);
         let userTwoAuctionHouse = auctionHouse.connect(userTwo);
 
-        // Auction house must be given approval to move D2O from participant's account.
+        // Auction house must be given approval to move D2o from participant's account.
         await userTwoLMCV.approve(auctionHouse.address);
 
-        // Generate some D2O for user two via inflation. This is OK for testing.
+        // Generate some D2o for user two via inflation. This is OK for testing.
         await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
 
         // Set up liquidator.
@@ -996,9 +996,9 @@ describe("AuctionHouse testing", function () {
         await lmcv.updateSpotPrice(fooBytes, fray("7.14"));
         await userTwoLiquidator.liquidate(userOne.address);
 
-        // Collateral value is 7.14 * 50    = 357 D2O
-        // debtHaircut is 250 * 1.1         = 275 D2O
-        // Minimum bid is 257 * 0.8         = 178 D2O
+        // Collateral value is 7.14 * 50    = 357 D2o
+        // debtHaircut is 250 * 1.1         = 275 D2o
+        // Minimum bid is 257 * 0.8         = 178 D2o
 
         await expect(userTwoAuctionHouse.raise(1, frad("204.0"))).to.be.revertedWith("AuctionHouse/Bid lower than minimum bid");
 
@@ -1012,10 +1012,10 @@ describe("AuctionHouse testing", function () {
         let userTwoLiquidator = liquidator.connect(userTwo);
         let userTwoAuctionHouse = auctionHouse.connect(userTwo);
 
-        // Auction house must be given approval to move D2O from participant's account.
+        // Auction house must be given approval to move D2o from participant's account.
         await userTwoLMCV.approve(auctionHouse.address);
 
-        // Generate some D2O for user two via inflation. This is OK for testing.
+        // Generate some D2o for user two via inflation. This is OK for testing.
         await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
 
         // Set up liquidator.
@@ -1040,10 +1040,10 @@ describe("AuctionHouse testing", function () {
         let userTwoLiquidator = liquidator.connect(userTwo);
         let userTwoAuctionHouse = auctionHouse.connect(userTwo);
 
-        // Auction house must be given approval to move D2O from participant's account.
+        // Auction house must be given approval to move D2o from participant's account.
         await userTwoLMCV.approve(auctionHouse.address);
 
-        // Generate some D2O for user two via inflation. This is OK for testing.
+        // Generate some D2o for user two via inflation. This is OK for testing.
         await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
 
         // Set up liquidator.
@@ -1058,13 +1058,13 @@ describe("AuctionHouse testing", function () {
         await lmcv.updateSpotPrice(fooBytes, fray("6.00"));
         await userTwoLiquidator.liquidate(userOne.address);
 
-        // Collateral value is 6.0 * 50     = 300 D2O
-        // min bid as % of collatera lvalue = 75 D2O
+        // Collateral value is 6.0 * 50     = 300 D2o
+        // min bid as % of collatera lvalue = 75 D2o
 
-        // Let's bid 74.9999 D2O
+        // Let's bid 74.9999 D2o
         await expect(userTwoAuctionHouse.raise(1, frad("74.9999"))).to.be.revertedWith("AuctionHouse/Bid lower than minimum bid");
 
-        // 75 D2O will work.
+        // 75 D2o will work.
         await userTwoAuctionHouse.raise(1, frad("75.0"));
     });
 
@@ -1074,10 +1074,10 @@ describe("AuctionHouse testing", function () {
         let userTwoLiquidator = liquidator.connect(userTwo);
         let userTwoAuctionHouse = auctionHouse.connect(userTwo);
 
-        // Auction house must be given approval to move D2O from participant's account.
+        // Auction house must be given approval to move D2o from participant's account.
         await userTwoLMCV.approve(auctionHouse.address);
 
-        // Generate some D2O for user two via inflation. This is OK for testing.
+        // Generate some D2o for user two via inflation. This is OK for testing.
         await lmcv.inflate(treasury.address, userTwo.address, frad("500.0"));
 
         // Set LTV for foo to a lower value. This means that there will be much more collateral than
@@ -1097,14 +1097,14 @@ describe("AuctionHouse testing", function () {
         await lmcv.updateSpotPrice(fooBytes, fray("6.00"));
         await userTwoLiquidator.liquidate(userOne.address);
 
-        // Collateral value is 6.0 * 50     = 300 D2O
-        // debtHaircut is 150 * 1.1         = 165 D2O
-        // Minimum bid is 165 * 0.8         = 132 D2O
+        // Collateral value is 6.0 * 50     = 300 D2o
+        // debtHaircut is 150 * 1.1         = 165 D2o
+        // Minimum bid is 165 * 0.8         = 132 D2o
 
-        // Let's bid 131.99 D2O
+        // Let's bid 131.99 D2o
         await expect(userTwoAuctionHouse.raise(1, frad("131.99"))).to.be.revertedWith("AuctionHouse/Bid lower than minimum bid");
 
-        // 132 D2O will work.
+        // 132 D2o will work.
         await userTwoAuctionHouse.raise(1, frad("132.0"));
     });
 });

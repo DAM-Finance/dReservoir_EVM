@@ -4,17 +4,17 @@ pragma solidity ^0.8.7;
 
 import "../dependencies/AuthAdmin.sol";
 
-interface d2OLike {
+interface d2oLike {
     function setTransferBlockRelease(address, uint256) external;
     function deny(address) external;
     function cage(uint256) external;
 }
 
-contract d2OGuardian is AuthAdmin("d2OGuardian", msg.sender) {
+contract d2oGuardian is AuthAdmin("d2oGuardian", msg.sender) {
 
     //HYP, LZ, etc -> address deployed on this chain
     mapping (bytes32 => address) public pipeAddresses;
-    address public immutable d2OContract;
+    address public immutable d2oContract;
 
     event SetPipeAddress(bytes32 indexed pipeName, address pipeAddress);
     event HaltedPipe(bytes32 indexed pipe);
@@ -22,9 +22,9 @@ contract d2OGuardian is AuthAdmin("d2OGuardian", msg.sender) {
     event CagedDeuterium();
     
 
-    constructor(address _d2OContract) {
-        require(_d2OContract != address(0), "d2OGuardian/invalid address");
-        d2OContract = _d2OContract;
+    constructor(address _d2oContract) {
+        require(_d2oContract != address(0), "d2oGuardian/invalid address");
+        d2oContract = _d2oContract;
     }
 
     function setPipeAddress(bytes32 pipeName, address pipeAddress) external auth {
@@ -33,17 +33,17 @@ contract d2OGuardian is AuthAdmin("d2OGuardian", msg.sender) {
     }
 
     function removeConnectorAdmin(bytes32 pipeName) external auth {
-        d2OLike(d2OContract).deny(pipeAddresses[pipeName]);
+        d2oLike(d2oContract).deny(pipeAddresses[pipeName]);
         emit HaltedPipe(pipeName);
     }
 
     function cageDeuterium() external auth {
-        d2OLike(d2OContract).cage(0);
+        d2oLike(d2oContract).cage(0);
         emit CagedDeuterium();
     }
 
     function cageUser(address user) external auth {
-        d2OLike(d2OContract).setTransferBlockRelease(user, 2**256 - 1);
+        d2oLike(d2oContract).setTransferBlockRelease(user, 2**256 - 1);
         emit CagedUser(user);
     }
 

@@ -16,8 +16,8 @@ const { BigNumber } = require("ethers");
  let userOne, userTwo, userThree, treasury;
 
  // Contracts and contract factories.
- let d2OFactory, d2O;
- let d2OJoinFactory, d2OJoin;
+ let d2oFactory, d2o;
+ let d2oJoinFactory, d2oJoin;
  let LMCVFactory, lmcv;
  let tokenFactory, foo, bar, baz;
  let collateralJoinFactory, fooJoin, barJoin, bazJoin;
@@ -66,9 +66,9 @@ const { BigNumber } = require("ethers");
  describe("Oracle testing", function () {
 
     before(async function () {
-        d2OFactory              = await ethers.getContractFactory("d2O");
+        d2oFactory              = await ethers.getContractFactory("d2o");
         LMCVFactory             = await ethers.getContractFactory("LMCV");
-        d2OJoinFactory          = await ethers.getContractFactory("d2OJoin");
+        d2oJoinFactory          = await ethers.getContractFactory("d2oJoin");
         tokenFactory            = await ethers.getContractFactory("MockTokenFour");
         collateralJoinFactory   = await ethers.getContractFactory("CollateralJoin");
         lmcvProxyFactory        = await ethers.getContractFactory("LMCVProxy");
@@ -87,10 +87,10 @@ const { BigNumber } = require("ethers");
         baz = await tokenFactory.deploy("BAZ");
 
         // Deploy protocol contracts.
-        d2O          = await d2OFactory.deploy();
+        d2o             = await d2oFactory.deploy();
         lmcv            = await LMCVFactory.deploy();
         lmcvProxy       = await lmcvProxyFactory.deploy(lmcv.address);
-        d2OJoin      = await d2OJoinFactory.deploy(lmcv.address, d2O.address, lmcvProxy.address);
+        d2oJoin         = await d2oJoinFactory.deploy(lmcv.address, d2o.address, lmcvProxy.address);
         fooJoin         = await collateralJoinFactory.deploy(lmcv.address, lmcvProxy.address, fooBytes, foo.address);
         barJoin         = await collateralJoinFactory.deploy(lmcv.address, lmcvProxy.address, barBytes, bar.address);
         bazJoin         = await collateralJoinFactory.deploy(lmcv.address, lmcvProxy.address, bazBytes, baz.address);
