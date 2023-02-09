@@ -119,12 +119,14 @@ For deploying a localhost version of DAM for testing use the following:
 
 This sets up the local test network and executes transactions to set up all of the contracts -- permissions etc. You can then use hardhat tasks to interact with the contracts e.g.
 
-1. `npx hardhat eth_balance --user [ADDRESS] --network localhost` 
-2. `npx hardhat usdc_mint --user [ADDRESS] --amount [AMOUNT] --network localhost`
-3. `npx hardhat usdc_balance --user [ADDRESS] --network localhost`
-4. `npx hardhat d2O_swap --user [ADDRESS] --amount [AMOUNT] --network localhost`
-5. `npx hardhat d2O_balance --user [ADDRESS] --network localhost`
-6. `npx hardhat d2O_teleport --user [ADDRESS]] --amount [AMOUNT] --network localhost --source-chain-id 1 --dest-chain-id 2` - for teleporting using the local test network we use the LayerZero mock end-point which simulates the existence of two networks. With this approach there are two d2O contracts, two end-points and two connectors. One end-point has id `1` and the other id `2`. 
+1. `npx hardhat eth-balance --address [ADDRESS] --network localhost` 
+2. `npx hardhat usdc-mint --address [ADDRESS] --amount [AMOUNT] --network localhost`
+3. `npx hardhat usdc-balance --address [ADDRESS] --network localhost`
+4. `npx hardhat d2o-swap --address [ADDRESS] --amount [AMOUNT] --network localhost`
+5. `npx hardhat d2o-balance --address [ADDRESS] --network localhost`
+6. `npx hardhat d2o-teleport-layer-zero --address [ADDRESS] --amount [AMOUNT] --network localhost --source 1 --dest 2` - for teleporting using the local test network we use the LayerZero mock end-point which simulates the existence of two networks. With this approach there are two d2O contracts, two end-points and two connectors. One end-point has id `1` and the other id `2`. 
+7. `npx hardhat d2o-teleport-hyperlane --address [ADDRESS] --amount [AMOUNT] --network localhost --source 1 --dest 2` - as above but uses the hyperlane mock
+8. `npx hardhat d2o-burn --address [ADDRESS] --amount [AMOUNT] --network localhost`
 
 For deploying to testnet or mainnet, use the following:
 

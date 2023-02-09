@@ -11,6 +11,7 @@ import '@nomicfoundation/hardhat-chai-matchers';
 import './tasks/mock/d2o-teleport-layer-zero.ts'
 import './tasks/mock/d2o-teleport-hyperlane.ts'
 import './tasks/mock/d2o-swap.ts'
+import './tasks/mock/d2o-burn.ts'
 import './tasks/mock/d2o-balance.ts'
 import './tasks/mock/usdc-mint.ts'
 import './tasks/mock/usdc-balance.ts'
