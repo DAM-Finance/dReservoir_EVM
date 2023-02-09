@@ -8,12 +8,13 @@ import 'solidity-coverage';
 import 'hardhat-deploy-tenderly';
 import {node_url, accounts, addForkConfiguration} from './utils/network';
 import '@nomicfoundation/hardhat-chai-matchers';
-import './tasks/d2O_teleport.ts'
-import './tasks/d2O_swap.ts'
-import './tasks/d2O_balance.ts'
-import './tasks/usdc_mint.ts'
-import './tasks/usdc_balance.ts'
-import './tasks/eth_balance.ts'
+import './tasks/mock/d2o-teleport-layer-zero.ts'
+import './tasks/mock/d2o-teleport-hyperlane.ts'
+import './tasks/mock/d2o-swap.ts'
+import './tasks/mock/d2o-balance.ts'
+import './tasks/mock/usdc-mint.ts'
+import './tasks/mock/usdc-balance.ts'
+import './tasks/mock/eth-balance.ts'
 import './tasks/setup_contracts_goerli.ts'
 import './tasks/setup_contracts_moonbase.ts'
 import './tasks/setup_contracts_ethereum.ts'
@@ -46,7 +47,7 @@ const config: HardhatUserConfig = {
 		hardhat: {
 			initialBaseFeePerGas: 0, // to fix : https://github.com/sc-forks/solidity-coverage/issues/652, see https://github.com/sc-forks/solidity-coverage/issues/652#issuecomment-896330136
 			accounts: accounts(),
-			deploy: ['deploy/hardhat/']
+			deploy: ['deploy/evm/']
 		},
 		localhost: {
 			url: node_url('localhost'),

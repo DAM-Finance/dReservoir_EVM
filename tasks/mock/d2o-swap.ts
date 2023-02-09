@@ -6,26 +6,26 @@ function fwad(wad: string) {
 	return ethers.utils.parseEther(wad); 
 }
 
-let usdcBytes = ethers.utils.formatBytes32String("PSM-USDC-DAM");	
+let usdcBytes = ethers.utils.formatBytes32String("PSM-USDC");	
 
-task("d2O_swap", "teleports d2O from one chain to another")
+task("d2o-swap", "swaps USDC into d2o")
   .addParam("amount", "The amount of d2O to swap")
-  .addParam("user", "The user's address to send from")
+  .addParam("address", "The user's address to send from")
   .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
 	const {deployments, getNamedAccounts} = hre;
 	const {execute} = deployments;
-
-	const usdcJoinAddress = await (await deployments.get("usdcJoin")).address;
 
 	// Provide approval.
 
 	console.log("Approving USDCJoin...");
 
+	const USDCJoin = await deployments.get("USDCJoin");
+
 	const approveResult = await execute(
 		"USDC", 
-		{from: taskArgs.user, log: true},
+		{from: taskArgs.address, log: true},
 		"approve",
-		usdcJoinAddress, ethers.utils.parseUnits(taskArgs.amount, 6)	// USDC has 6 decimal places.
+		USDCJoin.address, ethers.utils.parseUnits(taskArgs.amount, 6)	// USDC has 6 decimal places.
 	);
 
 	console.log("Approve successful: ", approveResult.transactionHash);
@@ -36,16 +36,16 @@ task("d2O_swap", "teleports d2O from one chain to another")
 
 	const swapResult = await execute(
 		"PSM", 
-		{from: taskArgs.user, log: true},
-		"createD2O",
-		taskArgs.user,
+		{from: taskArgs.address, log: true},
+		"createD2o",
+		taskArgs.address,
 		[usdcBytes],
 		[ethers.utils.parseUnits(taskArgs.amount, 6).toString()]
 	);
 
-	console.log("✅ Swap successful: ", swapResult.transactionHash);
+	console.log("✅ d2o/USDC swap successful: ", swapResult.transactionHash);
 
-	await hre.run("d2O_balance", {user: taskArgs.user});
-	await hre.run("usdc_balance", {user: taskArgs.user});
-	await hre.run("eth_balance", {user: taskArgs.user});
+	await hre.run("d2o-balance", {address: taskArgs.address});
+	await hre.run("usdc-balance", {address: taskArgs.address});
+	await hre.run("eth-balance", {address: taskArgs.address});
 });
