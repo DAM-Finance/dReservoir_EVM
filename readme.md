@@ -128,9 +128,17 @@ This sets up the local test network and executes transactions to set up all of t
 7. `npx hardhat d2o-teleport-hyperlane --address [ADDRESS] --amount [AMOUNT] --network localhost --source 1 --dest 2` - as above but uses the hyperlane mock
 8. `npx hardhat d2o-burn --address [ADDRESS] --amount [AMOUNT] --network localhost`
 
+Deployment tags:
+
+1. `d2o` - deploy d2o only. I.e. the d2o contract and the d2o guardian contract.
+2. `layer-zero-pipe` - deploy d2o and the layer zero pipe contracts. Depends on d2o.
+3. `hyperlane-pipe` - deploy d2o and the hyperlane pipe contracts. Depends on d2o.
+4. `lmcv` - deploy the lmcv contracts and the d2o contracts. Depends on d2o.
+5. `collateral` - deploy a test collateral contract and the join contract. Depends on lmcv.
+6. `psm` - deploys a psm for the specified collateral type. Depends on collateral.
+
 For deploying to testnet or mainnet, use the following:
 
-1. `npx hardhat deploy --network [NETWORK NAME]` - currently only supports Goerli and Moonbase Alpha
-2. `npx hardhat setup_contracts --network [NETWORK NAME]` - currently only supports Goerli and Moonbase Alpha. This sets up all the contracts with permissions etc. It's done in a separate step to deploying with testnets and production.
+    npx hardhat deploy --network [NETWORK NAME] --tags [TAG NAME]`
 
-You can then use the same tasks as described above for the local test network to interact with testnet and mainnet deployments. Make sure to change the network name option to the nework of choice.
+The deployment scripts also set up the contracts to the extent they can. Some things need to be done manually afterwards using hardhat tasks. E.g. Setting trusted remotes or enrolling romes for layer-zero and hyperlane pipes.

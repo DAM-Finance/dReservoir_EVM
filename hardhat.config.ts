@@ -42,38 +42,46 @@ const config: HardhatUserConfig = {
 		// TODO: We should have a dedicated address for the "treasury" account.
 		deployer: 0,
 		treasury: 1,
-		user: 2
+		user: 2	
 	},
 	networks: addForkConfiguration({
 		hardhat: {
 			initialBaseFeePerGas: 0, // to fix : https://github.com/sc-forks/solidity-coverage/issues/652, see https://github.com/sc-forks/solidity-coverage/issues/652#issuecomment-896330136
 			accounts: accounts(),
-			deploy: ['deploy/evm/']
+			saveDeployments: false,
+			deploy: ['deploy/evm/mock']
 		},
-		localhost: {
+		mock: {
 			url: node_url('localhost'),
 			accounts: accounts(),
-			deploy: ['deploy/localhost/']
+			saveDeployments: false,
+			deploy: ['deploy/evm/mock']
+		},
+		test: {
+			url: node_url('localhost'),
+			accounts: accounts(),
+			saveDeployments: false,
+			deploy: ['deploy/evm/test']
 		},
 		goerli: {
 			url: node_url('goerli'),
 			accounts: accounts('goerli'),
-			deploy: ['deploy/goerli']
+			deploy: ['deploy/evm/test']
 		},
 		moonbase: {
 			url: node_url('moonbase'),
 			accounts: accounts('moonbase'),
-			deploy: ['deploy/moonbase']
+			deploy: ['deploy/evm/test']
 		},
 		ethereum: {
 			url: node_url('ethereum'),
 			accounts: accounts('ethereum'),
-			deploy: ['deploy/ethereum']
+			deploy: ['deploy/evm/main']
 		},
 		moonbeam: {
 			url: node_url('moonbeam'),
 			accounts: accounts('moonbeam'),
-			deploy: ['deploy/moonbeam']
+			deploy: ['deploy/evm/main']
 		},
 
 	}),
