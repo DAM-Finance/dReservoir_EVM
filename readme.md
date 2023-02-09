@@ -134,37 +134,3 @@ For deploying to testnet or mainnet, use the following:
 2. `npx hardhat setup_contracts --network [NETWORK NAME]` - currently only supports Goerli and Moonbase Alpha. This sets up all the contracts with permissions etc. It's done in a separate step to deploying with testnets and production.
 
 You can then use the same tasks as described above for the local test network to interact with testnet and mainnet deployments. Make sure to change the network name option to the nework of choice.
-
-### Environment variables
-
-
-```
-ETH_NODE_URI_ETHEREUM
-ETH_NODE_URI_GOERLI
-ETH_NODE_URI_MOONBEAM
-ETH_NODE_URI_MOONBASE
-
-MNEMONIC_ETHEREUM
-MNEMONIC_GOERLI
-MNEMONIC_MOONBEAM
-MNEMONIC_MOONBASE
-
-LAYER_ZERO_ENDPOINT_ETHEREUM
-LAYER_ZERO_ENDPOINT_GOERLI
-LAYER_ZERO_ENDPOINT_MOONBEAM
-LAYER_ZERO_ENDPOINT_MOONBASE
-LAYER_ZERO_CHAIN_ID_ETHEREUM
-LAYER_ZERO_CHAIN_ID_GOERLI
-LAYER_ZERO_CHAIN_ID_MOONBEAM
-LAYER_ZERO_CHAIN_ID_MOONBASE
-
-HYPERLANE_CONNECTION_MANAGER_GOERLI
-HYPERLANE_INTERCHAIN_GAS_PAYMASTER_GOERLI
-HYPERLANE_DOMAIN_IDENTIFIER_GOERLI
-HYPERLANE_DOMAIN_IDENTIFIER_MOONBASE
-
-USDC_ADDRESS_ETHEREUM
-USDC_PSM_SYMBOL
-
-ETHERSCAN_API_KEY
-```
