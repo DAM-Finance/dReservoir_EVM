@@ -2,10 +2,6 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { task } from "hardhat/config";
 import { ethers } from 'ethers';
 
-function fwad(wad: string) { 
-	return ethers.utils.parseEther(wad); 
-}
-
 let usdcBytes = ethers.utils.formatBytes32String("PSM-USDC");	
 
 task("d2o-swap", "swaps USDC into d2o")
