@@ -40,8 +40,4 @@ task("d2o-swap", "swaps USDC into d2o")
 	);
 
 	console.log("✅ d2o/USDC swap successful: ", swapResult.transactionHash);
-
-	await hre.run("d2o-balance", {address: taskArgs.address});
-	await hre.run("usdc-balance", {address: taskArgs.address});
-	await hre.run("eth-balance", {address: taskArgs.address});
 });

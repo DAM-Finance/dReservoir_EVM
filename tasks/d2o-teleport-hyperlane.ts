@@ -44,7 +44,5 @@ task("d2o-teleport-hyperlane", "teleports d2O from one chain to another")
 		method
 	);
 
-	console.log("✅ Teleport successful.")
-
-	await hre.run("d2o-balance", {address: taskArgs.address});
+	console.log("✅ Teleport successful.");
 });

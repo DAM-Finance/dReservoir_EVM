@@ -11,9 +11,12 @@ function frad(rad: string) {
 task("d2o-burn", "burns d2o for USDC")
   .addParam("amount", "The amount of d2O to burn")
   .addParam("address", "The user's address")
+  .addParam("env", "mock, test or main")
   .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
 	const {deployments, getNamedAccounts} = hre;
 	const {execute} = deployments;
+
+	const d2oName = taskArgs.env == "mock" ? "d2oOne" : "d2o";
 
 	// Provide approval.
 
@@ -22,7 +25,7 @@ task("d2o-burn", "burns d2o for USDC")
 	const PSM = await deployments.get("PSM");
 
 	const approveResult = await execute(
-		"d2oOne", 
+		d2oName, 
 		{from: taskArgs.address, log: true},
 		"approve",
 		PSM.address, frad(taskArgs.amount)	// USDC has 6 decimal places.
@@ -43,8 +46,4 @@ task("d2o-burn", "burns d2o for USDC")
 	);
 
 	console.log("✅ d2o/USDC swap successful: ", burnResult.transactionHash);
-
-	await hre.run("d2o-balance", {address: taskArgs.address});
-	await hre.run("usdc-balance", {address: taskArgs.address});
-	await hre.run("eth-balance", {address: taskArgs.address});
 });

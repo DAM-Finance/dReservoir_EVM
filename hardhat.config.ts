@@ -8,19 +8,14 @@ import 'solidity-coverage';
 import 'hardhat-deploy-tenderly';
 import {node_url, accounts, addForkConfiguration} from './utils/network';
 import '@nomicfoundation/hardhat-chai-matchers';
-import './tasks/mock/d2o-teleport-layer-zero.ts'
-import './tasks/mock/d2o-teleport-hyperlane.ts'
-import './tasks/mock/d2o-swap.ts'
-import './tasks/mock/d2o-burn.ts'
-import './tasks/mock/d2o-balance.ts'
-import './tasks/mock/usdc-mint.ts'
-import './tasks/mock/usdc-balance.ts'
-import './tasks/mock/eth-balance.ts'
-import './tasks/setup_contracts_goerli.ts'
-import './tasks/setup_contracts_moonbase.ts'
-import './tasks/setup_contracts_ethereum.ts'
-import './tasks/setup_contracts_moonbeam.ts'
-import './tasks/_swap_archadmin.ts'
+import './tasks/d2o-teleport-layer-zero.ts'
+import './tasks/d2o-teleport-hyperlane.ts'
+import './tasks/d2o-swap.ts'
+import './tasks/d2o-burn.ts'
+import './tasks/d2o-balance.ts'
+import './tasks/usdc-mint.ts'
+import './tasks/usdc-balance.ts'
+import './tasks/eth-balance.ts'
 import './tasks/swap_archadmin_ethereum.ts'
 import './tasks/swap_archadmin_moonbeam.ts'
 
@@ -57,10 +52,14 @@ const config: HardhatUserConfig = {
 			saveDeployments: false,
 			deploy: ['deploy/evm/mock']
 		},
-		test: {
-			url: node_url('localhost'),
+		testOne: {
+			url: "http://127.0.0.1:13371/",
 			accounts: accounts(),
-			saveDeployments: false,
+			deploy: ['deploy/evm/test']
+		},
+		testTwo: {
+			url: "http://127.0.0.1:13372/",
+			accounts: accounts(),
 			deploy: ['deploy/evm/test']
 		},
 		goerli: {
