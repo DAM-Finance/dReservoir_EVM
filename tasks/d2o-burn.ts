@@ -45,5 +45,5 @@ task("d2o-burn", "burns d2o for USDC")
 		[ethers.utils.parseUnits(taskArgs.amount, 6).toString()]
 	);
 
-	console.log("✅ d2o/USDC swap successful: ", burnResult.transactionHash);
+	console.log("✅ d2o burn successful: ", burnResult.transactionHash);
 });
