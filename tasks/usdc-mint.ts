@@ -9,7 +9,7 @@ task("usdc-mint", "mints USDC for a specified user")
 	const {deployments} = hre;
 	const {execute} = deployments;
 	const amount = ethers.utils.parseUnits(taskArgs.amount, 6);
-	console.log(`Minting ${taskArgs.amount} USDC to ${taskArgs.address}...`)
+	console.log(`Minting ${taskArgs.amount} USDC to ${taskArgs.address}...`);
 	await execute("USDC", {from: taskArgs.address, log: true}, "mint", taskArgs.address, amount);
 	console.log("✅ Test USDC mint successful.");
 });

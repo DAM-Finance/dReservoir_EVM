@@ -39,4 +39,4 @@ const deployLayerZeroPipe: DeployFunction = async function (hre: HardhatRuntimeE
 
 module.exports = deployLayerZeroPipe;
 module.exports.tags = ["layer-zero-pipe"];
-module.exports.dependencies = ["d2o"];
+module.exports.dependencies = [];

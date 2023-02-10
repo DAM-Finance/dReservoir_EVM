@@ -26,7 +26,7 @@ const deployPSM: DeployFunction = async function (hre: HardhatRuntimeEnvironment
 
     const tokenSymbol: string | undefined = process.env["TOKEN_SYMBOL"];
 	if (!tokenSymbol) {
-		throw new Error("Please set TREASURY_ADDRESS");
+		throw new Error("Please set TOKEN_SYMBOL");
 	}
 
 	const d2oJoin 	= await deployments.get("d2oJoin");
@@ -60,7 +60,7 @@ const deployPSM: DeployFunction = async function (hre: HardhatRuntimeEnvironment
 
 module.exports = deployPSM;
 module.exports.tags = ["psm"];
-module.exports.dependencies = ["collateral"];
+module.exports.dependencies = [];
 
 
 

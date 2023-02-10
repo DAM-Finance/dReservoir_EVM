@@ -96,4 +96,4 @@ const deployLMCV: DeployFunction = async function (hre: HardhatRuntimeEnvironmen
 
 module.exports = deployLMCV;
 module.exports.tags = ["lmcv"];
-module.exports.dependencies = ["d2o"];
+module.exports.dependencies = [];

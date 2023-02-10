@@ -1,1 +1,0 @@
-A `mock` deployment is intended for running a local machine only. It mocks out the hyperlane and layer zero infrastructure for easy testing.

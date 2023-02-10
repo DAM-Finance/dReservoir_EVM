@@ -48,4 +48,4 @@ const deployHyperlanePipe: DeployFunction = async function (hre: HardhatRuntimeE
 
 module.exports = deployHyperlanePipe;
 module.exports.tags = ["hyperlane-pipe"];
-module.exports.dependencies = ["d2o"];
+module.exports.dependencies = [];
