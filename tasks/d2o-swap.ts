@@ -39,5 +39,5 @@ task("d2o-swap", "swaps USDC into d2o")
 		[ethers.utils.parseUnits(taskArgs.amount, 6).toString()]
 	);
 
-	console.log("✅ d2o/USDC swap successful: ", swapResult.transactionHash);
+	console.log("✅ d2o swap successful: ", swapResult.transactionHash);
 });

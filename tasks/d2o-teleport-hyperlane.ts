@@ -15,11 +15,17 @@ task("d2o-teleport-hyperlane", "teleports d2O from one chain to another")
   .addOptionalParam("source", "The source chain id")
   .addOptionalParam("dest", "The destination chain id")
   .addParam("address", "The user's address to send from")
+  .addParam("env", "mock, test or main")
   .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
 	const {deployments} = hre;
 	const {execute} = deployments;
 
-	const contractName = taskArgs.source == 1 ? "HyperlanePipeOne" : "HyperlanePipeTwo";
+	let contractName = "";
+	if (taskArgs.env === "mock") {
+		contractName = taskArgs.source == 1 ? "HyperlanePipeOne" : "HyperlanePipeTwo";
+	} else {
+		contractName = "HyperlanePipe"
+	}
 
 	// Execute teleport.
 
@@ -34,15 +40,16 @@ task("d2o-teleport-hyperlane", "teleports d2O from one chain to another")
 		fwad(taskArgs.amount),		// Amount.		
 	);
 
-	// Manually perofrm message processing.
+	// Manually perofrm message processing for mock networks.
 
-	const method = taskArgs.source == 1 ? "processNextPendingMessage" : "processNextPendingMessageFromDestination";
-
-	await execute(
-		"MockHyperlaneEnvironment",
-		{from: taskArgs.address, log: true},
-		method
-	);
+	if (taskArgs.env == "mock") {
+		const method = taskArgs.source == 1 ? "processNextPendingMessage" : "processNextPendingMessageFromDestination";
+		await execute(
+			"MockHyperlaneEnvironment",
+			{from: taskArgs.address, log: true},
+			method
+		);
+	}
 
 	console.log("✅ Teleport successful.");
 });

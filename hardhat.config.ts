@@ -8,6 +8,7 @@ import 'solidity-coverage';
 import 'hardhat-deploy-tenderly';
 import {node_url, accounts, addForkConfiguration} from './utils/network';
 import '@nomicfoundation/hardhat-chai-matchers';
+import './tasks/do-all.ts'
 import './tasks/d2o-teleport-layer-zero.ts'
 import './tasks/d2o-teleport-hyperlane.ts'
 import './tasks/d2o-swap.ts'
@@ -16,6 +17,7 @@ import './tasks/d2o-balance.ts'
 import './tasks/usdc-mint.ts'
 import './tasks/usdc-balance.ts'
 import './tasks/eth-balance.ts'
+import './tasks/hyperlane-enroll-remote.ts'
 import './tasks/swap_archadmin_ethereum.ts'
 import './tasks/swap_archadmin_moonbeam.ts'
 
