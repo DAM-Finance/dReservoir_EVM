@@ -141,4 +141,18 @@ For deploying to testnet or mainnet, use the following:
 
     npx hardhat deploy --network [NETWORK NAME] --tags [TAG NAME]`
 
+
+Contract classes:
+
+1. `mock`. A `mock` deployment is intended for running a local machine only. It mocks out the hyperlane and layer zero infrastructure for easy testing.
+2. `test`. With the `test` deployment it is assumed we are using the proper layer zero and hyperlane infrastructure. All the necessary contracts should already be deployed to the network and if not then we should deploy them before running these deployments scripts. A `test` deployment also includes a "test" collateral contract. It's easiest to deploy our own modified ERC20, which allows people to mint their own tokens. 
+3. `main`. For product deployments. It is expected that the layer-zero or hyperlane infrastructure is deployed and available and that we use already deployed collateral contracts.
+
 The deployment scripts also set up the contracts to the extent they can. Some things need to be done manually afterwards using hardhat tasks. E.g. Setting trusted remotes or enrolling romes for layer-zero and hyperlane pipes.
+
+To deploy two local test networks which can teleport between each other using hyperlane:
+
+1. `./scripts/test/start-network.sh 13371` in one tab.
+2. `./scripts/test/start-network.sh 13372` in another tab.
+3. `./scripts/test/deploy-all.sh testOne` in a new tab.
+4. `./scripts/test/deploy-all.sh testTwo`

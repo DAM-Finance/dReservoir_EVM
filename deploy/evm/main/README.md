@@ -1,1 +1,0 @@
-For product deployments. It is expected that the layer-zero or hyperlane infrastructure is deployed and available and that we use already deployed collateral contracts.
