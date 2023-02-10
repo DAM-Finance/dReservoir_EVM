@@ -4,7 +4,19 @@ import { ethers } from 'ethers';
 
 task("d2o-balance", "gets the USDC balance for an account")
   .addParam("address", "The user's address")
+  .addParam("env", "mock, test or main")
   .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
+	switch (taskArgs.env) {
+		case "mock":
+			await mock(hre, taskArgs);
+			return;
+		case "test":
+			await test(hre, taskArgs);
+			return;
+	}
+});
+
+async function mock(hre: HardhatRuntimeEnvironment, taskArgs) {
 	const {deployments} = hre;
 	const {read} = deployments;
 
@@ -34,4 +46,18 @@ task("d2o-balance", "gets the USDC balance for an account")
 	);
 
 	console.log(`User ${taskArgs.address} d2oThree balance:`, ethers.utils.formatEther(d2OThree));
-});
+}
+
+async function test(hre: HardhatRuntimeEnvironment, taskArgs) {
+	const {deployments} = hre;
+	const {read} = deployments;
+
+	const d2o = await read(
+		"d2o", 
+		{from: taskArgs.address},
+		"balanceOf",
+		taskArgs.address
+	);
+
+	console.log(`User ${taskArgs.address} d2o balance:`, ethers.utils.formatEther(d2o));
+}

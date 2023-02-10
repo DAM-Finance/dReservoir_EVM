@@ -47,7 +47,5 @@ task("d2o-teleport-layer-zero", "teleports d2O from one chain to another")
 		[]
 	);
 
-	console.log("✅ Teleport successful.")
-
-	await hre.run("d2o-balance", {address: taskArgs.address});
+	console.log("✅ Teleport successful.");
 });
