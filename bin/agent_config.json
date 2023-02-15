@@ -1,0 +1,40 @@
+{
+  "chains": {
+    "testone": {
+      "connection": {
+        "type": "http",
+        "url": ""
+      },
+      "finalityBlocks": "0",
+      "protocol": "ethereum",
+      "domain": "13371",
+      "index": {
+        "from": "1"
+      },
+      "name": "testone",
+      "rpcStyle": "ethereum",
+      "addresses": {
+        "interchainGasPaymaster": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+        "mailbox": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"
+      }
+    },
+    "testtwo": {
+      "connection": {
+        "type": "http",
+        "url": ""
+      },
+      "finalityBlocks": "0",
+      "domain": "13372",
+      "name": "testtwo",
+      "rpcStyle": "ethereum",
+      "addresses": {
+        "mailbox": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+        "interchainGasPaymaster": "0x5FbDB2315678afecb367f032d93F642f64180aa3"
+      },
+      "index": {
+        "from": "1"
+      },
+      "protocol": "ethereum"
+    }
+  }
+}

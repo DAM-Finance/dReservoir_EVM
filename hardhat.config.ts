@@ -8,7 +8,6 @@ import 'solidity-coverage';
 import 'hardhat-deploy-tenderly';
 import {node_url, accounts, addForkConfiguration} from './utils/network';
 import '@nomicfoundation/hardhat-chai-matchers';
-import './tasks/do-all.ts'
 import './tasks/d2o-teleport-layer-zero.ts'
 import './tasks/d2o-teleport-hyperlane.ts'
 import './tasks/d2o-swap.ts'
@@ -18,6 +17,7 @@ import './tasks/usdc-mint.ts'
 import './tasks/usdc-balance.ts'
 import './tasks/eth-balance.ts'
 import './tasks/hyperlane-enroll-remote.ts'
+import './tasks/hyperlane-enroll-validator.ts'
 import './tasks/swap_archadmin_ethereum.ts'
 import './tasks/swap_archadmin_moonbeam.ts'
 
@@ -46,23 +46,39 @@ const config: HardhatUserConfig = {
 			initialBaseFeePerGas: 0, // to fix : https://github.com/sc-forks/solidity-coverage/issues/652, see https://github.com/sc-forks/solidity-coverage/issues/652#issuecomment-896330136
 			accounts: accounts(),
 			saveDeployments: false,
-			deploy: ['deploy/evm/mock']
+			deploy: ['deploy/evm/mock'],
+			mining: {
+				auto: false,
+				interval: 5000
+			}
 		},
 		mock: {
 			url: node_url('localhost'),
 			accounts: accounts(),
 			saveDeployments: false,
-			deploy: ['deploy/evm/mock']
+			deploy: ['deploy/evm/mock'],
+			mining: {
+				auto: false,
+				interval: 5000
+			}
 		},
 		testOne: {
 			url: "http://127.0.0.1:13371/",
 			accounts: accounts(),
-			deploy: ['deploy/evm/test']
+			deploy: ['deploy/evm/test'],
+			mining: {
+				auto: false,
+				interval: 5000
+			}
 		},
 		testTwo: {
 			url: "http://127.0.0.1:13372/",
 			accounts: accounts(),
-			deploy: ['deploy/evm/test']
+			deploy: ['deploy/evm/test'],
+			mining: {
+				auto: false,
+				interval: 5000
+			}
 		},
 		goerli: {
 			url: node_url('goerli'),

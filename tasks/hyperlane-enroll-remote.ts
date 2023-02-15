@@ -20,4 +20,7 @@ task("hyperlane-enroll-remote", "gets the USDC balance for an account")
 		"enrollRemoteRouter",
 		taskArgs.remoteDomainId, byteify(taskArgs.remotePipeAddress)
 	);
+
+    // TODO: Also need to enroll remote validators on the ISM contract. Ie.. network two ISM (deployed by network one) needs to enroll network one validator.
+    // Also need to set threholds
 });

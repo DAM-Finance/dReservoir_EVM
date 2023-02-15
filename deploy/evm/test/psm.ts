@@ -17,12 +17,7 @@ function frad(rad: string) {
 const deployPSM: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 	const {deployments, getNamedAccounts} = hre;
 	const {deploy, execute} = deployments;
-	const {deployer} = await getNamedAccounts();
-
-    const treasuryAddress: string | undefined = process.env['TREASURY_ADDRESS'];
-	if (!treasuryAddress) {
-		throw new Error("Please set TREASURY_ADDRESS");
-	}
+	const {deployer, treasury} = await getNamedAccounts();
 
     const tokenSymbol: string | undefined = process.env["TOKEN_SYMBOL"];
 	if (!tokenSymbol) {
@@ -34,7 +29,7 @@ const deployPSM: DeployFunction = async function (hre: HardhatRuntimeEnvironment
 
 	const psm = await deploy("PSM", {		
 		from: deployer,
-		args: [tokenJoin.address, d2oJoin.address, treasuryAddress],
+		args: [tokenJoin.address, d2oJoin.address, treasury],
 		log: true,
 		autoMine: true
 	});
@@ -60,7 +55,7 @@ const deployPSM: DeployFunction = async function (hre: HardhatRuntimeEnvironment
 
 module.exports = deployPSM;
 module.exports.tags = ["psm"];
-module.exports.dependencies = [];
+module.exports.dependencies = ["collateral"];
 
 
 
