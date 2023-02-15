@@ -23,12 +23,12 @@ const deployCollateral: DeployFunction = async function (hre: HardhatRuntimeEnvi
 
     const tokenName: string | undefined = process.env["TOKEN_NAME"];
 	if (!tokenName) {
-		throw new Error("Please set TOKEN_SYMBOL");
+		throw new Error("Please set TOKEN_NAME");
 	}
 
     const tokenSymbol: string | undefined = process.env["TOKEN_SYMBOL"];
 	if (!tokenSymbol) {
-		throw new Error("Please set TREASURY_ADDRESS");
+		throw new Error("Please set TOKEN_SYMBOL");
 	}
 
     const tokenContract = await deploy(tokenSymbol, {
@@ -81,6 +81,6 @@ const deployCollateral: DeployFunction = async function (hre: HardhatRuntimeEnvi
 
 module.exports = deployCollateral;
 module.exports.tags = ["collateral"];
-module.exports.dependencies = [];
+module.exports.dependencies = ["lmcv"];
 
 

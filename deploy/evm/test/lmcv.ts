@@ -17,12 +17,7 @@ function frad(rad: string) {
 const deployLMCV: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 	const {deployments, getNamedAccounts} = hre;
 	const {deploy, execute} = deployments;
-	const {deployer} = await getNamedAccounts();
-
-	const treasuryAddress: string | undefined = process.env['TREASURY_ADDRESS'];
-	if (!treasuryAddress) {
-		throw new Error("Please set TREASURY_ADDRESS");
-	}
+	const {deployer, treasury} = await getNamedAccounts();
 
 	const lmcv = await deploy("LMCV", {
 		from: deployer,
@@ -87,6 +82,13 @@ const deployLMCV: DeployFunction = async function (hre: HardhatRuntimeEnvironmen
 	await execute(
 		"LMCV",
 		{from: deployer, log: true},
+		"setTreasury",
+		treasury
+	)
+
+	await execute(
+		"LMCV",
+		{from: deployer, log: true},
 		"setProtocolDebtCeiling",
 		frad("10000000")
 	)
@@ -96,4 +98,4 @@ const deployLMCV: DeployFunction = async function (hre: HardhatRuntimeEnvironmen
 
 module.exports = deployLMCV;
 module.exports.tags = ["lmcv"];
-module.exports.dependencies = [];
+module.exports.dependencies = ["d2o"];

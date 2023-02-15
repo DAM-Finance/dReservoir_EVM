@@ -2,6 +2,8 @@
 # This also deploys a test collateral contract as opposed to reusing an existing one.
 # You must run "start-network.sh PORT" before running this script.
 
-./scripts/test/deploy-d2o.sh $1
-./scripts/test/deploy-hyperlane-lib.sh $1
-./scripts/test/deploy-hyperlane-pipe.sh $1
+export MAILBOX_DOMAIN_ID="13371"
+export TOKEN_SYMBOL="USDC"
+export TOKEN_NAME="Test USDC"
+
+npx hardhat deploy --network testOne --tags hyperlane-pipe,psm
