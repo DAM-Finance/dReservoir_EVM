@@ -100,7 +100,11 @@ const config: HardhatUserConfig = {
 			accounts: accounts('moonbeam'),
 			deploy: ['deploy/evm/main']
 		},
-
+		shibuya: {
+			url: node_url('shibuya'),
+			accounts: accounts('shibuya'),
+			deploy: ['deploy/evm/test']
+		},
 	}),
   paths: {
     sources: "./solidity/contracts",

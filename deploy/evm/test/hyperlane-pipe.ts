@@ -7,8 +7,29 @@ const deployHyperlanePipe: DeployFunction = async function (hre: HardhatRuntimeE
 	const {deployer, treasury} = await getNamedAccounts();
 	
 	const d2o = await deployments.get("d2o");
-	const Mailbox = await deployments.get("Mailbox");
-	const ICGP = await deployments.get("InterchainGasPaymaster");
+
+	let mailboxAddress: string | undefined;
+	let icgpAddress: string | undefined;
+
+	try {
+		const Mailbox = await deployments.get("Mailbox");
+		mailboxAddress = Mailbox.address;
+	} catch (e) {
+		mailboxAddress = process.env["MAILBOX_ADDRESS"];
+		if (!mailboxAddress) {
+			throw new Error("Please set MAILBOX_ADDRESS");
+		}
+	}
+
+	try {
+		const ICGP = await deployments.get("InterchainGasPaymaster");
+		icgpAddress = ICGP.address;
+	} catch (e) {
+		icgpAddress = process.env["ICGP_ADDRESS"];
+		if (!icgpAddress) {
+			throw new Error("Please set ICGP_ADDRESS");
+		}
+	}
 
 	// Deploy the pipes.
 
@@ -32,7 +53,7 @@ const deployHyperlanePipe: DeployFunction = async function (hre: HardhatRuntimeE
 		"HyperlanePipe",
 		{from: deployer, log: true},
 		"initialize",
-		Mailbox.address, ICGP.address, d2o.address, 10000, treasury
+		mailboxAddress, icgpAddress, d2o.address, 10000, treasury
 	);
 
 	console.log("✅ Hyperlane deployment and setup successful.")
@@ -40,4 +61,4 @@ const deployHyperlanePipe: DeployFunction = async function (hre: HardhatRuntimeE
 
 module.exports = deployHyperlanePipe;
 module.exports.tags = ["hyperlane-pipe"];
-module.exports.dependencies = ["hyperlane-lib", "d2o"];
+module.exports.dependencies = [];
