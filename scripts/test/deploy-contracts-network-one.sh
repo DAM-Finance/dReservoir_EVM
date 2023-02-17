@@ -6,4 +6,4 @@ export MAILBOX_DOMAIN_ID="13371"
 export TOKEN_SYMBOL="USDC"
 export TOKEN_NAME="Test USDC"
 
-npx hardhat deploy --network testOne --tags hyperlane-pipe,psm
+npx hardhat deploy --network testOne --tags d2o,lmcv,hyperlane-lib,hyperlane-pipe,collateral,psm

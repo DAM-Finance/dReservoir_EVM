@@ -55,7 +55,7 @@ const deployPSM: DeployFunction = async function (hre: HardhatRuntimeEnvironment
 
 module.exports = deployPSM;
 module.exports.tags = ["psm"];
-module.exports.dependencies = ["collateral"];
+module.exports.dependencies = [];
 
 
 
