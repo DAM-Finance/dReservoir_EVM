@@ -27,7 +27,7 @@ contract LayerZeroPipe is BaseOFTV2, AuthAdmin("LayerZeroPipe", msg.sender) {
     event SetTeleportFee(uint256 teleportFee);
 
     constructor(address _lzEndpoint, address _d2OContract, address _treasury, uint8 _sharedDecimals) BaseOFTV2(_sharedDecimals, _lzEndpoint) {
-        require(_lzEndpoint != address(0) && _d2OContract != address(0), "d2OConnectorLZ/invalid address");
+        require(_lzEndpoint != address(0) && _d2OContract != address(0) && _treasury != address(0), "d2OConnectorLZ/invalid address");
         d2OContract = _d2OContract;
         uint8 decimals = d2OLike(d2OContract).decimals();
         ld2sdRate = 10 ** (decimals - _sharedDecimals);
