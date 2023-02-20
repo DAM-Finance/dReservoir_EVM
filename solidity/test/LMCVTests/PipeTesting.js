@@ -106,8 +106,8 @@ describe("Testing LMCV", function () {
                 [1, 200000]
             )
 
-            let feeEstimate = await userSrcLZPipe.estimateSendFee("2", addr1.address, fwad("1000"), false, adapterParams);
-            await userSrcLZPipe.sendFrom(addr1.address, "2", addr1.address, fwad("1000"), addr1.address, addr1.address, [], {value: feeEstimate.nativeFee});
+            let feeEstimate = await userSrcLZPipe.estimateSendFee("2", byteify(addr1.address), fwad("1000"), false, adapterParams);
+            await userSrcLZPipe.sendFrom(addr1.address, "2",  byteify(addr1.address), fwad("1000"), {refundAddress: addr1.address, zroPaymentAddress: addr1.address, adapterParams: []}, {value: feeEstimate.nativeFee});
 
             expect(await dstd2o.balanceOf(addr1.address)).to.equal(fwad("997"));
             expect(await dstd2o.balanceOf(owner.address)).to.equal(fwad("3"));
@@ -138,8 +138,6 @@ describe("Testing LMCV", function () {
         });
 
         it("Should fail if minimum gas amount is not sent", async function () {
-            console.log("Treasury:" + await srcHLPipe.treasury());
-            console.log("Teleport Fee:" + await srcHLPipe.teleportFee());
 
             let userSrcHLPipe = srcHLPipe.connect(addr1);
 
