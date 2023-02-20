@@ -94,6 +94,11 @@ contract HyperlanePipe is Router, AuthAdmin("HyperlanePipe", msg.sender) {
         emit SetTeleportFee(teleportFee);
     }
 
+    function setGasAmount(uint256 _gasAmount) external auth {
+        require(_gasAmount > 0, "d2OConnectorLZ/Gas amount must be more than 0");
+        gasAmount = _gasAmount;
+    }
+
     /**
      * @notice Transfers `_amount` of tokens from `msg.sender` to `_recipient` on the `_destination` chain.
      * @dev Burns `_amount` of tokens from `msg.sender` on the origin chain and dispatches
@@ -110,6 +115,7 @@ contract HyperlanePipe is Router, AuthAdmin("HyperlanePipe", msg.sender) {
     ) external payable alive {
         require(_amount > 0, "d2OConnectorHyperlane/Amount cannot be zero");
         require(_recipient != bytes32(""), "d2OConnectorHyperlane/Recipient address cannot be blank");
+        require(msg.value >= gasAmount, "d2OConnectorHyperlane/Must have enough gas");
         d2OLike(d2OContract).burn(msg.sender, _amount);
         _dispatchWithGas(
             _destination,
