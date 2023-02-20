@@ -8,17 +8,16 @@ import 'solidity-coverage';
 import 'hardhat-deploy-tenderly';
 import {node_url, accounts, addForkConfiguration} from './utils/network';
 import '@nomicfoundation/hardhat-chai-matchers';
-import './tasks/d2O_teleport.ts'
-import './tasks/d2O_swap.ts'
-import './tasks/d2O_balance.ts'
-import './tasks/usdc_mint.ts'
-import './tasks/usdc_balance.ts'
-import './tasks/eth_balance.ts'
-import './tasks/setup_contracts_goerli.ts'
-import './tasks/setup_contracts_moonbase.ts'
-import './tasks/setup_contracts_ethereum.ts'
-import './tasks/setup_contracts_moonbeam.ts'
-import './tasks/_swap_archadmin.ts'
+import './tasks/d2o-teleport-layer-zero.ts'
+import './tasks/d2o-teleport-hyperlane.ts'
+import './tasks/d2o-swap.ts'
+import './tasks/d2o-burn.ts'
+import './tasks/d2o-balance.ts'
+import './tasks/usdc-mint.ts'
+import './tasks/usdc-balance.ts'
+import './tasks/eth-balance.ts'
+import './tasks/hyperlane-enroll-remote.ts'
+import './tasks/hyperlane-enroll-validator.ts'
 import './tasks/swap_archadmin_ethereum.ts'
 import './tasks/swap_archadmin_moonbeam.ts'
 
@@ -40,44 +39,76 @@ const config: HardhatUserConfig = {
 		// TODO: We should have a dedicated address for the "treasury" account.
 		deployer: 0,
 		treasury: 1,
-		user: 2
+		user: 2	
 	},
 	networks: addForkConfiguration({
 		hardhat: {
 			initialBaseFeePerGas: 0, // to fix : https://github.com/sc-forks/solidity-coverage/issues/652, see https://github.com/sc-forks/solidity-coverage/issues/652#issuecomment-896330136
 			accounts: accounts(),
-			deploy: ['deploy/hardhat/']
+			saveDeployments: false,
+			deploy: ['deploy/evm/mock'],
+			mining: {
+				auto: false,
+				interval: 5000
+			}
 		},
-		localhost: {
+		mock: {
 			url: node_url('localhost'),
 			accounts: accounts(),
-			deploy: ['deploy/localhost/']
+			saveDeployments: false,
+			deploy: ['deploy/evm/mock'],
+			mining: {
+				auto: false,
+				interval: 5000
+			}
+		},
+		testOne: {
+			url: "http://127.0.0.1:13371/",
+			accounts: accounts(),
+			deploy: ['deploy/evm/test'],
+			mining: {
+				auto: false,
+				interval: 5000
+			}
+		},
+		testTwo: {
+			url: "http://127.0.0.1:13372/",
+			accounts: accounts(),
+			deploy: ['deploy/evm/test'],
+			mining: {
+				auto: false,
+				interval: 5000
+			}
 		},
 		goerli: {
 			url: node_url('goerli'),
 			accounts: accounts('goerli'),
-			deploy: ['deploy/goerli']
+			deploy: ['deploy/evm/test']
 		},
 		moonbase: {
 			url: node_url('moonbase'),
 			accounts: accounts('moonbase'),
-			deploy: ['deploy/moonbase']
+			deploy: ['deploy/evm/test']
 		},
 		ethereum: {
 			url: node_url('ethereum'),
 			accounts: accounts('ethereum'),
-			deploy: ['deploy/ethereum']
+			deploy: ['deploy/evm/main']
 		},
 		moonbeam: {
 			url: node_url('moonbeam'),
 			accounts: accounts('moonbeam'),
-			deploy: ['deploy/moonbeam']
+			deploy: ['deploy/evm/main']
 		},
-
+		shibuya: {
+			url: node_url('shibuya'),
+			accounts: accounts('shibuya'),
+			deploy: ['deploy/evm/test']
+		},
 	}),
   paths: {
-    sources: "./contracts",
-    tests: "./Test",
+    sources: "./solidity/contracts",
+    tests: "./solidity/test",
     cache: "./cache",
     artifacts: "./artifacts"
   },
