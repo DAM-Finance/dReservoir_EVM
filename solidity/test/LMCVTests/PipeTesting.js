@@ -39,7 +39,7 @@ async function setupUser(addr, amounts){
 describe("Testing LMCV", function () {
 
     before(async function () {
-        d2oFactory                      = await ethers.getContractFactory("d2O");
+        d2oFactory                      = await ethers.getContractFactory("d2o");
         hyperlanePipeFactory            = await ethers.getContractFactory("HyperlanePipe");
         LZPipeFactory                   = await ethers.getContractFactory("LayerZeroPipe");
         lzMockEndpointFactory           = await ethers.getContractFactory("LZEndpointMock");
@@ -120,9 +120,6 @@ describe("Testing LMCV", function () {
     describe("Hyperlane Pipe testing", function () {
 
         it("Should properly transfer using mock endpoint with fees", async function () {
-            console.log("Treasury:" + await srcHLPipe.treasury());
-            console.log("Teleport Fee:" + await srcHLPipe.teleportFee());
-
             let userSrcHLPipe = srcHLPipe.connect(addr1);
 
             await srcd2o.mint(addr1.address, fwad("10000"));
