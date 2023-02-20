@@ -45,11 +45,11 @@ describe("Testing LMCV", function () {
 
         srcd2o          = await d2oFactory.deploy();
         srcLZEndpoint   = await lzMockEndpointFactory.deploy("1");
-        srcLZPipe       = await LZPipeFactory.deploy(srcLZEndpoint.address, srcd2o.address);
+        srcLZPipe       = await LZPipeFactory.deploy(srcLZEndpoint.address, srcd2o.address, 6);
         
         dstd2o          = await d2oFactory.deploy();
         dstLZEndpoint   = await lzMockEndpointFactory.deploy("2");
-        dstLZPipe       = await LZPipeFactory.deploy(dstLZEndpoint.address, dstd2o.address);
+        dstLZPipe       = await LZPipeFactory.deploy(dstLZEndpoint.address, dstd2o.address, 6);
 
         await srcd2o.rely(srcLZPipe.address);
         await dstd2o.rely(dstLZPipe.address);
@@ -74,9 +74,6 @@ describe("Testing LMCV", function () {
     describe("Layer Zero Pipe testing", function () {
 
         it("Should properly transfer using mock endpoint with fees", async function () {
-            console.log("Treasury:" + await srcLZPipe.treasury());
-            console.log("Teleport Fee:" + await srcLZPipe.teleportFee());
-
             let userSrcLZPipe = srcLZPipe.connect(addr1);
 
             await srcd2o.mint(addr1.address, fwad("10000"));
