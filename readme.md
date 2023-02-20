@@ -119,50 +119,40 @@ For deploying a localhost version of DAM for testing use the following:
 
 This sets up the local test network and executes transactions to set up all of the contracts -- permissions etc. You can then use hardhat tasks to interact with the contracts e.g.
 
-1. `npx hardhat eth_balance --user [ADDRESS] --network localhost` 
-2. `npx hardhat usdc_mint --user [ADDRESS] --amount [AMOUNT] --network localhost`
-3. `npx hardhat usdc_balance --user [ADDRESS] --network localhost`
-4. `npx hardhat d2O_swap --user [ADDRESS] --amount [AMOUNT] --network localhost`
-5. `npx hardhat d2O_balance --user [ADDRESS] --network localhost`
-6. `npx hardhat d2O_teleport --user [ADDRESS]] --amount [AMOUNT] --network localhost --source-chain-id 1 --dest-chain-id 2` - for teleporting using the local test network we use the LayerZero mock end-point which simulates the existence of two networks. With this approach there are two d2O contracts, two end-points and two connectors. One end-point has id `1` and the other id `2`. 
+1. `npx hardhat eth-balance --address [ADDRESS] --network localhost` 
+2. `npx hardhat usdc-mint --address [ADDRESS] --amount [AMOUNT] --network localhost`
+3. `npx hardhat usdc-balance --address [ADDRESS] --network localhost`
+4. `npx hardhat d2o-swap --address [ADDRESS] --amount [AMOUNT] --network localhost`
+5. `npx hardhat d2o-balance --address [ADDRESS] --network localhost`
+6. `npx hardhat d2o-teleport-layer-zero --address [ADDRESS] --amount [AMOUNT] --network localhost --source 1 --dest 2` - for teleporting using the local test network we use the LayerZero mock end-point which simulates the existence of two networks. With this approach there are two d2O contracts, two end-points and two connectors. One end-point has id `1` and the other id `2`. 
+7. `npx hardhat d2o-teleport-hyperlane --address [ADDRESS] --amount [AMOUNT] --network localhost --source 1 --dest 2` - as above but uses the hyperlane mock
+8. `npx hardhat d2o-burn --address [ADDRESS] --amount [AMOUNT] --network localhost`
+
+Deployment tags:
+
+1. `d2o` - deploy d2o only. I.e. the d2o contract and the d2o guardian contract.
+2. `layer-zero-pipe` - deploy d2o and the layer zero pipe contracts. Depends on d2o.
+3. `hyperlane-pipe` - deploy d2o and the hyperlane pipe contracts. Depends on d2o.
+4. `lmcv` - deploy the lmcv contracts and the d2o contracts. Depends on d2o.
+5. `collateral` - deploy a test collateral contract and the join contract. Depends on lmcv.
+6. `psm` - deploys a psm for the specified collateral type. Depends on collateral.
 
 For deploying to testnet or mainnet, use the following:
 
-1. `npx hardhat deploy --network [NETWORK NAME]` - currently only supports Goerli and Moonbase Alpha
-2. `npx hardhat setup_contracts --network [NETWORK NAME]` - currently only supports Goerli and Moonbase Alpha. This sets up all the contracts with permissions etc. It's done in a separate step to deploying with testnets and production.
-
-You can then use the same tasks as described above for the local test network to interact with testnet and mainnet deployments. Make sure to change the network name option to the nework of choice.
-
-### Environment variables
+    npx hardhat deploy --network [NETWORK NAME] --tags [TAG NAME]`
 
 
-```
-ETH_NODE_URI_ETHEREUM
-ETH_NODE_URI_GOERLI
-ETH_NODE_URI_MOONBEAM
-ETH_NODE_URI_MOONBASE
+Contract classes:
 
-MNEMONIC_ETHEREUM
-MNEMONIC_GOERLI
-MNEMONIC_MOONBEAM
-MNEMONIC_MOONBASE
+1. `mock`. A `mock` deployment is intended for running a local machine only. It mocks out the hyperlane and layer zero infrastructure for easy testing.
+2. `test`. With the `test` deployment it is assumed we are using the proper layer zero and hyperlane infrastructure. All the necessary contracts should already be deployed to the network and if not then we should deploy them before running these deployments scripts. A `test` deployment also includes a "test" collateral contract. It's easiest to deploy our own modified ERC20, which allows people to mint their own tokens. 
+3. `main`. For product deployments. It is expected that the layer-zero or hyperlane infrastructure is deployed and available and that we use already deployed collateral contracts.
 
-LAYER_ZERO_ENDPOINT_ETHEREUM
-LAYER_ZERO_ENDPOINT_GOERLI
-LAYER_ZERO_ENDPOINT_MOONBEAM
-LAYER_ZERO_ENDPOINT_MOONBASE
-LAYER_ZERO_CHAIN_ID_ETHEREUM
-LAYER_ZERO_CHAIN_ID_GOERLI
-LAYER_ZERO_CHAIN_ID_MOONBEAM
-LAYER_ZERO_CHAIN_ID_MOONBASE
+The deployment scripts also set up the contracts to the extent they can. Some things need to be done manually afterwards using hardhat tasks. E.g. Setting trusted remotes or enrolling romes for layer-zero and hyperlane pipes.
 
-HYPERLANE_CONNECTION_MANAGER_GOERLI
-HYPERLANE_INTERCHAIN_GAS_PAYMASTER_GOERLI
-HYPERLANE_DOMAIN_IDENTIFIER_GOERLI
-HYPERLANE_DOMAIN_IDENTIFIER_MOONBASE
+To deploy two local test networks which can teleport between each other using hyperlane:
 
-USDC_ADDRESS_ETHEREUM
-USDC_PSM_SYMBOL
-
-ETHERSCAN_API_KEY
-```
+1. `./scripts/test/start-network.sh 13371` in one tab.
+2. `./scripts/test/start-network.sh 13372` in another tab.
+3. `./scripts/test/deploy-all.sh testOne` in a new tab.
+4. `./scripts/test/deploy-all.sh testTwo`
