@@ -6,6 +6,7 @@ node_modules/
 .env.production.local
 .env.local
 .DS_Store
+/contracts/.DS_Store
 
 .pnp.*
 /artifacts/
@@ -16,4 +17,7 @@ node_modules/
 secrets.json
 settings.json
 slither.db.json
+
+/bin/storage
+
 
