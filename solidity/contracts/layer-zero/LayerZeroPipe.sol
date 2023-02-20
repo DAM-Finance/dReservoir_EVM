@@ -17,10 +17,11 @@ interface d2OLike {
 
 contract LayerZeroPipe is BaseOFTV2, AuthAdmin("LayerZeroPipe", msg.sender) {
 
-    uint    internal    immutable   ld2sdRate; // local 2 shared rate, for d2o should be 10^(18-6)
-    address public      immutable   d2OContract;
-    address public                  treasury;
-    uint256 public                  teleportFee; // [ray]
+    address public immutable    d2OContract;
+    address public              treasury;
+    uint256 public              teleportFee; // [ray]
+
+    uint internal immutable   ld2sdRate; // local 2 shared rate, for d2o should be 10^(18-6)
 
     event MintLayerZero(address indexed from, uint256 amount, uint16 _srcChainId);
     event BurnLayerZero(address indexed from, uint256 amount, uint16 _dstChainId);
@@ -62,10 +63,6 @@ contract LayerZeroPipe is BaseOFTV2, AuthAdmin("LayerZeroPipe", msg.sender) {
         return d2OLike(d2OContract).totalSupply();
     }
 
-    function token() public view virtual override returns (address) {
-        return d2OContract;
-    }
-
     function _debitFrom(address _from, uint16 _dstChainId, bytes32, uint _amount) internal virtual override alive returns (uint) {
         address spender = _msgSender();
         if (_from != spender) {
@@ -101,6 +98,10 @@ contract LayerZeroPipe is BaseOFTV2, AuthAdmin("LayerZeroPipe", msg.sender) {
     function setTrustedRemoteAddressAuth(uint16 _remoteChainId, bytes calldata _remoteAddress) external auth {
         trustedRemoteLookup[_remoteChainId] = abi.encodePacked(_remoteAddress, address(this));
         emit SetTrustedRemoteAddress(_remoteChainId, _remoteAddress);
+    }
+
+    function token() public view virtual override returns (address) {
+        return d2OContract;
     }
 
     function _ld2sdRate() internal view virtual override returns (uint) {
