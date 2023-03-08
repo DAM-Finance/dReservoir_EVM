@@ -31,14 +31,19 @@ task("d2o-teleport-hyperlane", "teleports d2O from one chain to another")
 
 	console.log(`Teleporting ${taskArgs.amount} d2o...`);
 	
-	await execute(
-		contractName, 
-		{from: taskArgs.address, log: true, value: 100000},
-		"transferRemote",
-		taskArgs.dest,				// Destination chain id.
-		byteify(taskArgs.address), 	// Address.
-		fwad(taskArgs.amount),		// Amount.		
-	);
+	try {
+		await execute(
+			contractName, 
+			{from: taskArgs.address, log: true, value: 10000000},
+			"transferRemote",
+			taskArgs.dest,				// Destination chain id.
+			byteify(taskArgs.address), 	// Address.
+			fwad(taskArgs.amount),		// Amount.		
+		);
+	} catch (e) {
+		console.log(e.message);
+		throw e;
+	}
 
 	// Manually perofrm message processing for mock networks.
 

@@ -18,6 +18,8 @@ import './tasks/usdc-balance.ts'
 import './tasks/eth-balance.ts'
 import './tasks/hyperlane-enroll-remote.ts'
 import './tasks/hyperlane-enroll-validator.ts'
+import './tasks/hyperlane-validator-announce.ts'
+import './tasks/hyperlane-set-teleport-fee.ts'
 import './tasks/swap_archadmin_ethereum.ts'
 import './tasks/swap_archadmin_moonbeam.ts'
 
