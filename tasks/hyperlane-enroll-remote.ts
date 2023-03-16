@@ -2,7 +2,7 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { task } from "hardhat/config";
 import { ethers } from 'ethers';
 
-task("hyperlane-enroll-remote", "gets the USDC balance for an account")
+task("hyperlane-enroll-remote", "enrolls remote address for hyperlane pipe")
   .addParam("remoteDomainId", "The user's address")
   .addParam("remotePipeAddress", "The user's address")
   .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
