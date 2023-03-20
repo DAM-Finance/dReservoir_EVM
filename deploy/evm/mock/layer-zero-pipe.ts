@@ -33,7 +33,7 @@ const deployLayerZeroPipe: DeployFunction = async function (hre: HardhatRuntimeE
 
 	const layerZeroPipeOne = await deploy("LayerZeroPipeOne", {
 		from: deployer,
-		args: [layerZeroEndpointOne.address, d2oOne.address, treasury],
+		args: [layerZeroEndpointOne.address, d2oOne.address, treasury, 6],
 		log: true,
 		autoMine: true,
 		contract: "LayerZeroPipe"
@@ -41,7 +41,7 @@ const deployLayerZeroPipe: DeployFunction = async function (hre: HardhatRuntimeE
 
 	const layerZeroPipeTwo = await deploy("LayerZeroPipeTwo", {
 		from: deployer,
-		args: [layerZeroEndpointTwo.address, d2oTwo.address, treasury],
+		args: [layerZeroEndpointTwo.address, d2oTwo.address, treasury, 6],
 		log: true,
 		autoMine: true,
 		contract: "LayerZeroPipe"

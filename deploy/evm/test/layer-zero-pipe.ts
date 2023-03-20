@@ -20,7 +20,7 @@ const deployLayerZeroPipe: DeployFunction = async function (hre: HardhatRuntimeE
 
 	const layerZeroPipe = await deploy("LayerZeroPipe", {
 		from: deployer,
-		args: [layerZeroEndpointAddress, d2o.address, treasuryAddress],
+		args: [layerZeroEndpointAddress, d2o.address, treasuryAddress, 6],
 		log: true,
 		autoMine: true
 	});
