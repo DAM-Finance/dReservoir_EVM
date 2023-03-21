@@ -6,29 +6,26 @@ function fwad(wad: string) {
 	return ethers.utils.parseEther(wad); 
 }
 
-task("d2o-teleport-layer-zero", "teleports d2O from one chain to another USING LZV2 CALLS")
+task("d2o-teleport-layer-zero-local", "teleports d2O from one chain to another")
   .addParam("amount", "The amount of d2O to teleport")
-  .addParam("dest", "The destination chain id")
+  .addOptionalParam("source", "The source chain id")
+  .addOptionalParam("dest", "The destination chain id")
   .addParam("address", "The user's address to send from")
   .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
-    const {deployments, getNamedAccounts} = hre;
+	const {deployments} = hre;
 	const {execute, read} = deployments;
-
-	function byteify(address) {
-        return ethers.utils.hexZeroPad(ethers.utils.hexlify(address), 32)
-    }
 
 	// Estimate teleport fee.
 
 	console.log(`Estimating teleport fee...`);
 
-	const toAddress = byteify(taskArgs.address)
+	const contractName = taskArgs.source == 1 ? "LayerZeroPipeOne" : "LayerZeroPipeTwo";
 
 	const feeEstimate = await read(
-		"LayerZeroPipe",
+		contractName,
 		{from: taskArgs.address},
 		"estimateSendFee",
-		taskArgs.dest, toAddress, fwad(taskArgs.amount), false, []
+		taskArgs.dest, taskArgs.address, fwad(taskArgs.amount), false, []
 	);
 
 	console.log("Fee estimate: ", ethers.utils.formatEther(feeEstimate.nativeFee));
@@ -38,16 +35,16 @@ task("d2o-teleport-layer-zero", "teleports d2O from one chain to another USING L
 	console.log(`Teleporting ${taskArgs.amount} d2o...`);
 
 	await execute(
-		"LayerZeroPipe", 
+		contractName, 
 		{from: taskArgs.address, log: true, value: feeEstimate.nativeFee},
 		"sendFrom",
 		taskArgs.address,					// User address.
 		taskArgs.dest,						// Destination chain Id.
-		toAddress,					// To address.
+		taskArgs.address,					// To address.
 		fwad(taskArgs.amount),				// Amount.
-		{refundAddress: taskArgs.address,					// Refund address.
-		zroPaymentAddress: taskArgs.address,					// Payment address.
-		adapterParams: []}
+		taskArgs.address,					// Refund address.
+		taskArgs.address,					// Payment address.
+		[]
 	);
 
 	console.log("✅ Teleport successful.");

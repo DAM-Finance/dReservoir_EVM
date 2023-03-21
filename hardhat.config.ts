@@ -8,6 +8,7 @@ import 'solidity-coverage';
 import 'hardhat-deploy-tenderly';
 import {node_url, accounts, addForkConfiguration} from './utils/network';
 import '@nomicfoundation/hardhat-chai-matchers';
+import './tasks/d2o-teleport-layer-zero-local.ts'
 import './tasks/d2o-teleport-layer-zero.ts'
 import './tasks/d2o-teleport-hyperlane.ts'
 import './tasks/d2o-swap.ts'
@@ -20,6 +21,7 @@ import './tasks/hyperlane-enroll-remote.ts'
 import './tasks/hyperlane-enroll-validator.ts'
 import './tasks/swap_archadmin_ethereum.ts'
 import './tasks/swap_archadmin_moonbeam.ts'
+import './tasks/lz-pipe-enroll-remote.ts'
 
 const config: HardhatUserConfig = {
 	solidity: {
@@ -104,7 +106,16 @@ const config: HardhatUserConfig = {
 			url: node_url('shibuya'),
 			accounts: accounts('shibuya'),
 			deploy: ['deploy/evm/test']
+		},fuji: {
+			url: node_url('fuji'),
+			accounts: accounts('fuji'),
+			deploy: ['deploy/evm/test']
+		},sepolia: {
+			url: node_url('sepolia'),
+			accounts: accounts('sepolia'),
+			deploy: ['deploy/evm/test']
 		},
+
 	}),
   paths: {
     sources: "./solidity/contracts",
