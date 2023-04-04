@@ -108,6 +108,11 @@ const config: HardhatUserConfig = {
 			accounts: accounts('shibuya'),
 			deploy: ['deploy/evm/test']
 		},
+		astar: {
+			url: node_url('astar'),
+			accounts: accounts('astar'),
+			deploy: ['deploy/evm/main']
+		},
 	}),
   paths: {
     sources: "./solidity/contracts",
