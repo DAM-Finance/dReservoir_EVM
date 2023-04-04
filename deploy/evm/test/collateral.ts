@@ -81,6 +81,6 @@ const deployCollateral: DeployFunction = async function (hre: HardhatRuntimeEnvi
 
 module.exports = deployCollateral;
 module.exports.tags = ["collateral"];
-module.exports.dependencies = [];
+module.exports.dependencies = ["lmcv"];
 
 

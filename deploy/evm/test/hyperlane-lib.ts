@@ -13,31 +13,19 @@ const deployHyperlaneMailbox: DeployFunction = async function (hre: HardhatRunti
 		throw new Error("Please set MAILBOX_DOMAIN_ID");
 	}
 
-	// await deploy("ProxyAdmin", {
-    //     from: deployer,
-    //     args: [],
-    //     log: true,
-    //     autoMine: true
-    // });
-
     const IGP = await deploy("InterchainGasPaymaster", {
         from: deployer,
         args: [],
         log: true,
-        autoMine: true
+        autoMine: true,
+        proxy: {
+            proxyContract: 'OpenZeppelinTransparentProxy',
+            execute: {
+                methodName: "initialize",
+                args: []
+            }
+        }
     });
-
-    const IGPAddress        = IGP.receipt?.contractAddress;
-    // let initInterfaceIGP    = new ethers.utils.Interface(["function initialize()"]);
-    // let initDataIGP         = initInterfaceIGP.encodeFunctionData("initialize", []);  
-
-    // await deploy("IGPProxy", {
-    //     from: treasury,
-    //     args: [IGPAddress, treasury, initDataIGP],
-    //     log: true,
-    //     autoMine: true,
-    //     contract: "TransparentUpgradeableProxy"
-    // });
 
     const ISM = await deploy("MultisigIsm", {
         from: deployer,
@@ -46,33 +34,21 @@ const deployHyperlaneMailbox: DeployFunction = async function (hre: HardhatRunti
         autoMine: true
     });
 
+    const ISMAddress = ISM.receipt?.contractAddress;
+
     const Mailbox = await deploy("Mailbox", {
         from: deployer,
         args: [mailboxDomainId],
         log: true,
-        autoMine: true
+        autoMine: true,
+        proxy: {
+            proxyContract: 'OpenZeppelinTransparentProxy',
+            execute: {
+                methodName: "initialize",
+                args: [deployer, ISMAddress]
+            }
+        }
     });
-
-    const mailboxAddress        = Mailbox.receipt?.contractAddress;
-    const ISMAddress            = ISM.receipt?.contractAddress;
-    // let initInterfaceMailbox    = new ethers.utils.Interface(["function initialize(address, address)"]);
-    // let initDataMailbox         = initInterfaceMailbox.encodeFunctionData("initialize", [deployer, ISMAddress]);  
-
-    // // Proxy admin/deployer needs to be different address to implementation deployer/address.
-    // await deploy("MailboxProxy", {
-    //     from: treasury,
-    //     args: [mailboxAddress, treasury, initDataMailbox],      
-    //     log: true,
-    //     autoMine: true,
-    //     contract: "TransparentUpgradeableProxy"
-    // });
-
-    await execute(
-        "Mailbox",
-        {from: deployer, log: true},
-		"initialize",
-		deployer, ISMAddress
-    );
 
 	console.log("✅ Hyperlane libraries and setup successful.")
 };
