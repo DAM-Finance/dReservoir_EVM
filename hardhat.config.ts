@@ -2,6 +2,7 @@ import 'dotenv/config';
 import {HardhatUserConfig} from 'hardhat/types';
 import 'hardhat-deploy';
 import '@nomiclabs/hardhat-ethers';
+import '@nomiclabs/hardhat-etherscan';
 import 'hardhat-gas-reporter';
 import '@typechain/hardhat';
 import 'solidity-coverage';
@@ -113,7 +114,21 @@ const config: HardhatUserConfig = {
 			accounts: accounts('astar'),
 			deploy: ['deploy/evm/main']
 		},
-	}),
+	}
+  ),
+  etherscan: {
+	apiKey: "foo",
+	customChains: [
+		{
+			network: "astar",
+			chainId: 592,
+			urls: {
+				apiURL: "https://blockscout.com/astar/api/",
+				browserURL: "https://blockscout.com/astar/"
+			}
+		}
+	]
+  },
   paths: {
     sources: "./solidity/contracts",
     tests: "./solidity/test",
