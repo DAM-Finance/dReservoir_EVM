@@ -1,6 +1,5 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { task } from "hardhat/config";
-import { ethers } from 'ethers';
 
 task("hyperlane-enroll-validator", "gets the USDC balance for an account")
   .addParam("remoteDomainId", "The remote domain id")

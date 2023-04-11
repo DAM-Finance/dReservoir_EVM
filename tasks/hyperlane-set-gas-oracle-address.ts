@@ -1,5 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { task } from "hardhat/config";
+import { ethers } from 'ethers';
 
 task("hyperlane-set-gas-oracle-address", "sets the gas oracle address for a specific remote")
   .addParam("remoteId", "The remote desintation id")
@@ -16,6 +17,6 @@ task("hyperlane-set-gas-oracle-address", "sets the gas oracle address for a spec
       "InterchainGasPaymaster",
       {from: deployer, log: true},
       "setGasOracles",
-      [{remoteId, address}]
+      [{remoteDomain: remoteId, gasOracle: address}]  // MAy need to format this as a 2 dimensional array. Tuple is '[...]' in etherum's ABI spec.
   );
 });

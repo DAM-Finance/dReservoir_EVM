@@ -15,12 +15,19 @@ const deployHyperlaneMailbox: DeployFunction = async function (hre: HardhatRunti
 
     const ICGP = await deploy("InterchainGasPaymaster", {
         from: deployer,
-        args: [gnosisVaultAddress, gnosisVaultAddress],
+        args: [],
         log: true,
         autoMine: true
     });
 
     const ICGPAddress = ICGP.receipt?.contractAddress;
+
+    await execute(
+        "InterchainGasPaymaster",
+        {from: deployer, log: true},
+		"initialize",
+        gnosisVaultAddress, gnosisVaultAddress,
+    );
 
     await execute(
         "HyperlanePipe",
