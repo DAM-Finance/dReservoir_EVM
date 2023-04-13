@@ -2,18 +2,16 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { task } from "hardhat/config";
 import { ethers } from 'ethers';
 
-task("hyperlane-set-remote-ism", "gets the USDC balance for an account")
-  .addParam("address", "The remote ISM Address")
+task("hyperlane-get-remote-ism", "gets the USDC balance for an account")
   .setAction(async (taskArgs: any, hre: HardhatRuntimeEnvironment) => {
     const {deployments, getNamedAccounts} = hre;
-	  const {execute} = deployments;
+	  const {read} = deployments;
     const {deployer} = await getNamedAccounts();
 
-    const result = await execute(
+    const result = await read(
       "HyperlanePipe",
-      {from: deployer, log: true},
-		  "setInterchainSecurityModule",
-		  taskArgs.address
+      {from: deployer},
+		  "interchainSecurityModule"
     );
 
     console.log(result);

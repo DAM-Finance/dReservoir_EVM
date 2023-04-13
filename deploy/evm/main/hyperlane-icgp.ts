@@ -26,7 +26,7 @@ const deployHyperlaneMailbox: DeployFunction = async function (hre: HardhatRunti
         "InterchainGasPaymaster",
         {from: deployer, log: true},
 		"initialize",
-        gnosisVaultAddress, gnosisVaultAddress,
+        deployer, gnosisVaultAddress,
     );
 
     await execute(
@@ -44,6 +44,13 @@ const deployHyperlaneMailbox: DeployFunction = async function (hre: HardhatRunti
     });
 
     const StorageGasOracleAddress = StorageGasOracle.receipt?.contractAddress;
+
+    await execute(
+        "InterchainGasPaymaster",
+        {from: deployer, log: true},
+        "setGasOracles",
+        [{remoteDomain: 1, gasOracle: StorageGasOracleAddress}]  // MAy need to format this as a 2 dimensional array. Tuple is '[...]' in etherum's ABI spec.
+    );
 
 	console.log("✅ Hyperlane ICGP and storage gas oracle setup successful.")
 };

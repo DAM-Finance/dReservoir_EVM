@@ -14,7 +14,7 @@ task("hyperlane-validator-announce", "announce a new validator")
     await execute(
         "ValidatorAnnounce",
         {from: deployer, log: true},
-		"announce",
-		taskArgs.validatorAddress, taskArgs.storageLocation, taskArgs.signature
+		  "announce",
+		  taskArgs.validatorAddress, taskArgs.storageLocation, taskArgs.signature
 	);
 });
